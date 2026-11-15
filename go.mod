@@ -6,6 +6,8 @@ require (
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/term v0.2.2
+	github.com/google/go-cmp v0.7.0
+	go.yaml.in/yaml/v4 v4.0.0
 	golang.org/x/sys v0.50.0
 )
 
