@@ -619,7 +619,7 @@ prints the version.
 | [Agents](AGENTS.md)                                 | What coding agents need on top of the contributing guide |
 | [Decisions](docs/decisions.md)                      | Each settled choice, why, and the alternatives           |
 | [Releasing](docs/releasing.md)                      | How releases happen, recovering one, and repo settings   |
-| [To do](docs/todo.md)                               | What blocks the first release; the rest is in issues     |
+| [Changelog](docs/changelog.md)                      | What each release changed                                |
 | [Handoffs](docs/handoffs.md)                        | Work one machine leaves for another, and a resume prompt |
 | [Third-party notices](docs/third-party-notices.txt) | The licenses of the Go modules built into the binary     |
 

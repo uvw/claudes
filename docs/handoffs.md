@@ -18,16 +18,17 @@ Paste this into a new Claude Code session at the root of this repository:
 
 ```text
 Continue work on claudes. Read AGENTS.md, docs/contributing.md,
-docs/decisions.md, docs/todo.md, and docs/handoffs.md first.
+docs/decisions.md, and docs/handoffs.md first.
 
-State: every command in the README is built and tested, and every command under
-"Checks" in docs/contributing.md passes on Windows and Linux, and CI passes on
-Linux, macOS, and Windows. Changes go through pull requests. Every command
-has run against throwaway sessions on Claude Code 2.1.325.
+State: 0.1.0 is released. Every command in the README is built and tested.
+Every command under "Checks" in docs/contributing.md passes on Windows and
+Linux, CI passes on Linux, macOS, and Windows, and every command has run
+against throwaway sessions on Claude Code 2.1.325. Changes go through pull
+requests.
 
 Next, in order:
 1. Pick up the items in docs/handoffs.md that this machine can do.
-2. Work through docs/todo.md.
+2. Work on the open GitHub issues.
 3. Ask the owner before any command that changes their live sessions.
 ```
 
