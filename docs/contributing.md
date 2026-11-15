@@ -97,11 +97,9 @@ fails without it, and CI keeps total coverage at 80% or more.
 
 ## Pull requests
 
-Until the repository is public, commits go straight to `main`, and the
-push-triggered workflows are off (see `docs/todo.md`). From then on, changes
-reach `main` through pull requests, which squash-merge. The pull request title
-becomes the commit on `main`, so it follows the commit rules below; CI checks
-it.
+Changes reach `main` through pull requests, which squash-merge. The pull request
+title becomes the commit on `main`, so it follows the commit rules below; CI
+checks it.
 
 1. Branch from `main`: `git switch -c fix/short-name`.
 2. Open the pull request with `gh pr create --fill`, then turn on auto-merge

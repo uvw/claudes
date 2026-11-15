@@ -62,14 +62,25 @@ gh attestation verify claudes_X.Y.Z_linux_amd64.tar.gz --repo uvw/claudes
   (`gh release delete vX.Y.Z --cleanup-tag`) and merge the fix. release-please
   then proposes the next patch version, not the deleted one, and keeps the
   deleted version's changelog entry: remove it in the release pull request.
-- **The release pull request has no CI run:** the `RELEASE_PLEASE_TOKEN` secret
-  is missing or expired. A pull request opened with the default token starts no
-  workflows, so its required check never runs.
+- **The release pull request's checks wait for approval:** without the
+  `RELEASE_PLEASE_TOKEN` secret, release-please opens the pull request as
+  `github-actions[bot]`, and GitHub holds the workflows it starts until a
+  maintainer approves them. Approve them in the pull request's Checks tab, or
+  approve each waiting run:
+
+  ```bash
+  gh run list --branch release-please--branches--main--components--claudes \
+    --status action_required --json databaseId -q '.[].databaseId' |
+    xargs -I{} gh api -X POST repos/uvw/claudes/actions/runs/{}/approve
+  ```
+
+  A CI run started by hand with `gh workflow run` does not count toward the
+  required check.
 
 ## Repository settings
 
-Apply these once, when the repository becomes public. They live in GitHub, not
-in files.
+These live in GitHub, not in files, and are all in place. Apply them again when
+moving or recreating the repository.
 
 1. **Ruleset for `main`:** it requires a pull request, allows squash merges
    only, blocks force-pushes and deletion, and requires the "CI (all green)"
@@ -91,9 +102,20 @@ in files.
      -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY
    ```
 
-3. **`RELEASE_PLEASE_TOKEN` secret:** a fine-grained token for this repository
-   with contents and pull requests read and write.
-   `gh secret set RELEASE_PLEASE_TOKEN`.
-4. **Releases:** turn on immutable releases under Settings → General.
-5. **Security:** turn on private vulnerability reporting, Dependabot alerts, and
-   code scanning default setup off (`security.yaml` runs CodeQL itself).
+3. **Actions may open pull requests,** so release-please can open its own, with
+   workflow tokens read-only by default:
+
+   ```bash
+   gh api -X PUT repos/uvw/claudes/actions/permissions/workflow \
+     -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
+   ```
+
+   A `RELEASE_PLEASE_TOKEN` secret, a fine-grained token for this repository
+   with contents and pull requests read and write, is optional. With it, the
+   release pull request's checks start without approval.
+
+4. **Releases:** immutable releases are on
+   (`gh api -X PUT repos/uvw/claudes/immutable-releases`).
+5. **Security:** private vulnerability reporting, Dependabot alerts and security
+   updates, secret scanning, and push protection are on. Code scanning's default
+   setup stays off, since `security.yaml` runs CodeQL itself.

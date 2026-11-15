@@ -60,10 +60,9 @@ binary. To try a command against real sessions, ask the owner first.
 
 ## Sharing the working tree
 
-Several agents may work in this checkout at once. Until the repository is
-public, commits go straight to `main` and are pushed once the checks pass; there
-are no pull requests or feature branches yet. After that, changes land through
-pull requests (docs/contributing.md, "Pull requests"), each from its own branch.
+Several agents may work in this checkout at once. Changes land through pull
+requests (docs/contributing.md, "Pull requests"), each from its own branch: the
+ruleset on `main` refuses a direct push.
 
 1. Commit only your own paths: `git add -- <paths>` and
    `git commit -m ... -- <paths>`. Never `git add -A`, stash, reset, or amend a
