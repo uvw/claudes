@@ -61,8 +61,10 @@ wrapper script.
 ## 3. Anything else goes to `claude agents`
 
 `claudes` with no arguments, or with a first argument that isn't a claudes
-command, help, or version flag, runs `claude agents` in its place with those
-arguments. `claudes -- ARGS` runs `claude agents ARGS` whatever ARGS is.
+command, `completion`, help, or `--version`, runs `claude agents` in its place
+with those arguments. claudes' own `-v` or `--verbose` before the command is
+skipped when it decides. `claudes -- ARGS` runs `claude agents ARGS` whatever
+ARGS is.
 
 Why: claudes is used in place of `claude agents`, so agent view and its flags
 must keep working through it. A new claudes command hides any `claude agents`
@@ -140,10 +142,10 @@ kills their shell tasks unpinged.
 
 ## 9. The session running claudes goes last
 
-The session claudes runs in, found by `CLAUDE_CODE_SESSION_ID`, is restarted,
-paused, or stopped after all the others and after everything else is printed,
-and is never pinged. An interactive host is parked and its command printed, not
-resumed.
+The session claudes runs in, found by `CLAUDE_CODE_SESSION_ID`, or by the job id
+in `CLAUDE_JOB_DIR` when that is not set, is restarted, paused, or stopped after
+all the others and after everything else is printed, and is never pinged. An
+interactive host is parked and its command printed, not resumed.
 
 Why: stopping that session ends the claudes command, so anything after it would
 never happen, including the resume commands and failures the user needs.
@@ -354,10 +356,10 @@ each time; and printing the folder only, which `claudes where` already does.
 
 ## 22. Few dependencies, and our own plumbing
 
-claudes depends on cobra, `go.yaml.in/yaml/v4`, `golang.org/x/sys`, and lipgloss
-for colors (decision 24), with `google/go-cmp` in tests only. Atomic writes, the
-lock directory, platform folders, shell quoting, and process checks stay in
-`internal/`.
+claudes depends on cobra, `go.yaml.in/yaml/v4`, `golang.org/x/sys`, and Charm's
+lipgloss, `colorprofile`, and `x/term` for colors (decision 24), with
+`google/go-cmp` in tests only. Atomic writes, the lock directory, platform
+folders, shell quoting, and process checks stay in `internal/`.
 
 Why: each of those must match what Claude Code does byte for byte, such as the
 `pins.json.lock` directory proper-lockfile makes, or is a few dozen lines. The
@@ -392,11 +394,13 @@ code, which is what claudes had.
 ## 24. Colors come from lipgloss, and only reach a terminal
 
 claudes styles text with Charm's lipgloss v2 (`charm.land/lipgloss/v2`) and
-detects terminals with its `colorprofile`. `internal/style` owns both: it
-decides per stream, stdout and stderr apart, and lines tables up by what the
-terminal shows rather than by bytes. `NO_COLOR`, set to anything, and
-`CLICOLOR=0` turn colors off, and `CLICOLOR=1` turns them on for a pipe. JSON,
-YAML, completions, `init`, and `skill` stay plain. Colors use the 16 basic ANSI
+detects what a terminal shows with its `colorprofile`, and whether a stream is a
+terminal with `x/term`. `internal/style` owns both: it decides per stream,
+stdout and stderr apart, and lines tables up by what the terminal shows rather
+than by bytes. `NO_COLOR`, set to any value but empty, and `CLICOLOR=0` turn
+colors off, and `CLICOLOR=1` turns them on for a pipe. `CLICOLOR_FORCE` and
+`TTY_FORCE`, which `colorprofile` honors on its own, do not. JSON, YAML,
+completions, `init`, and `skill` stay plain. Colors use the 16 basic ANSI
 colors, so they follow the terminal's theme.
 
 Why: a terminal UI is planned (uvw/claudes#18), and Bubble Tea builds on

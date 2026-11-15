@@ -143,9 +143,10 @@ with the same keys, always all present. A field with no value is `""`, `0`, or
 - `state`: `working`, `blocked`, `done`, `stopped`, or `failed`.
 - `status`: `busy`, `waiting` (on a question or permission), `shell` (a
   background task such as a build is running), or `idle`. The first three count
-  as mid-turn.
+  as mid-turn, and so does leading an agent team with teammates at work.
 - `startedAt` (milliseconds since 1970), `pinned`, `version` (the Claude Code
-  version it runs, when known), and `outdated`.
+  version it runs, when known), `outdated`, and `teammates` (the names of the
+  teammates a lead runs now, or `[]`).
 
 Your own session is the one whose `sessionId` equals the
 `CLAUDE_CODE_SESSION_ID` environment variable. If that variable is empty, you
