@@ -32,9 +32,8 @@ Update a doc in the same change as the code it describes.
 2. `docs/decisions.md` records each settled choice, why, and the alternatives.
    It is a living record: when a choice changes, rewrite its entry rather than
    adding one that replaces it, and keep the index table in step.
-3. GitHub issues hold features, ideas, and open work. `docs/todo.md` holds only
-   what blocks the first release and can't be an issue. Delete an item when it's
-   done, or when a decision settles it.
+3. GitHub issues hold features, ideas, bugs, and other open work. Close one when
+   it's done, or when a decision settles it.
 4. `docs/handoffs.md` holds work one machine leaves for another, such as a
    Windows check made on a Mac, and the prompt that resumes the work.
 
