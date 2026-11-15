@@ -1,0 +1,77 @@
+package cli
+
+import (
+	"time"
+
+	"github.com/spf13/cobra"
+)
+
+// lifecycleFlags are the flags of restart, pause, and resume.
+type lifecycleFlags struct {
+	dryRun        bool
+	confirm       bool
+	skip          []string
+	wait          bool
+	timeout       time.Duration
+	ping          bool
+	pingText      string
+	interactive   bool
+	interactiveBG bool
+	outdated      bool
+	forget        bool
+	// pingDefault is what --ping sends: the config's ping.text, or the
+	// built-in prompt.
+	pingDefault string
+}
+
+func (f *lifecycleFlags) addCommon(cmd *cobra.Command, completeSkip cobra.CompletionFunc) {
+	addDryRun(cmd, &f.dryRun)
+	cmd.Flags().BoolVarP(&f.confirm, "confirm", "c", false, "ask y/N before changing anything")
+	cmd.Flags().StringArrayVarP(&f.skip, "skip", "s", nil, "leave out a session, matched like a target (repeatable)")
+	cmd.RegisterFlagCompletionFunc("skip", completeSkip)
+}
+
+func (f *lifecycleFlags) addWait(cmd *cobra.Command, timeout time.Duration) {
+	cmd.Flags().BoolVarP(&f.wait, "wait", "w", false, "wait for busy sessions to go idle first")
+	cmd.Flags().DurationVar(&f.timeout, "timeout", timeout, "with --wait, give up after this long")
+}
+
+func (f *lifecycleFlags) addPing(cmd *cobra.Command, prompt string) {
+	f.pingDefault = prompt
+	cmd.Flags().BoolVarP(&f.ping, "ping", "p", false, "send a prompt to sessions that were mid-turn, so they carry on")
+	cmd.Flags().StringVar(&f.pingText, "ping-text", "", "the prompt to send (implies --ping)")
+}
+
+// addInteractive adds the flags that let restart and pause act on interactive
+// sessions. The two modes cannot be combined.
+func (f *lifecycleFlags) addInteractive(cmd *cobra.Command, stopUsage, bgUsage string) {
+	cmd.Flags().BoolVar(&f.interactive, "interactive", false, stopUsage)
+	if bgUsage == "" {
+		return
+	}
+	cmd.Flags().BoolVar(&f.interactiveBG, "interactive-bg", false, bgUsage)
+	cmd.MarkFlagsMutuallyExclusive("interactive", "interactive-bg")
+}
+
+// text is the ping prompt, or "" when nothing is pinged.
+func (f *lifecycleFlags) text() string {
+	switch {
+	case f.pingText != "":
+		return f.pingText
+	case f.ping:
+		return f.pingDefault
+	}
+	return ""
+}
+
+func addDryRun(cmd *cobra.Command, dryRun *bool) {
+	cmd.Flags().BoolVarP(dryRun, "dry-run", "n", false, "show the plan and change nothing")
+}
+
+// forceUsage is --force's help on the commands that act on sessions.
+const forceUsage = "go ahead even when Claude Code's output looks unfamiliar (see claudes doctor)"
+
+// addForce adds --force to a command that changes sessions or pins.
+func (app *App) addForce(cmd *cobra.Command, usage string) {
+	cmd.Flags().BoolVar(&app.force, "force", false, usage)
+}
