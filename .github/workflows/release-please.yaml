@@ -1,0 +1,50 @@
+name: Release Please
+
+# Keeps a release pull request open with the next version and its changelog,
+# worked out from the Conventional Commits on main. Merging it creates the tag
+# and a draft release, then hands off to the release workflow.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release pull request
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      created: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          # A pull request opened with GITHUB_TOKEN starts no workflows, so its
+          # required check would never run. RELEASE_PLEASE_TOKEN is a
+          # fine-grained token or app token that can open pull requests.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/release-please-manifest.json
+
+  release:
+    name: Release
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    # actionlint 1.7.12 rejects the $/ form zizmor suggests.
+    uses: ./.github/workflows/release.yaml # zizmor: ignore[self-repository]
+    with:
+      tag: ${{ needs.release-please.outputs.tag }}
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write

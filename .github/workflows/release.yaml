@@ -1,0 +1,184 @@
+name: Release
+
+# release-please calls this once its release pull request merges and the draft
+# release and tag exist. Running it by hand (re)publishes an existing tag.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to release, such as v0.1.0.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing tag to release, such as v0.1.0.
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  eligibility:
+    name: Release eligibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    # Later jobs check out this commit, not the tag, so a tag moved mid-run
+    # cannot slip an unchecked commit into the build.
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tag is a version on main
+        id: check
+        env:
+          TAG: ${{ inputs.tag }}
+        # Prereleases are refused: publish marks the release as latest.
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            { echo "::error::$TAG is not a vMAJOR.MINOR.PATCH tag"; exit 1; }
+          git merge-base --is-ancestor "refs/tags/$TAG" origin/main ||
+            { echo "::error::$TAG is not on main"; exit 1; }
+          echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    needs: eligibility
+    # actionlint 1.7.12 rejects the $/ form zizmor suggests.
+    uses: ./.github/workflows/ci.yaml # zizmor: ignore[self-repository]
+    with:
+      ref: ${{ needs.eligibility.outputs.sha }}
+    permissions:
+      contents: read
+
+  # Builds every archive, checksums.txt, and an SBOM per archive, but publishes
+  # nothing. This job holds no token that can write or sign.
+  build:
+    name: Build
+    needs: [eligibility, ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          # goreleaser reads the tags for the version, and fails when the tag
+          # no longer points at this commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # Release binaries build from a clean module cache, so a poisoned
+          # cache from another run cannot reach them.
+          cache: false
+      - id: syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.57.1
+      - name: Put syft on PATH for goreleaser
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+        run: dirname "$SYFT" >> "$GITHUB_PATH"
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.20.2
+          args: release --clean --skip=publish
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sbom.json
+            dist/checksums.txt
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke (${{ matrix.os }})
+    needs: [eligibility, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, archive: linux_amd64.tar.gz }
+          - { os: macos-15, archive: darwin_arm64.tar.gz }
+          - { os: windows-2025, archive: windows_amd64.zip }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Unpack and run the archive this platform downloads
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+          ARCHIVE: ${{ matrix.archive }}
+        run: bash .github/workflows/hack/smoke.sh dist/claudes_*_"$ARCHIVE" "$TAG"
+
+  attest:
+    name: Attest provenance
+    needs: [build, smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: The archives match checksums.txt
+        working-directory: dist
+        run: sha256sum --check --strict checksums.txt
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+
+  # Runs last, so an immutable release is only ever published complete, with
+  # every asset already attested.
+  publish:
+    name: Publish
+    needs: attest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Upload the assets to the draft, then publish it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --verify-tag --generate-notes
+          fi
+          gh release upload "$TAG" dist/* --clobber
+          gh release edit "$TAG" --draft=false --latest

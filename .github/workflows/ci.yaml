@@ -1,0 +1,167 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # edited reruns the checks when the title changes, since the title becomes
+    # the commit on main.
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+  # The release workflow runs these checks on the tagged commit before it builds.
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit, branch, or tag to check.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# A new push to a pull request replaces its older run. Runs on main and
+# releases always finish, so every commit keeps its own result.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  STATICCHECK: honnef.co/go/tools/cmd/staticcheck@v0.8.2
+  GOVULNCHECK: golang.org/x/vuln/cmd/govulncheck@v1.9.0
+  GO_LICENSES: github.com/google/go-licenses/v2@v2.0.1
+  PRETTIER: prettier@3.9.10
+  MARKDOWNLINT: markdownlint-cli2@0.24.1
+  COVERAGE_FLOOR: "80"
+
+jobs:
+  go:
+    name: Go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # procs, the claude agents handoff, and resume commands have a file per
+        # platform. Runner images are pinned so an image change is a deliberate
+        # update, not a surprise.
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A release run checks the tag it builds.
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        if: runner.os != 'Windows'
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: go.mod and go.sum are tidy
+        run: go mod tidy -diff
+      - run: go mod verify
+      - run: go vet ./...
+      - name: Tests, with the race detector and coverage
+        shell: bash
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Coverage floor
+        if: runner.os == 'Linux'
+        run: bash .github/workflows/hack/coverage.sh "$COVERAGE_FLOOR" coverage.out
+      - run: go run ${{ env.STATICCHECK }} ./...
+      - if: runner.os == 'Linux'
+        run: go run ${{ env.GOVULNCHECK }} ./...
+
+  smoke:
+    name: Release build smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          # goreleaser reads the history for the snapshot version.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # The release build uses no cache, so this check matches it.
+          cache: false
+      - name: The goreleaser config is valid
+        if: runner.os == 'Linux'
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.20.2
+          args: check
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: v2.20.2
+          args: build --snapshot --clean --single-target --output dist/claudes${{ runner.os == 'Windows' && '.exe' || '' }}
+      - name: Run the release binary
+        shell: bash
+        run: bash .github/workflows/hack/smoke.sh "dist/claudes${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+  licenses:
+    name: Licenses and notices
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go install ${{ env.GO_LICENSES }}
+      - name: Allowed licenses, and docs/third-party-notices.txt is current
+        run: go run hack/notices.go --check
+
+  docs:
+    name: Markdown
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - run: npx --yes ${{ env.PRETTIER }} --check .
+      - run: npx --yes ${{ env.MARKDOWNLINT }} "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#docs/changelog.md"
+
+  # Pull requests squash-merge, so the title becomes the commit on main that
+  # release-please reads for the version and the changelog.
+  pr-title:
+    name: Pull request title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: The title is a Conventional Commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|refactor|docs|test|ci|chore)(\([a-z0-9-]+\))?!?: [a-z].*[^.]$'
+          [[ "$TITLE" =~ $pattern ]] && exit 0
+          echo "::error::Use type(scope): lowercase imperative subject, such as fix(cli): skip pinned sessions in gc"
+          exit 1
+
+  # The one required check. A skipped or cancelled job would otherwise count
+  # as passing; only the title check may be skipped, outside pull requests.
+  all-green:
+    name: CI (all green)
+    if: always()
+    needs: [go, smoke, licenses, docs, pr-title]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -e 'to_entries | all(.value.result == "success"
+            or (.key == "pr-title" and .value.result == "skipped"))'
