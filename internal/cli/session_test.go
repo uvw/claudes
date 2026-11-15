@@ -381,3 +381,21 @@ func TestSessionShowWritesTimesInUTCAndAnEmptyCopyList(t *testing.T) {
 		t.Fatalf("lastActive %q, want UTC", s)
 	}
 }
+
+// A transcript can record its folder through a link, as macOS does for the
+// temporary folder under /var.
+func TestSessionCommandsSeeAFolderRecordedThroughALink(t *testing.T) {
+	h := newHarness(t)
+	real := h.folder("real")
+	link := filepath.Join(h.root, "link")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("cannot make a link: %v", err)
+	}
+	h.transcript(t, "plan", link, time.Hour)
+
+	h.ok(t, "session", "ls", "--in", real)
+	assertContains(t, h.out.String(), "plan")
+
+	h.fails(t, "session", "mv", "plan", real)
+	assertContains(t, h.err.String(), "already lives under")
+}

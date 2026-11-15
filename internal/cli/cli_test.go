@@ -290,7 +290,12 @@ var start = time.Date(2026, 11, 13, 17, 0, 0, 0, time.UTC)
 
 func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 	t.Helper()
-	root := t.TempDir()
+	// Resolved as Claude Code records a folder: macOS reaches the temporary
+	// folder through the /var link, and Windows may name it in 8.3 form.
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	// Claude Code creates the jobs folder; a missing one means the wrong folder.
 	if err := os.MkdirAll(filepath.Join(root, "jobs"), 0o755); err != nil {
 		t.Fatal(err)

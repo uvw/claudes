@@ -76,7 +76,7 @@ func (app *App) filterPast(list []pastSession, targets []string, in string, sinc
 	}
 	out := list[:0]
 	for _, p := range list {
-		if root != "" && !within(p.Cwd, root) {
+		if root != "" && !within(p.Cwd, root) && !within(resolved(p.Cwd), root) {
 			continue
 		}
 		if since > 0 && app.Now().Sub(p.LastActive) > since {
@@ -85,6 +85,14 @@ func (app *App) filterPast(list []pastSession, targets []string, in string, sinc
 		out = append(out, p)
 	}
 	return out, nil
+}
+
+// resolved is dir with links followed, or dir when it is gone.
+func resolved(dir string) string {
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		return real
+	}
+	return dir
 }
 
 // within reports whether dir is root or a folder below it.

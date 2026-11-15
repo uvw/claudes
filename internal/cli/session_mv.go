@@ -78,6 +78,9 @@ func (app *App) moveSession(ctx context.Context, token, folder string, resume, r
 			return err
 		}
 	}
+	if sameFolder(p.Cwd, dir) {
+		return fmt.Errorf("%s already lives under %s", p.Label(), dir)
+	}
 	dest, err := app.Transcripts.Copy(p.Session, dir)
 	if err != nil {
 		return err
