@@ -22,12 +22,12 @@ docs/decisions.md, docs/todo.md, and docs/handoffs.md first.
 
 State: every command in the README is built and tested, and every command under
 "Checks" in docs/contributing.md passes on Windows and Linux, and CI passes on
-Linux, macOS, and Windows. Changes go through pull requests. Nothing has run
-against live sessions except read-only commands and --dry-run.
+Linux, macOS, and Windows. Changes go through pull requests. Every command
+has run against throwaway sessions on Claude Code 2.1.325.
 
 Next, in order:
 1. Pick up the items in docs/handoffs.md that this machine can do.
-2. Work through docs/todo.md with the owner.
+2. Work through docs/todo.md.
 3. Ask the owner before any command that changes their live sessions.
 ```
 
@@ -41,12 +41,4 @@ Next, in order:
    - **Verify:** start `claude -n stop-test` in a Windows Terminal tab and send
      it one prompt. Run `claudes ls`: it shows `stop-test` as `tty`. Run
      `claudes stop stop-test`: the tab's session ends, with its shells.
-   - **Added:** 2026-11-14, Windows session.
-
-## Up for grabs
-
-1. **A real run with the owner.**
-   - **What:** "Before the first release" in `docs/todo.md`.
-   - **Verify:** the owner runs `restart`, `pause`, `resume`, and `ping` against
-     live sessions without surprises.
    - **Added:** 2026-11-14, Windows session.
