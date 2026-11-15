@@ -360,7 +360,8 @@ $ claudes logs -f api --tail 2
 `doctor`, and `doctor env` take `-o text`, `-o json`, or `-o yaml`; `ls --json`
 is short for `-o json`. When `where` matches one session, `text` prints only its
 folder, so `cd "$(claudes where NAME)"` works; add `-o text` when
-`output.format` is set. `claudes init` does that itself.
+`output.format` is set. `claudes init` does that itself. `logs` takes `-o text`
+or `-o json`, which prints the transcript records themselves.
 
 `json` and `yaml` use the camelCase field names of `claude agents --json`, and
 every key is always present. A session from `ls` or `where` has `id`,
@@ -373,11 +374,13 @@ each task with `id`, `subject`, `status`, `owner`, and `blockedBy`.
 too, and print one report when they finish: `command`, `dryRun`, then lists of
 sessions under `plan`, `results`, `leftOut`, `manual`, `failures`, and
 `notReached`. Each entry has `id`, `name`, `cwd`, `result` (such as `restarted`,
-`failed`, or `pinned` for one left out), `note`, `command` (a resume command to
-run by hand), and `error`. `warnings` lists what the command warned about, such
-as teammates that stop with their lead, and `error` is why it stopped, or empty.
-Warnings and errors still go to stderr as well. These commands default to
-`text`, whatever `output.format` says.
+`failed`, or why one was left out: `pinned`, `interactive`, `leads a team`,
+`skipped`, or `no job id`), `note`, `command` (a resume command to run by hand),
+and `error`. `resume --forget` lists each dropped session in `results` as
+`forgotten`. `warnings` lists what the command warned about, such as teammates
+that stop with their lead, and `error` is why it stopped, or empty. Warnings and
+errors still go to stderr as well. These commands default to `text`, whatever
+`output.format` says.
 
 ### Colors
 
@@ -390,15 +393,15 @@ apart, so a pipe gets plain text. `NO_COLOR`, set to anything, turns colors off.
 
 ## Exit codes
 
-| Code | Meaning                                                                |
-| ---- | ---------------------------------------------------------------------- |
-| 0    | Done                                                                   |
-| 1    | Failed, such as a bad flag or a `--wait` that timed out                |
-| 2    | A target named no session, or several where one was needed             |
-| 3    | Some sessions failed; the rest were handled, and the output says which |
-| 4    | A safety or compatibility check stopped it before it changed anything  |
-| 5    | Another claudes was changing sessions, so this one changed nothing     |
-| 130  | Ctrl-C; some sessions may already be stopped                           |
+| Code | Meaning                                                                                                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Done                                                                                                                                  |
+| 1    | Failed, such as a bad flag or a `--wait` that timed out                                                                               |
+| 2    | A target named no session, or several where one was needed                                                                            |
+| 3    | Some sessions failed; the rest were handled, and the output says which                                                                |
+| 4    | Refused before it changed anything: the session is the wrong kind or state for the command, or a safety or compatibility check failed |
+| 5    | Another claudes was changing sessions, so this one changed nothing                                                                    |
+| 130  | Ctrl-C; some sessions may already be stopped                                                                                          |
 
 ## Configuration
 

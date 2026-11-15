@@ -82,7 +82,10 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 	}
 	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "follow the session's transcript until Ctrl-C")
 	cmd.Flags().IntVar(&tail, "tail", -1, "start with the last N events (10 with -f)")
+	// -1 means "not given"; help shows no default for it.
+	cmd.Flags().Lookup("tail").DefValue = "0"
 	out.add(cmd, "")
+	cmd.Flags().Lookup("output").Usage = "print as text or json"
 	return cmd
 }
 

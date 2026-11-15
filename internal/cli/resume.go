@@ -62,6 +62,7 @@ func (app *App) forget(targets []string, dryRun bool) error {
 		}
 		for _, e := range picked {
 			app.say("Would drop from the park list: %s", e.Label())
+			app.record(func(r *report) { r.Plan = append(r.Plan, entryOf(e)) })
 		}
 		app.say("\nDry run: nothing was changed.")
 		return nil
@@ -81,6 +82,11 @@ func (app *App) forget(targets []string, dryRun bool) error {
 	}
 	for _, e := range dropped {
 		app.say("Dropped from the park list: %s", e.Label())
+		app.record(func(r *report) {
+			x := entryOf(e)
+			x.Result = "forgotten"
+			r.Results = append(r.Results, x)
+		})
 	}
 	return nil
 }
@@ -215,7 +221,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			// came up; one that did is skipped as running.
 			app.warn("claudes: %s: %v.", r.Label(), err)
 		case err != nil:
-			failures = append(failures, failure{r.Label(), err.Error()})
+			failures = append(failures, failure{r.Label(), err.Error(), r})
 			app.progressFailed(r)
 			continue
 		default:
@@ -235,7 +241,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		return kept
 	})
 	if err != nil {
-		failures = append(failures, failure{"park file", err.Error()})
+		failures = append(failures, failure{label: "park file", reason: err.Error()})
 	}
 	if len(kept) > 0 {
 		app.say("\n%d session(s) still parked in %s.", len(kept), app.Park.Path)

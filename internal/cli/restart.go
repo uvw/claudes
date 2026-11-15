@@ -100,7 +100,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		s, running, err := app.current(hand, s)
 		switch {
 		case err != nil:
-			failures = append(failures, failure{s.Label(), err.Error()})
+			failures = append(failures, failure{s.Label(), err.Error(), s})
 			app.progressFailed(s)
 			continue
 		case !running:
@@ -115,7 +115,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 			if how == restartRespawned {
 				reason += ". If it is down, claudes resume " + shell.Arg(s.ID()) + " brings it back"
 			}
-			failures = append(failures, failure{s.Label(), reason})
+			failures = append(failures, failure{s.Label(), reason, s})
 			app.progressFailed(s)
 		case how == restartByHand:
 			manual = append(manual, s)

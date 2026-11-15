@@ -46,7 +46,7 @@ func TestRestartPrintsOneJSONReport(t *testing.T) {
 	if r.Results[0].ID != good.JobID || r.Results[0].Note != "and pinged" {
 		t.Fatalf("first result %+v", r.Results[0])
 	}
-	if len(r.Failures) != 1 || r.Failures[0].Name != "bad" || !strings.Contains(r.Failures[0].Error, "boom") {
+	if len(r.Failures) != 1 || r.Failures[0].Name != "bad" || r.Failures[0].ID != bad.JobID || r.Failures[0].Cwd != bad.Cwd || !strings.Contains(r.Failures[0].Error, "boom") {
 		t.Fatalf("failures %+v", r.Failures)
 	}
 	if diff := cmp.Diff([]string{"kept pinned"}, results(r.LeftOut)); diff != "" {
@@ -128,7 +128,7 @@ func TestTheReportListsLeftAloneTerminalsWarningsAndTheError(t *testing.T) {
 	h.ok(t, "restart", "-o", "json")
 	r := readReport(t, h)
 	if len(r.Manual) != 0 || len(r.LeftOut) != 1 || r.LeftOut[0].Name != "terminal" ||
-		r.LeftOut[0].Note != "interactive" || !strings.Contains(r.LeftOut[0].Command, term.SessionID) {
+		r.LeftOut[0].Result != "interactive" || !strings.Contains(r.LeftOut[0].Command, term.SessionID) {
 		t.Fatalf("manual %+v, left out %+v", r.Manual, r.LeftOut)
 	}
 	if r.Error != "" || r.Warnings == nil {
@@ -149,5 +149,18 @@ func TestTheReportListsLeftAloneTerminalsWarningsAndTheError(t *testing.T) {
 	h.exits(t, exitNoMatch, "stop", "nobody", "-o", "json")
 	if r = readReport(t, h); !strings.Contains(r.Error, "nobody") {
 		t.Fatalf("error %q", r.Error)
+	}
+}
+
+func TestForgetReportsWhatItDropped(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
+	h.ok(t, "pause", "alpha")
+	h.out.Reset()
+
+	h.ok(t, "resume", "--forget", "alpha", "-o", "json")
+	r := readReport(t, h)
+	if diff := cmp.Diff([]string{"alpha forgotten"}, results(r.Results)); diff != "" {
+		t.Fatalf("results (-want +got):\n%s", diff)
 	}
 }

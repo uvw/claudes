@@ -232,7 +232,7 @@ func hostJob(dir string) string {
 // in every new shell.
 func fixesConfig(command string) bool {
 	switch command {
-	case "config", "doctor", "help", "-h", "--help", "-v", "--version",
+	case "config", "doctor", "help", "-h", "--help", "--version",
 		"init", "completion", "skill", cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 		return true
 	}
@@ -261,7 +261,7 @@ func (app *App) Run(args []string) int {
 		app.errorLine("claudes: %v", app.setupErr)
 		return 1
 	}
-	if app.configErr != nil && !fixesConfig(args[0]) {
+	if app.configErr != nil && !fixesConfig(commandName(args)) {
 		app.errorLine("claudes: %v", app.configErr)
 		fmt.Fprintln(app.Err, "Fix it with: claudes config edit")
 		return 1
@@ -373,6 +373,17 @@ func (app *App) unlock() {
 	}
 }
 
+// commandName is the first argument after claudes' own -v or --verbose, or
+// "" when there is none.
+func commandName(args []string) string {
+	for _, a := range args {
+		if a != "-v" && a != "--verbose" && !strings.HasPrefix(a, "--verbose=") {
+			return a
+		}
+	}
+	return ""
+}
+
 // passThrough reports whether the arguments belong to claude agents: no
 // arguments, a first argument of --, or a first argument that is not one of
 // claudes' own. The -- form keeps working when claudes adds a command that
@@ -381,9 +392,9 @@ func passThrough(root *cobra.Command, args []string) bool {
 	if len(args) == 0 || args[0] == "--" {
 		return true
 	}
-	first := args[0]
+	first := commandName(args)
 	switch first {
-	case "-h", "--help", "help", "-v", "--version", "completion",
+	case "", "-h", "--help", "help", "--version", "completion",
 		cobra.ShellCompRequestCmd, cobra.ShellCompNoDescRequestCmd:
 		return false
 	}

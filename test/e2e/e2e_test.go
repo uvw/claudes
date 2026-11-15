@@ -154,7 +154,7 @@ func TestPinAndUnpinWriteWhatAgentViewWrites(t *testing.T) {
 		t.Fatalf("lock or temporary file left in jobs: %v", entries)
 	}
 
-	if r := w.run("pin", "console"); r.code != 1 || !strings.Contains(r.stderr, "only background sessions can be pinned") {
+	if r := w.run("pin", "console"); r.code != 4 || !strings.Contains(r.stderr, "only background sessions can be pinned") {
 		t.Fatalf("pinning an interactive session: exit %d, stderr %q", r.code, r.stderr)
 	}
 	if len(w.actions()) != 0 {
@@ -316,7 +316,7 @@ func TestStopTakesTheJobIDAndRefusesWhatIsNotRunning(t *testing.T) {
 	w.resetCalls()
 	for _, target := range []string{"alpha", "old"} {
 		r := w.run("stop", target)
-		if r.code != 1 || !strings.Contains(r.stderr, "is not running") {
+		if r.code != 4 || !strings.Contains(r.stderr, "is not running") {
 			t.Fatalf("stop %s: exit %d, stderr %q", target, r.code, r.stderr)
 		}
 	}
@@ -514,7 +514,7 @@ func TestLogsHandsOffByJobID(t *testing.T) {
 		t.Fatalf("stdout %q", r.stdout)
 	}
 	assertArgs(t, w.actions(), []string{"logs", alpha.ID})
-	if r := w.run("attach", "console"); r.code != 1 || !strings.Contains(r.stderr, "is an interactive session") {
+	if r := w.run("attach", "console"); r.code != 4 || !strings.Contains(r.stderr, "is an interactive session") {
 		t.Fatalf("attach console: exit %d, stderr %q", r.code, r.stderr)
 	}
 }

@@ -87,6 +87,10 @@ func TestBrokenConfigStopsCommandsButConfig(t *testing.T) {
 		t.Fatalf("ls reached claude with a broken config: %v", h.agents.calls)
 	}
 	h.err.Reset()
+	if code := h.run("-v", "ls"); code != 1 || !strings.Contains(h.err.String(), "claudes config edit") || len(h.agents.calls) > 0 {
+		t.Fatalf("-v ls: exit %d, %q, calls %v", code, h.err, h.agents.calls)
+	}
+	h.err.Reset()
 	if code := h.run("config", "get"); code != 1 || !strings.Contains(h.err.String(), "fromat") {
 		t.Fatalf("config get: exit %d, %q", code, h.err)
 	}

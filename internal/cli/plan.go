@@ -95,7 +95,7 @@ func printCommands[T manualRef](app *App, heading, why string, refs []T) {
 			e := entryOf(r)
 			e.Command = r.ManualCommand()
 			if why != "" {
-				e.Note = why
+				e.Result = why
 				rep.LeftOut = append(rep.LeftOut, e)
 			} else {
 				rep.Manual = append(rep.Manual, e)
@@ -145,6 +145,9 @@ func labels[T interface{ Label() string }](items []T) string {
 
 type failure struct {
 	label, reason string
+	// of is the session or folder that failed, when there is one, so the
+	// report gives its id and folder.
+	of subject
 }
 
 func (app *App) reportFailures(failures []failure) error {
@@ -156,7 +159,12 @@ func (app *App) reportFailures(failures []failure) error {
 	for _, f := range failures {
 		app.errorLine("  %s: %s", f.label, f.reason)
 		app.record(func(rep *report) {
-			rep.Failures = append(rep.Failures, reportEntry{Name: f.label, Error: f.reason})
+			e := reportEntry{Name: f.label}
+			if f.of != nil {
+				e = entryOf(f.of)
+			}
+			e.Error = f.reason
+			rep.Failures = append(rep.Failures, e)
 		})
 	}
 	return errSomeFailed

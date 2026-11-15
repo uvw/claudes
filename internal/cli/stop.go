@@ -52,7 +52,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 			for _, s := range picked {
 				switch {
 				case s.Interactive():
-					return fmt.Errorf("%s is an interactive session: only background sessions can be pinged", s.Label())
+					return refused(fmt.Errorf("%s is an interactive session: only background sessions can be pinged", s.Label()))
 				case app.isHost(s):
 					return refused(fmt.Errorf("%s is the session running this command: it cannot ping itself", s.Label()))
 				}
@@ -75,7 +75,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 					err = fmt.Errorf("not resumed (%v). Run: %s", err, s.ManualCommand())
 				}
 				if err != nil {
-					failures = append(failures, failure{s.Label(), err.Error()})
+					failures = append(failures, failure{s.Label(), err.Error(), s})
 					app.progressFailed(s)
 					continue
 				}
@@ -128,7 +128,7 @@ seconds, and on Windows they are killed at once. claude --resume brings it back.
 					stop = app.parkAndStop
 				}
 				if err := stop(hand, s); err != nil {
-					failures = append(failures, failure{s.Label(), err.Error()})
+					failures = append(failures, failure{s.Label(), err.Error(), s})
 					app.progressFailed(s)
 					continue
 				}
@@ -179,7 +179,7 @@ func (app *App) handOff(ctx context.Context, name, token string, finished bool) 
 	}
 	s := picked[0]
 	if s.JobID == "" {
-		return fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name)
+		return refused(fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name))
 	}
 	return app.Exec("claude", name, s.JobID)
 }
