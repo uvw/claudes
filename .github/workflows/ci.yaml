@@ -28,7 +28,7 @@ concurrency:
 env:
   STATICCHECK: honnef.co/go/tools/cmd/staticcheck@v0.8.2
   GOVULNCHECK: golang.org/x/vuln/cmd/govulncheck@v1.9.0
-  GO_LICENSES: github.com/google/go-licenses/v2@v2.0.1
+  GOLICENSES: github.com/google/go-licenses/v2@v2.0.1
   PRETTIER: prettier@3.9.10
   MARKDOWNLINT: markdownlint-cli2@0.24.1
   COVERAGE_FLOOR: "80"
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - run: go install ${{ env.GO_LICENSES }}
+      - run: go install ${{ env.GOLICENSES }}
       - name: Allowed licenses, and docs/third-party-notices.txt is current
         run: go run hack/notices.go --check
 

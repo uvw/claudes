@@ -27,25 +27,36 @@ case "$target" in
 *) bin=$target ;;
 esac
 
-"$bin" --version | grep -q '^claudes version '
+# has PATTERN COMMAND... runs the command, then searches its whole output. A
+# grep -q in a pipe exits at the first match, and the command then fails with
+# SIGPIPE under pipefail.
+has() {
+  local pattern=$1 out
+  shift
+  out=$("$@")
+  grep -q -- "$pattern" <<<"$out"
+}
+
+has '^claudes version ' "$bin" --version
 if [ -n "$want" ]; then
-  "$bin" --version | grep -q " ${want#v} " || {
+  has " ${want#v} " "$bin" --version || {
     echo "::error::the binary does not report version ${want#v}"
     exit 1
   }
 fi
-"$bin" --help | grep -q 'claudes lists, pins, restarts'
-"$bin" restart --help | grep -q -- '--ping'
+has 'claudes lists, pins, restarts' "$bin" --help
+has '--ping' "$bin" restart --help
 
-"$bin" skill | head -n 2 | grep -q '^name: claudes$'
+skill=$("$bin" skill)
+[ "$(sed -n 2p <<<"$skill")" = "name: claudes" ]
 "$bin" skill --dir "$work/skills" >/dev/null
-cmp <("$bin" skill) "$work/skills/claudes/SKILL.md"
+cmp <(printf '%s\n' "$skill") "$work/skills/claudes/SKILL.md"
 
 for shell in bash zsh fish powershell pwsh; do
-  "$bin" completion "$shell" | grep -q 'claudes'
+  has 'claudes' "$bin" completion "$shell"
 done
 for shell in bash zsh pwsh; do
-  "$bin" init "$shell" | grep -q 'session where --one'
+  has 'session where --one' "$bin" init "$shell"
 done
 
 echo "smoke: $("$bin" --version) passed"
