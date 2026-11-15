@@ -107,7 +107,7 @@ func printCommands[T manualRef](app *App, heading, why string, refs []T) {
 // printLeftOut names the sessions a bulk command did not act on, and why.
 func (app *App) printLeftOut(sel selection, verb string) {
 	printCommands(app, "Interactive sessions were left alone (--interactive stops them). "+
-		"To restart one, run this in its terminal:", "interactive", sel.leftAlone)
+		"Each one resumes with this command, run in its terminal:", "interactive", sel.leftAlone)
 	for _, group := range []struct {
 		format, why string
 		sessions    []claude.Session

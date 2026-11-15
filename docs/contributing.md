@@ -130,5 +130,7 @@ Types are `feat`, `fix`, `perf`, `docs`, `test`, `refactor`, `ci`, and `chore`.
 `feat` and `fix` decide the next version and appear in the changelog. The scope
 names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `park`, `paths`,
 `target`, `transcripts`, `teams`, `procs`, `install`, `safefile`, `shell`,
-`style`, `release`, or `docs`. Leave the scope out only when a commit spans
-several areas. Keep the body to one or two sentences about what changed and why.
+`style`, and `version` for the packages under `internal/`; `e2e` for `test/e2e`;
+`skill` for `skills/claudes`; `hack` for the developer tools; and `release` or
+`docs`. Leave the scope out only when a commit spans several areas. Keep the
+body to one or two sentences about what changed and why.
