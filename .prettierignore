@@ -1,0 +1,9 @@
+dist
+# release-please writes the changelog in its own format.
+docs/changelog.md
+go.sum
+
+
+# Agent worktrees and local-only docs
+.claude/worktrees
+docs/local
