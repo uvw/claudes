@@ -1,14 +1,12 @@
 # claudes
 
-A kubectl-style command line for Claude Code sessions: list, restart, pause,
+Manage your Claude Code sessions from the command line: list, restart, pause,
 resume, follow, and find them.
 
 claudes wraps `claude agents`, the Claude Code agent view, and adds what it
 lacks: bulk restarts that don't lose work, pause and resume around a reboot, and
 a way to find, resume, and move any past session. Anything claudes doesn't
-handle goes straight to `claude agents`. Commands and flags follow kubectl and
-docker: positional targets, `ls`, `logs -f --tail`, `-o json|yaml`, and
-`--dry-run`.
+handle goes straight to `claude agents`.
 
 ```console
 $ claudes ls
