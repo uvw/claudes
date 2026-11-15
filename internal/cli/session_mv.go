@@ -41,7 +41,7 @@ exit it and resume it from FOLDER. --resume resumes the copy in this terminal.`,
 	}
 	cmd.Flags().BoolVar(&resume, "resume", false, "resume the session from FOLDER once it is copied")
 	cmd.Flags().BoolVar(&rm, "rm", false, "delete the original once the copy matches it")
-	app.addForce(cmd, "copy although Claude Code may name project folders differently now")
+	app.addForce(cmd, "copy although claudes cannot tell whether the session runs, or Claude Code may name project folders differently now")
 	return cmd
 }
 

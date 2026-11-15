@@ -32,7 +32,7 @@ func (app *App) pinCommand(pin bool) *cobra.Command {
 			ids := make([]string, 0, len(picked))
 			for _, s := range picked {
 				if s.JobID == "" {
-					return fmt.Errorf("%s is an interactive session: only background sessions can be pinned", s.Label())
+					return refused(fmt.Errorf("%s is an interactive session: only background sessions can be pinned", s.Label()))
 				}
 				ids = append(ids, s.JobID)
 			}

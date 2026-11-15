@@ -52,6 +52,7 @@ or [.`,
 	}
 	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this folder or below it")
 	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().Lookup("since").DefValue = ""
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }

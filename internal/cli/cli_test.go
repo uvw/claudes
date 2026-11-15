@@ -1344,3 +1344,16 @@ func TestGCTeamsRemovesOnlyOldFoldersOfSessionsThatAreGone(t *testing.T) {
 	}
 	h.fails(t, "gc", "--teams", "live")
 }
+
+func TestVerboseFirstStillRunsClaudesCommands(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+	for _, flag := range []string{"-v", "--verbose", "--verbose=true"} {
+		h.out.Reset()
+		h.ok(t, flag, "ls")
+		assertContains(t, h.out.String(), "api")
+	}
+	if len(h.execs) != 0 {
+		t.Fatalf("passed through to claude agents: %q", h.execs)
+	}
+}

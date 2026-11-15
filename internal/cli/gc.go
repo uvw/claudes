@@ -103,7 +103,7 @@ longer run and have not changed for longer than --older-than.`,
 					break
 				}
 				if err := app.Agents.Remove(hand, s.JobID); err != nil {
-					failures = append(failures, failure{s.Label(), err.Error()})
+					failures = append(failures, failure{s.Label(), err.Error(), s})
 					app.progressFailed(s)
 					continue
 				}
@@ -246,7 +246,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun boo
 		}
 		l := leftover{f}
 		if err := app.Teams.Remove(f); err != nil {
-			failures = append(failures, failure{l.Label() + " " + l.ID(), err.Error()})
+			failures = append(failures, failure{l.Label() + " " + l.ID(), err.Error(), l})
 			app.progressFailed(l)
 			continue
 		}

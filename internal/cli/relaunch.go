@@ -221,11 +221,11 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []fai
 	case ctx.Err() != nil:
 		reason = "respawned, but claudes was interrupted before it saw it running: check claudes ls"
 	default:
-		return []failure{{"restarted sessions", "cannot check they came back: " + err.Error()}}
+		return []failure{{label: "restarted sessions", reason: "cannot check they came back: " + err.Error()}}
 	}
 	out := make([]failure, 0, len(missing))
 	for _, s := range missing {
-		out = append(out, failure{s.Label(), reason})
+		out = append(out, failure{s.Label(), reason, s})
 	}
 	return out
 }

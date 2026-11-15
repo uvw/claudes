@@ -85,7 +85,7 @@ func named(targets []string, sessions []claude.Session, skip map[string]bool, wi
 	}
 	for _, s := range picked {
 		if s.Interactive() && !withInteractive {
-			return sel, fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label())
+			return sel, refused(fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label()))
 		}
 		if skip[s.SessionID] {
 			sel.skipped = append(sel.skipped, s)
@@ -197,8 +197,8 @@ func skipSet[T target.Ref](skip []string, candidates []T, id func(T) string) (ma
 func requireRunning(sessions []claude.Session) error {
 	for _, s := range sessions {
 		if !s.Running() {
-			return fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
-				s.Label(), dash(s.State))
+			return refused(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
+				s.Label(), dash(s.State)))
 		}
 	}
 	return nil

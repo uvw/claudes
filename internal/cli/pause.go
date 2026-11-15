@@ -77,15 +77,15 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 			break
 		}
 		if !claude.FolderExists(s.Cwd) {
-			failures = append(failures, failure{s.Label(), fmt.Sprintf("folder %s is gone, so it was not stopped: it could not be resumed", s.Cwd)})
+			failures = append(failures, failure{s.Label(), fmt.Sprintf("folder %s is gone, so it was not stopped: it could not be resumed", s.Cwd), s})
 			if err := app.unpark(s.SessionID); err != nil {
-				failures = append(failures, failure{"park file", err.Error()})
+				failures = append(failures, failure{label: "park file", reason: err.Error()})
 			}
 			app.progressFailed(s)
 			continue
 		}
 		if err := app.stopSession(hand, s); err != nil {
-			failures = append(failures, failure{s.Label(), app.stopFailed(hand, s, err).Error()})
+			failures = append(failures, failure{s.Label(), app.stopFailed(hand, s, err).Error(), s})
 			app.progressFailed(s)
 			continue
 		}
