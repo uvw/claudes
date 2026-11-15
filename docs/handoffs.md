@@ -21,10 +21,9 @@ Continue work on claudes. Read AGENTS.md, docs/contributing.md,
 docs/decisions.md, docs/todo.md, and docs/handoffs.md first.
 
 State: every command in the README is built and tested, and every command under
-"Checks" in docs/contributing.md passes on Windows and Linux. Until the
-repository is public, changes go straight to main with no pull requests, and
-the push-triggered workflows are off. Nothing has run against live sessions
-except read-only commands and --dry-run.
+"Checks" in docs/contributing.md passes on Windows and Linux, and CI passes on
+Linux, macOS, and Windows. Changes go through pull requests. Nothing has run
+against live sessions except read-only commands and --dry-run.
 
 Next, in order:
 1. Pick up the items in docs/handoffs.md that this machine can do.
