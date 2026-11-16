@@ -2,22 +2,38 @@
 
 ## [0.2.0](https://github.com/uvw/claudes/compare/v0.1.0...v0.2.0) (2026-11-16)
 
-
 ### Features
 
-* **cli:** add claudes init fish, so claudes cd works in fish ([#37](https://github.com/uvw/claudes/issues/37)) ([d13884c](https://github.com/uvw/claudes/commit/d13884c9c6ffa815c4a3c2941daff1a11b865141))
-* **cli:** answer to s and sessions for claudes session ([#27](https://github.com/uvw/claudes/issues/27)) ([6e0305d](https://github.com/uvw/claudes/commit/6e0305d56131361fae6432839e149198776fe238))
-* **cli:** remove empty, copied, and leftover sessions with session gc ([#29](https://github.com/uvw/claudes/issues/29)) ([dc066d4](https://github.com/uvw/claudes/commit/dc066d4cb699d6aeb6c2a781763d8fe9ae2820cb))
-* **cli:** show how much disk space sessions take ([#28](https://github.com/uvw/claudes/issues/28)) ([69b612e](https://github.com/uvw/claudes/commit/69b612e865b5777c6cdd78db365b3fedb34db41d))
-* **cli:** upgrade claudes in place with claudes upgrade ([#31](https://github.com/uvw/claudes/issues/31)) ([5219179](https://github.com/uvw/claudes/commit/52191798086fa19922ed3c5e72a8ade48c259940))
-* **release:** install claudes with one command on macos, linux, and windows ([#30](https://github.com/uvw/claudes/issues/30)) ([02edb5c](https://github.com/uvw/claudes/commit/02edb5c5f886356f3bb2e65cbc0f3fe9ddaa068a))
-* **release:** publish each release to homebrew and winget ([#32](https://github.com/uvw/claudes/issues/32)) ([b21f802](https://github.com/uvw/claudes/commit/b21f802196a745fe850ad07bf03ba72a8aa95b58))
-
+- **cli:** add claudes init fish, so claudes cd works in fish
+  ([#37](https://github.com/uvw/claudes/issues/37))
+  ([d13884c](https://github.com/uvw/claudes/commit/d13884c9c6ffa815c4a3c2941daff1a11b865141))
+- **cli:** answer to s and sessions for claudes session
+  ([#27](https://github.com/uvw/claudes/issues/27))
+  ([6e0305d](https://github.com/uvw/claudes/commit/6e0305d56131361fae6432839e149198776fe238))
+- **cli:** remove empty, copied, and leftover sessions with session gc
+  ([#29](https://github.com/uvw/claudes/issues/29))
+  ([dc066d4](https://github.com/uvw/claudes/commit/dc066d4cb699d6aeb6c2a781763d8fe9ae2820cb))
+- **cli:** show how much disk space sessions take
+  ([#28](https://github.com/uvw/claudes/issues/28))
+  ([69b612e](https://github.com/uvw/claudes/commit/69b612e865b5777c6cdd78db365b3fedb34db41d))
+- **cli:** upgrade claudes in place with claudes upgrade
+  ([#31](https://github.com/uvw/claudes/issues/31))
+  ([5219179](https://github.com/uvw/claudes/commit/52191798086fa19922ed3c5e72a8ade48c259940))
+- **release:** install claudes with one command on macos, linux, and windows
+  ([#30](https://github.com/uvw/claudes/issues/30))
+  ([02edb5c](https://github.com/uvw/claudes/commit/02edb5c5f886356f3bb2e65cbc0f3fe9ddaa068a))
+- **release:** publish each release to homebrew and winget
+  ([#32](https://github.com/uvw/claudes/issues/32))
+  ([b21f802](https://github.com/uvw/claudes/commit/b21f802196a745fe850ad07bf03ba72a8aa95b58))
 
 ### Bug fixes
 
-* **e2e:** report a failed close of the fake's call log ([#35](https://github.com/uvw/claudes/issues/35)) ([a26c70d](https://github.com/uvw/claudes/commit/a26c70d55c2571a9cc201600c042b450e1cca8f0))
-* **release:** find the release pull request when formatting its changelog ([#43](https://github.com/uvw/claudes/issues/43)) ([f5e2a83](https://github.com/uvw/claudes/commit/f5e2a83a49af68617d4f0c62167764c3689f59d1))
+- **e2e:** report a failed close of the fake's call log
+  ([#35](https://github.com/uvw/claudes/issues/35))
+  ([a26c70d](https://github.com/uvw/claudes/commit/a26c70d55c2571a9cc201600c042b450e1cca8f0))
+- **release:** find the release pull request when formatting its changelog
+  ([#43](https://github.com/uvw/claudes/issues/43))
+  ([f5e2a83](https://github.com/uvw/claudes/commit/f5e2a83a49af68617d4f0c62167764c3689f59d1))
 
 ## 0.1.0 (2026-11-15)
 
