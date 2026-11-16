@@ -76,8 +76,9 @@ Windows. The coverage floor of 80% (`.github/workflows/hack/coverage.sh`),
 govulncheck, the notices, and the Markdown checks run on Linux. Each platform
 also builds and runs the release binary (`.github/workflows/hack/smoke.sh`) and
 installs it with its install script. macOS does that inside its Go job, since a
-macOS runner can take most of an hour to arrive. The "CI (all green)" job is the
-one required check. Workflow steps longer than a few lines live in
+macOS runner can take most of an hour to arrive, and runs on Intel, since
+GitHub's Apple silicon runners are short on capacity. The "CI (all green)" job
+is the one required check. Workflow steps longer than a few lines live in
 `.github/workflows/hack/`, so they run the same way locally.
 
 ## Tests
