@@ -37,6 +37,10 @@ Update a doc in the same change as the code it describes.
 4. `docs/handoffs.md` holds work one machine leaves for another, such as a
    Windows check made on a Mac, and the prompt that resumes the work.
 
+The README opens with `docs/demo/demo.gif`. When a command it shows changes its
+output, run `hack/demo.sh`, which needs Docker, to render it again from
+`docs/demo/demo.tape`.
+
 Prettier wraps Markdown at 80 columns. Run `npx prettier --write` on a doc after
 editing it rather than wrapping by hand.
 

@@ -39,6 +39,7 @@ adds what an agent needs on top of them.
 | The install scripts                       | `install/install.sh`, `install/install.ps1`        |
 | Developer tools, such as the notices file | `hack/`                                            |
 | Homebrew, winget, and their tokens        | `docs/releasing.md`, "Package managers"            |
+| The README's demo GIF                     | `docs/demo/`, rendered by `hack/demo.sh`           |
 | The agent skill and `claudes skill`       | `skills/claudes/SKILL.md`, `internal/install`      |
 | How a typed name or id finds a session    | `internal/target/target.go`                        |
 | Resume and remove commands, and quoting   | `internal/shell`, one file per platform            |

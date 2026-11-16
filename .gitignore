@@ -3,6 +3,8 @@
 # goreleaser output and local builds
 /dist/
 /bin/
+# hack/demo.sh builds the demo's binaries here.
+/docs/demo/bin/
 
 # Local agent settings
 .claude/settings.local.json
