@@ -22,6 +22,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Starts CI on the release pull request after formatting its changelog.
+      actions: write
     outputs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
@@ -35,6 +37,22 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: .github/release-please-config.json
           manifest-file: .github/release-please-manifest.json
+      # release-please writes the changelog with long lines; this formats the
+      # release pull request's copy the way the rest of the docs are.
+      - name: Check out the release pull request
+        if: steps.release.outputs.pr && steps.release.outputs.release_created != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          persist-credentials: false
+      - name: Format the changelog
+        if: steps.release.outputs.pr && steps.release.outputs.release_created != 'true'
+        env:
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          OWN_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/workflows/hack/format-changelog.sh
 
   release:
     name: Release

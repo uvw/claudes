@@ -60,7 +60,7 @@ go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 go run hack/notices.go --check
 goreleaser build --snapshot --clean
 npx --yes prettier@3.9.10 --check .
-npx --yes markdownlint-cli2@0.24.1 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#docs/changelog.md"
+npx --yes markdownlint-cli2@0.24.1 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local"
 ```
 
 `gofmt -l` and `go mod tidy -diff` must print nothing. `goreleaser build` needs
