@@ -202,11 +202,16 @@ session named "api" let "restart api" fall through to a running "api-gw".
 
 ## 12. claudes reads `~/.claude/jobs`
 
-Pins and the Claude Code version each background session runs come from files
-under `~/.claude/jobs/`, read and written only in `internal/jobs`.
+Pins come from files under `~/.claude/jobs/`, read and written only in
+`internal/jobs`. The Claude Code version a session runs comes from the path of
+its process's executable, where the native installer names each version
+(`…/claude/versions/2.1.326`), and otherwise from the job's `cliVersion` there.
 
 Why: `claude agents --json` has neither, and pins and `restart --outdated` need
-both.
+both. `cliVersion` alone is stale after a respawn: Claude Code keeps the old
+value until the session takes a turn, so a freshly restarted idle session looked
+outdated and `--outdated` would restart it again. An npm install runs as `node`,
+whose path names no version, so it still relies on `cliVersion`.
 
 Weighed: leaving out pins and versions. The Claude Code docs call the folder not
 a stable interface, so a Claude Code update may need claudes to follow it.

@@ -93,6 +93,9 @@ type App struct {
 	Terminate func(pid int, listedAt time.Time) error
 	// Started is when a process started, if it runs.
 	Started func(pid int) (time.Time, bool)
+	// RunningVersion is the Claude Code version a process runs, read from its
+	// executable, or "" when that does not say.
+	RunningVersion func(pid int) string
 	// Alive reports whether the process that started at started still runs;
 	// a PID a newer process took over does not count.
 	Alive func(pid int, started time.Time) bool
@@ -170,17 +173,18 @@ type App struct {
 func newApp() *App {
 	app := &App{
 
-		Out:       os.Stdout,
-		Err:       os.Stderr,
-		In:        os.Stdin,
-		Now:       time.Now,
-		Sleep:     sleep,
-		Terminate: procs.Terminate,
-		Started:   procs.Started,
-		Trash:     trash.Move,
-		Alive:     procs.Running,
-		Exec:      claude.Exec,
-		Edit:      editFile,
+		Out:            os.Stdout,
+		Err:            os.Stderr,
+		In:             os.Stdin,
+		Now:            time.Now,
+		Sleep:          sleep,
+		Terminate:      procs.Terminate,
+		Started:        procs.Started,
+		RunningVersion: procs.RunningVersion,
+		Trash:          trash.Move,
+		Alive:          procs.Running,
+		Exec:           claude.Exec,
+		Edit:           editFile,
 		Interrupt: func(ctx context.Context) (context.Context, context.CancelFunc) {
 			return signal.NotifyContext(ctx, os.Interrupt)
 		},

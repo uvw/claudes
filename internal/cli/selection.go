@@ -66,7 +66,7 @@ func (app *App) selectSessions(ctx context.Context, targets []string, opts selec
 		return selection{}, err
 	}
 	if opts.outdated {
-		if err := app.keepOutdated(ctx, &sel, len(running)); err != nil {
+		if err := app.keepOutdated(ctx, &sel); err != nil {
 			return selection{}, err
 		}
 	}
@@ -127,20 +127,40 @@ func (app *App) bulk(running []claude.Session, skip map[string]bool, withInterac
 	return sel, nil
 }
 
+// sessionVersion is the Claude Code version a session runs: the one its
+// process's executable names, or else the job's cliVersion, which Claude Code
+// updates only once a respawned session takes a turn.
+func (app *App) sessionVersion(s claude.Session) string {
+	if s.PID > 0 && app.RunningVersion != nil {
+		if v := app.RunningVersion(s.PID); v != "" {
+			return v
+		}
+	}
+	return app.Jobs.Version(s.JobID)
+}
+
 // keepOutdated narrows the chosen sessions to those on an older Claude Code
 // than the installed one.
-func (app *App) keepOutdated(ctx context.Context, sel *selection, running int) error {
+func (app *App) keepOutdated(ctx context.Context, sel *selection) error {
 	installed, err := app.Agents.Version(ctx)
 	if err != nil {
 		return err
 	}
-	known := false
+	// Only background sessions the command would act on are checked, so with
+	// none of those there is nothing to warn about.
+	checked, known := 0, false
 	sel.chosen = slices.DeleteFunc(sel.chosen, func(s claude.Session) bool {
-		v := app.Jobs.Version(s.JobID)
+		// Interactive sessions are the user's to restart, so --outdated
+		// never picks them.
+		if s.Interactive() {
+			return true
+		}
+		checked++
+		v := app.sessionVersion(s)
 		known = known || v != ""
 		return v == "" || !version.Less(v, installed)
 	})
-	if !known && running > 0 {
+	if !known && checked > 0 {
 		app.warn("claudes: cannot read the Claude Code version of any session from %s. "+
 			"Claude Code may have changed its files there.", app.Jobs.Dir)
 	}
