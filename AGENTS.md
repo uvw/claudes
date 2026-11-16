@@ -9,7 +9,7 @@ adds what an agent needs on top of them.
 
 | You need                                  | Open                                               |
 | ----------------------------------------- | -------------------------------------------------- |
-| What a command does and its flags         | `README.md`, then `claudes <cmd> --help`           |
+| What a command does and its flags         | `docs/guide.md`, then `claudes <cmd> --help`       |
 | Why something is the way it is            | `docs/decisions.md`                                |
 | What's open                               | GitHub issues, `docs/handoffs.md`                  |
 | Passthrough, wiring, and the host session | `internal/cli/root.go`                             |

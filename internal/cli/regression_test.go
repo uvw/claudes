@@ -199,8 +199,8 @@ func TestAPanicFreesTheRunLock(t *testing.T) {
 	}
 }
 
-// README: exit 4 is "a safety or compatibility check stopped it before it
-// changed anything".
+// docs/reference.md: exit 4 is "Refused before any change: the wrong kind of
+// session, or a failed safety check".
 func TestSafetyRefusalsExitFour(t *testing.T) {
 	h := newHarness(t)
 	host := h.bg("host", "busy")
