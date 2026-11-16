@@ -23,8 +23,9 @@ type pastSession struct {
 
 func (app *App) sessionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "session",
-		Short: "Find, resume, and move past sessions, from their transcripts",
+		Use:     "session",
+		Aliases: []string{"s", "sessions"},
+		Short:   "Find, resume, and move past sessions, from their transcripts",
 		Long: `Commands for every Claude Code session on this computer, past and running, read
 from the transcripts under ~/.claude/projects. claudes only reads them, except
 for session mv, which copies one.`,
