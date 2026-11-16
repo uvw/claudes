@@ -27,6 +27,8 @@ adds what an agent needs on top of them.
 | `claudes doctor env`                      | `internal/cli/doctor_env.go`                       |
 | `claudes session`, `cd`, and `init`       | `internal/cli/session*.go`, `internal/cli/init.go` |
 | Reading and copying transcripts           | `internal/transcripts`                             |
+| Disk use and removing past sessions       | `internal/cli/session_du.go`, `session_gc.go`      |
+| Moving files to the system trash          | `internal/trash`, one file per platform            |
 | Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`          |
 | Where claudes keeps its own files         | `internal/paths`, one file per platform            |
 | Atomic writes and lock directories        | `internal/safefile`                                |
@@ -51,11 +53,11 @@ small subcommands, such as `config get`, stay in it.
 ## The owner's sessions
 
 The owner's Claude Code sessions are live work. Never run `restart`, `pause`,
-`resume`, `ping`, `stop`, `gc`, `pin`, `unpin`, `session resume`, or
-`session mv` against them, and never edit `~/.claude/jobs/` or
+`resume`, `ping`, `stop`, `gc`, `pin`, `unpin`, `session resume`, `session mv`,
+or `session gc` against them, and never edit `~/.claude/jobs/` or
 `~/.claude/projects/` by hand. Read-only commands are fine: `ls`, `where`,
-`doctor`, `session ls`, `session show`, `session where`, and any command with
-`--dry-run`.
+`doctor`, `session ls`, `session show`, `session where`, `session du`, and any
+command with `--dry-run`.
 
 Tests drive the commands through the fake `claude.Agents` in
 `internal/cli/cli_test.go` and a temporary jobs folder, never the real `claude`

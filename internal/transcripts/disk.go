@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/uvw/claudes/internal/claude"
 )
@@ -83,6 +84,8 @@ type Leftover struct {
 	// Kind is "sidecar" or "file-history".
 	Kind string `json:"kind"`
 	Size int64  `json:"size"`
+	// Modified is when anything in the folder last changed.
+	Modified time.Time `json:"modified"`
 }
 
 // Leftovers finds the sidecar folders with no transcript beside them, and the
@@ -107,7 +110,8 @@ func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 		if _, err := os.Lstat(dir + ".jsonl"); err == nil {
 			continue
 		}
-		out = append(out, Leftover{Path: dir, SessionID: id, Kind: "sidecar", Size: treeSize(dir)})
+		size, modified := treeStat(dir)
+		out = append(out, Leftover{Path: dir, SessionID: id, Kind: "sidecar", Size: size, Modified: modified})
 	}
 	if st.Home != "" {
 		entries, err := os.ReadDir(filepath.Join(st.Home, "file-history"))
@@ -119,7 +123,8 @@ func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 				continue
 			}
 			dir := st.FileHistory(e.Name())
-			out = append(out, Leftover{Path: dir, SessionID: e.Name(), Kind: "file-history", Size: treeSize(dir)})
+			size, modified := treeStat(dir)
+			out = append(out, Leftover{Path: dir, SessionID: e.Name(), Kind: "file-history", Size: size, Modified: modified})
 		}
 	}
 	slices.SortFunc(out, func(a, b Leftover) int { return strings.Compare(a.Path, b.Path) })
@@ -142,17 +147,61 @@ func fileSize(path string) int64 {
 // treeSize adds up the regular files under dir. It never follows a link, and a
 // dir that does not exist is empty.
 func treeSize(dir string) int64 {
+	n, _ := treeStat(dir)
+	return n
+}
+
+// treeStat is treeSize, and when anything under dir last changed.
+func treeStat(dir string) (int64, time.Time) {
 	var n int64
+	var newest time.Time
 	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		if info.ModTime().After(newest) {
+			newest = info.ModTime()
+		}
 		if d.Type().IsRegular() {
-			if info, err := d.Info(); err == nil {
-				n += info.Size()
-			}
+			n += info.Size()
 		}
 		return nil
 	})
-	return n
+	return n, newest
+}
+
+// CopyFiles are an older copy's transcript and, when there is one, its
+// sidecar folder.
+func CopyFiles(copyPath string) []string {
+	out := []string{copyPath}
+	if sidecar := strings.TrimSuffix(copyPath, ".jsonl"); isDir(sidecar) {
+		out = append(out, sidecar)
+	}
+	return out
+}
+
+// SessionFiles is everything Claude Code keeps for s that exists: the
+// transcript, its sidecar folder, every older copy with its sidecar, its file
+// history, its session-env folder, and its debug log.
+func (st Store) SessionFiles(s Session) []string {
+	out := Files(s)
+	for _, c := range s.Copies {
+		out = append(out, CopyFiles(c)...)
+	}
+	if st.Home != "" && claude.ValidSessionID(s.SessionID) {
+		for _, p := range []string{
+			st.FileHistory(s.SessionID),
+			filepath.Join(st.Home, "session-env", s.SessionID),
+			filepath.Join(st.Home, "debug", s.SessionID+".txt"),
+		} {
+			if _, err := os.Lstat(p); err == nil {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
 }

@@ -35,6 +35,7 @@ current.
 | [24](#24-colors-come-from-lipgloss-and-only-reach-a-terminal)                       | Colors come from lipgloss, and only reach a terminal                       |
 | [25](#25-claudes-reads-agent-teams-from-their-files-and-guards-their-leads)         | claudes reads agent teams from their files, and guards their leads         |
 | [26](#26-every-session-listing-measures-disk-use)                                   | Every session listing measures disk use                                    |
+| [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)          | session gc moves to the trash, and never touches a session in use          |
 
 ## 1. Go, in one static binary
 
@@ -458,3 +459,28 @@ Weighed: a `session ls --size` flag, which hides the column until someone thinks
 to ask; and only `session du`, which totals folders but cannot say which session
 is big. The command is `du`, since it measures files, not free space; `df` is
 there for those who reach for it.
+
+## 27. session gc moves to the trash, and never touches a session in use
+
+`claudes session gc` removes a past session with everything Claude Code keeps
+for it, and moves it to the system trash: the macOS Trash, the Windows Recycle
+Bin, or the freedesktop.org trash. `--purge` deletes for good. Without flags it
+removes empty sessions, older copies `session mv` left, and leftover folders;
+`--gone` and `--older-than` are opt-in. It never removes a running session, one
+agent view still lists, a parked one, or the session running claudes, and
+without targets nothing that changed in the last day. It lists what runs again
+just before removing, skips a transcript that changed since the plan, and
+removes only paths under `~/.claude` whose names carry the session's id.
+
+Why: a transcript is the only record of a session's work, so a mistaken removal
+must be recoverable, unlike `claudes gc`, which only drops a job from agent
+view's list. Empty sessions, superseded copies, and orphaned folders hold
+nothing anyone can resume, so they are safe to pick by default. A missing folder
+can be a disk that is not attached, and age says nothing about value, so those
+wait for a flag. A session that changed in the last day may be starting, before
+its transcript says what it is.
+
+Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
+cannot undo a mistake; previewing by default with `--yes` to act, which goes
+against safeguards being opt-in (decision 6); and claudes' own trash folder,
+which the system's tools cannot list or restore from.

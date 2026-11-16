@@ -436,6 +436,26 @@ size down. `session du` (or `df`) adds it all up by project folder, biggest
 first, and counts leftovers: subagent and file-history folders whose transcript
 is gone.
 
+`session gc` removes past sessions with everything Claude Code keeps for each:
+transcript, subagent transcripts and tool results, older copies, file history,
+session-env folder, and debug log. They go to the system trash (the macOS Trash,
+the Windows Recycle Bin, or the freedesktop.org trash on Linux), so a mistake
+can be undone; `--purge` deletes them for good. Without flags it removes:
+
+1. Empty sessions, which never got a prompt.
+2. Older copies `session mv` left, keeping the newest.
+3. Leftovers: subagent and file-history folders whose transcript is gone.
+
+`--empty`, `--copies`, `--leftovers`, `--gone` (the session's folder no longer
+exists), and `--older-than 90d` pick exactly those kinds instead. Targets remove
+exactly the sessions named. `--dry-run` shows the plan and what it frees.
+
+`session gc` never removes a running session, one agent view still lists
+(`claudes gc` removes those from the list first), a parked one, or the session
+running claudes. Without targets, it also leaves alone anything that changed in
+the last day. It checks again which sessions run just before removing, and only
+removes paths under `~/.claude` named by the session's id.
+
 `session mv` (or `move`) copies a session's transcript, with its subagent
 transcripts and tool results, into the project folder Claude Code uses for
 `FOLDER`, which must already exist. Use it after cloning a repository

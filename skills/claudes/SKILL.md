@@ -130,6 +130,7 @@ binary by its full path rather than assuming it is gone.
 | where does claudes keep its files    | `claudes doctor env`                                      |
 | find a past session about X          | `claudes session ls X`, or `--in PATH`, `--since 7d`      |
 | what takes up disk space             | `claudes session du`, or `claudes session ls --sort size` |
+| clean up old or empty sessions       | `claudes session gc --dry-run`; see "Past sessions"       |
 | resume a past session X              | `claudes session resume --bg X`; see "Past sessions"      |
 | move this session to folder Y        | `claudes session mv ID Y`; see "Past sessions"            |
 | change the default ping or timeout   | `claudes config get`, then `claudes config set KEY VALUE` |
@@ -307,6 +308,11 @@ session now and run it, since anything said after the copy stays behind. If it
 says FOLDER already has a copy, tell the user rather than removing that copy: it
 may hold work the original lacks. Pass `--rm` only when the user asked to delete
 the original; it never applies to your own session.
+
+`claudes session gc` removes past sessions. Run it with `--dry-run` first and
+show the user the plan; run it for real only when they say so. It moves what it
+removes to the system trash. Pass `--purge`, which deletes for good, only when
+the user asked for that.
 
 ## Never
 

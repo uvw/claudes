@@ -43,3 +43,26 @@ Next, in order:
      it one prompt. Run `claudes ls`: it shows `stop-test` as `tty`. Run
      `claudes stop stop-test`: the tab's session ends, with its shells.
    - **Added:** 2026-11-14, Windows session.
+
+2. **`claudes session gc` moving to the Recycle Bin.**
+   - **What:** `internal/trash/trash_windows.go` calls `SHFileOperationW` with
+     `FOF_ALLOWUNDO`. It compiles and vets, but has never run on Windows.
+   - **Verify:** in any project folder under `%USERPROFILE%\.claude\projects`,
+     make a scratch folder named by a session id that has no transcript, such as
+     `00000000-0000-0000-0000-000000000000`, with a file inside. Set the times
+     of both back two days. Run `claudes session gc --leftovers --dry-run`: the
+     plan lists it. Run it without `--dry-run`: the folder is gone and the
+     Recycle Bin holds it, and "Restore" puts it back.
+   - **Added:** 2026-11-16, macOS session.
+
+## Linux only
+
+1. **`claudes session gc` moving to the freedesktop.org trash.**
+   - **What:** `internal/trash/freedesktop.go` writes `files/` and `info/` under
+     `$XDG_DATA_HOME/Trash`. Tests check the layout on macOS; no file manager
+     has restored from it yet.
+   - **Verify:** as in the Windows item, make a leftover folder, run
+     `claudes session gc --leftovers`, then open the trash in the desktop's file
+     manager: it lists the folder with its original location, and restoring puts
+     it back.
+   - **Added:** 2026-11-16, macOS session.

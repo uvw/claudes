@@ -58,6 +58,9 @@ type Session struct {
 	Path   string   `json:"path"`
 	Copies []string `json:"copies"`
 	Size   int64    `json:"size"`
+	// Empty is a session that never got a prompt: its transcript, short
+	// enough to read whole, has no user or assistant record.
+	Empty bool `json:"empty"`
 	// fits is whether the transcript's own records place it in its project
 	// folder, or Claude Code relocated it, so no recorded move applies.
 	fits bool
@@ -206,6 +209,27 @@ func (st Store) recordMove(path, sessionID, dir string) error {
 	return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
 }
 
+// ForgetMove drops the record of the copy at path, once that copy is gone.
+func (st Store) ForgetMove(path, sessionID string) error {
+	if st.Moves == "" {
+		return nil
+	}
+	moves, err := st.loadMoves()
+	if err != nil {
+		return err
+	}
+	key := moveKey(path, sessionID)
+	if _, ok := moves[key]; !ok {
+		return nil
+	}
+	delete(moves, key)
+	data, err := json.MarshalIndent(moves, "", "  ")
+	if err != nil {
+		return err
+	}
+	return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
+}
+
 // headSize and tailSize bound what Read takes from each end of a transcript.
 // Claude Code writes the session's title and last prompt again every few
 // turns, so the tail almost always holds them.
@@ -285,6 +309,7 @@ func summarize(path string) (Session, error) {
 	s.Cwd = sum.folder(project)
 	s.fits = sum.relocated != "" || strings.EqualFold(Folder(s.Cwd), project)
 	s.Branch, s.Version, s.LastPrompt, s.Started = sum.branch, sum.version, sum.lastPrompt, sum.started
+	s.Empty = !sum.conversation && info.Size() <= headSize
 	return s, nil
 }
 
@@ -295,6 +320,8 @@ type summary struct {
 	branch, version, lastPrompt         string
 	customTitle, agentName, aiTitle     string
 	started                             time.Time
+	// conversation is whether any record is a user or assistant message.
+	conversation bool
 }
 
 func (m *summary) take(r record) {
@@ -311,6 +338,7 @@ func (m *summary) take(r record) {
 	m.customTitle = cmp.Or(r.CustomTitle, m.customTitle)
 	m.agentName = cmp.Or(r.AgentName, m.agentName)
 	m.aiTitle = cmp.Or(r.AITitle, m.aiTitle)
+	m.conversation = m.conversation || r.Type == "user" || r.Type == "assistant"
 }
 
 // folder is the session's folder: where Claude Code relocated it, or else the

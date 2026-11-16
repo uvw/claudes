@@ -33,6 +33,7 @@ import (
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
+	"github.com/uvw/claudes/internal/trash"
 )
 
 // Version and Commit are set at build time with -ldflags
@@ -98,6 +99,8 @@ type App struct {
 	Exec  func(binary string, args ...string) error
 	// Transcripts is ~/.claude/projects, read by claudes session.
 	Transcripts transcripts.Store
+	// Trash moves a file or folder to the system trash.
+	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
 	// Chdir changes the working directory before a handoff to claude.
@@ -174,6 +177,7 @@ func newApp() *App {
 		Sleep:     sleep,
 		Terminate: procs.Terminate,
 		Started:   procs.Started,
+		Trash:     trash.Move,
 		Alive:     procs.Running,
 		Exec:      claude.Exec,
 		Edit:      editFile,
