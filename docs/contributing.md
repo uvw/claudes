@@ -28,7 +28,12 @@
 The README's [Documentation](../README.md#documentation) table lists every doc.
 Update a doc in the same change as the code it describes.
 
-1. `README.md` describes the commands, flags, and files for users.
+1. `README.md` is the front page: what claudes does, installing it, and a table
+   of every command. Keep it short; detail goes in the user docs below it.
+   `docs/install.md` covers installing, shell setup, and the agent skill,
+   `docs/guide.md` how commands act and stay safe, and `docs/reference.md`
+   output, exit codes, configuration, and files. The installers print a link to
+   the README's `#shell-setup` section, so that heading stays in the README.
 2. `docs/decisions.md` records each settled choice, why, and the alternatives.
    It is a living record: when a choice changes, rewrite its entry rather than
    adding one that replaces it, and keep the index table in step.
