@@ -2,15 +2,17 @@
 
 ## [0.3.0](https://github.com/uvw/claudes/compare/v0.2.1...v0.3.0) (2026-11-16)
 
-
 ### Features
 
-* **cli:** take pinned sessions in bulk with --pinned ([#51](https://github.com/uvw/claudes/issues/51)) ([47c7a77](https://github.com/uvw/claudes/commit/47c7a77f217e494214b8f22432f18b14614ba0d1))
-
+- **cli:** take pinned sessions in bulk with --pinned
+  ([#51](https://github.com/uvw/claudes/issues/51))
+  ([47c7a77](https://github.com/uvw/claudes/commit/47c7a77f217e494214b8f22432f18b14614ba0d1))
 
 ### Bug fixes
 
-* **cli:** read a running session's version from the binary it runs ([#52](https://github.com/uvw/claudes/issues/52)) ([46fc510](https://github.com/uvw/claudes/commit/46fc510168ee868b8357e02dabbca6a65ba19daf))
+- **cli:** read a running session's version from the binary it runs
+  ([#52](https://github.com/uvw/claudes/issues/52))
+  ([46fc510](https://github.com/uvw/claudes/commit/46fc510168ee868b8357e02dabbca6a65ba19daf))
 
 ## [0.2.1](https://github.com/uvw/claudes/compare/v0.2.0...v0.2.1) (2026-11-16)
 
