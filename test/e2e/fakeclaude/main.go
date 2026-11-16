@@ -5,6 +5,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -151,8 +152,9 @@ func logCall(path string, args []string) {
 	if err != nil {
 		fail(err.Error())
 	}
-	defer f.Close()
-	if _, err := f.Write(append(line, '\n')); err != nil {
+	_, werr := f.Write(append(line, '\n'))
+	// A failed close can lose the line as surely as a failed write.
+	if err := errors.Join(werr, f.Close()); err != nil {
 		fail(err.Error())
 	}
 }
