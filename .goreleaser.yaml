@@ -39,6 +39,10 @@ archives:
 
 checksum:
   name_template: checksums.txt
+  # The release workflow copies these into dist/ beside the archives.
+  extra_files:
+    - glob: ./install/install.sh
+    - glob: ./install/install.ps1
 
 # One SPDX SBOM per archive, made with syft, which must be on PATH.
 sboms:

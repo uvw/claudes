@@ -101,42 +101,49 @@ and the resume commands `pause` printed bring back interactive ones.
 claudes needs Claude Code with `claude agents` on `PATH`. It is tested with
 Claude Code 2.1.325, and `claudes doctor` says whether yours works with it.
 
-Download the archive for your platform from the
-[latest release](https://github.com/uvw/claudes/releases/latest), check it
-against `checksums.txt`, and put `claudes` (`claudes.exe` on Windows) in a
-folder on `PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on
-`amd64` and `arm64`. With the GitHub CLI on Linux:
+macOS and Linux:
 
 ```bash
-gh release download --repo uvw/claudes \
-  --pattern 'claudes_*_linux_amd64.tar.gz' --pattern checksums.txt
-sha256sum --check --ignore-missing checksums.txt
-tar -xzf claudes_*_linux_amd64.tar.gz claudes
-install claudes ~/.local/bin/
+curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh | sh
 ```
 
-On macOS, take the `darwin_arm64` archive, or `darwin_amd64` on Intel, and check
-it with `shasum -a 256 --check --ignore-missing checksums.txt`. The binaries are
-not signed, so one downloaded with a browser is blocked by Gatekeeper until you
-run `xattr -d com.apple.quarantine claudes`. One fetched with `gh` or `curl` is
-not.
-
-On Windows, in PowerShell:
+Windows, in PowerShell:
 
 ```powershell
-gh release download --repo uvw/claudes `
-  --pattern 'claudes_*_windows_amd64.zip' --pattern checksums.txt
-$zip = Get-Item claudes_*_windows_amd64.zip
-(Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()  # compare with checksums.txt
-$dir = "$env:LOCALAPPDATA\Programs\claudes"
-Expand-Archive $zip -DestinationPath $dir
-[Environment]::SetEnvironmentVariable('Path',
-  [Environment]::GetEnvironmentVariable('Path', 'User') + ";$dir", 'User')
+irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
 ```
 
-Open a new terminal for the `PATH` change to take.
+The script downloads the archive for your computer from the
+[latest release](https://github.com/uvw/claudes/releases/latest) and checks it
+against the release's `checksums.txt`. With the
+[GitHub CLI](https://cli.github.com) installed and signed in, it also verifies
+the archive's build provenance. It installs `claudes` into `~/.local/bin`, or
+`claudes.exe` into `%LOCALAPPDATA%\Programs\claudes`, which it adds to your
+`PATH`. Then it prints the optional next steps: [shell setup](#shell-setup), the
+[agent skill](#agent-skill), and `claudes doctor`. Run it again to upgrade.
+
+To pick a version or a folder:
+
+```bash
+curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh |
+  sh -s -- --version v0.1.0 --dir /usr/local/bin
+```
+
+```powershell
+$env:CLAUDES_VERSION = 'v0.1.0'; $env:CLAUDES_INSTALL_DIR = 'C:\Tools'
+irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
+```
+
+`CLAUDES_VERSION` and `CLAUDES_INSTALL_DIR` work for `install.sh` too.
+
+By hand: download the archive for your platform from the latest release, check
+it against `checksums.txt`, and put `claudes` (`claudes.exe` on Windows) in a
+folder on `PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on
+`amd64` and `arm64`. The binaries are not signed, so one downloaded with a
+browser is blocked by Gatekeeper on macOS until you run
+`xattr -d com.apple.quarantine claudes`; the install script and `gh` are not.
 [docs/security.md](docs/security.md) explains how to check a download's
-provenance too.
+provenance.
 
 With Go 1.21 or later, `go install` builds the latest release into
 `$(go env GOPATH)/bin`, `~/go/bin` by default, and fetches the Go version

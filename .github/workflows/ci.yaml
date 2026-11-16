@@ -104,6 +104,13 @@ jobs:
       - name: Run the release binary
         shell: bash
         run: bash .github/workflows/hack/smoke.sh "dist/claudes${{ runner.os == 'Windows' && '.exe' || '' }}"
+      - name: Install it with install.sh
+        if: runner.os != 'Windows'
+        run: bash .github/workflows/hack/install-test.sh dist/claudes
+      - name: Install it with install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .github/workflows/hack/install-test.ps1 -Binary dist/claudes.exe
 
   licenses:
     name: Licenses and notices

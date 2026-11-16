@@ -96,6 +96,10 @@ jobs:
         with:
           version: v2.20.2
           args: release --clean --skip=publish
+      # checksums.txt lists the install scripts (.goreleaser.yaml), so they are
+      # attested and published with the archives.
+      - name: Add the install scripts
+        run: cp install/install.sh install/install.ps1 dist/
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
@@ -104,6 +108,8 @@ jobs:
             dist/*.zip
             dist/*.sbom.json
             dist/checksums.txt
+            dist/install.sh
+            dist/install.ps1
           if-no-files-found: error
 
   smoke:
@@ -135,6 +141,17 @@ jobs:
           TAG: ${{ inputs.tag }}
           ARCHIVE: ${{ matrix.archive }}
         run: bash .github/workflows/hack/smoke.sh dist/claudes_*_"$ARCHIVE" "$TAG"
+      - name: Install it with the install script
+        if: runner.os != 'Windows'
+        env:
+          TAG: ${{ inputs.tag }}
+        run: bash .github/workflows/hack/install-test.sh --release dist "$TAG"
+      - name: Install it with the install script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: .github/workflows/hack/install-test.ps1 -Release dist -Version $env:TAG
 
   attest:
     name: Attest provenance

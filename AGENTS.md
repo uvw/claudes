@@ -34,6 +34,7 @@ adds what an agent needs on top of them.
 | CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`          |
 | `claudes upgrade` and its downloads       | `internal/cli/upgrade.go`, `internal/selfupdate`   |
 | Scripts the workflows run                 | `.github/workflows/hack/`                          |
+| The install scripts                       | `install/install.sh`, `install/install.ps1`        |
 | Developer tools, such as the notices file | `hack/`                                            |
 | The agent skill and `claudes skill`       | `skills/claudes/SKILL.md`, `internal/install`      |
 | How a typed name or id finds a session    | `internal/target/target.go`                        |

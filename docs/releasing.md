@@ -50,6 +50,16 @@ sha256sum --check --ignore-missing checksums.txt
 gh attestation verify claudes_X.Y.Z_linux_amd64.tar.gz --repo uvw/claudes
 ```
 
+Each release also carries `install.sh` and `install.ps1` from `install/`, listed
+in `checksums.txt` and attested with the archives. The smoke jobs install each
+platform's archive with its script before anything is published. Check the
+one-liners once it is out:
+
+```bash
+curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh |
+  sh -s -- --dir "$(mktemp -d)"
+```
+
 ## When it fails
 
 - **A workflow failed before publish:** the draft and the tag exist, and nothing
