@@ -112,7 +112,7 @@ func (app *App) printLeftOut(sel selection, verb string) {
 		format, why string
 		sessions    []claude.Session
 	}{
-		{"Pinned, not %s: %s. Name a session to include it.", "pinned", sel.pinned},
+		{"Pinned, not %s: %s. Name a session, or add --pinned, to include it.", "pinned", sel.pinned},
 		{"Leading an agent team, not %s: %s. Its teammates would stop with it and cannot be resumed; name it to include it anyway.", "leads a team", sel.leads},
 		{"Skipped, not %s: %s.", "skipped", sel.skipped},
 		{"Not %s, because claude agents gave no job id: %s.", "no job id", sel.noJob},

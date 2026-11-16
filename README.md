@@ -23,7 +23,7 @@ Restarting 2 session(s):
 
 Dry run: nothing was changed.
 
-Pinned, not restarted: release-notes. Name a session to include it.
+Pinned, not restarted: release-notes. Name a session, or add --pinned, to include it.
 
 $ claudes restart --outdated --ping
 Restarting 2 session(s):

@@ -19,6 +19,8 @@ type lifecycleFlags struct {
 	interactiveBG bool
 	outdated      bool
 	forget        bool
+	// pinned has bulk commands take pinned sessions too.
+	pinned bool
 	// pingDefault is what --ping sends: the config's ping.text, or the
 	// built-in prompt.
 	pingDefault string
@@ -51,6 +53,12 @@ func (f *lifecycleFlags) addInteractive(cmd *cobra.Command, stopUsage, bgUsage s
 	}
 	cmd.Flags().BoolVar(&f.interactiveBG, "interactive-bg", false, bgUsage)
 	cmd.MarkFlagsMutuallyExclusive("interactive", "interactive-bg")
+}
+
+// addPinned adds --pinned, which lets a bulk restart or pause take pinned
+// sessions too.
+func (f *lifecycleFlags) addPinned(cmd *cobra.Command, usage string) {
+	cmd.Flags().BoolVar(&f.pinned, "pinned", false, usage)
 }
 
 // text is the ping prompt, or "" when nothing is pinged.

@@ -55,6 +55,7 @@ that is safe.
 | `--interactive`     | `restart`, `pause`                 | Also stop interactive sessions, and print their resume commands   |
 | `--interactive-bg`  | `restart`, `resume`                | Resume interactive sessions in the background, not print commands |
 | `--outdated`        | `restart`                          | Only sessions on an older Claude Code                             |
+| `--pinned`          | `restart`, `pause`, `gc`           | Without targets, take pinned sessions too                         |
 | `--forget`          | `resume`                           | Drop the named sessions from the park list                        |
 | `--older-than AGE`  | `gc`                               | Without targets, only sessions older than AGE; 7d                 |
 | `--force`           | commands that change sessions      | Act although a compatibility check failed                         |
@@ -92,7 +93,7 @@ claudes is built to restart and stop sessions without losing work:
 
 1. **Pins protect sessions.** Pins are agent view's own (Ctrl+T, stored in
    `~/.claude/jobs/pins.json`). Bulk `restart`, `pause`, and `gc` skip pinned
-   sessions; name one to include it.
+   sessions; name one to include it, or add `--pinned` to take them all.
 2. **Mid-turn work isn't dropped silently.** A session that is busy, waiting on
    a question, or running a shell task comes back idle after a restart. `--ping`
    stops it and resumes it with a prompt instead, and `--wait` waits for busy
