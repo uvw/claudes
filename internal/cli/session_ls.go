@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -12,7 +14,7 @@ import (
 )
 
 func (app *App) sessionLsCommand() *cobra.Command {
-	var in string
+	var in, sortBy string
 	var since days
 	var out outputFlag
 	cmd := &cobra.Command{
@@ -21,7 +23,11 @@ func (app *App) sessionLsCommand() *cobra.Command {
 		Short:   "List past and running sessions, newest activity first",
 		Long: `List every session that has a transcript, newest activity first. Targets match
 as in claudes ls: part of a name, the start of an id, or a pattern with *, ?,
-or [.`,
+or [.
+
+SIZE is everything the session keeps on disk: its transcript, its subagent
+transcripts and tool results, older copies session mv left, and Claude Code's
+backups of the files it edited. claudes session du adds them up by folder.`,
 		ValidArgsFunction: app.completePast(false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			list, err := app.pastSessions(cmd.Context())
@@ -31,6 +37,13 @@ or [.`,
 			if list, err = app.filterPast(list, args, in, since.d); err != nil {
 				return err
 			}
+			switch sortBy {
+			case "active":
+			case "size":
+				slices.SortStableFunc(list, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
+			default:
+				return fmt.Errorf("--sort takes active or size, not %q", sortBy)
+			}
 			if out.format != "text" {
 				return out.encode(app.Out, list)
 			}
@@ -38,19 +51,21 @@ or [.`,
 				fmt.Fprintln(app.Out, "No sessions.")
 				return nil
 			}
-			table := [][]string{{"NAME", "ID", "STATE", "ACTIVE", "BRANCH", "CWD"}}
+			table := [][]string{{"NAME", "ID", "STATE", "ACTIVE", "SIZE", "BRANCH", "CWD"}}
 			for _, p := range list {
 				state := "-"
 				if p.Running {
 					state = app.colors.Green("running")
 				}
 				table = append(table, []string{shell.Printable(p.Label()), p.ShortID, state,
-					age(app.Now(), p.LastActive), dash(shell.Printable(p.Branch)), app.colors.Faint(homeShort(p.Cwd))})
+					age(app.Now(), p.LastActive), style.Size(p.Disk.Total), dash(shell.Printable(p.Branch)), app.colors.Faint(homeShort(p.Cwd))})
 			}
 			return style.Table(app.Out, table)
 		},
 	}
 	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this folder or below it")
+	cmd.Flags().StringVar(&sortBy, "sort", "active", "order by active, newest first, or by size, biggest first")
+	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions([]cobra.Completion{"active", "size"}, cobra.ShellCompDirectiveNoFileComp))
 	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
 	out.add(cmd, app.Config.Output.Format)

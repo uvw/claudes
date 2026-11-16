@@ -350,7 +350,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 			h.chdirs = append(h.chdirs, dir)
 			return nil
 		},
-		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Moves: filepath.Join(h.root, "state", "moves.json")},
+		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Home: h.root, Moves: filepath.Join(h.root, "state", "moves.json")},
 		Teams:       teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},
 	}
 	return h

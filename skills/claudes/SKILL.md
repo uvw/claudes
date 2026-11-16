@@ -129,6 +129,7 @@ binary by its full path rather than assuming it is gone.
 | is claudes still compatible          | `claudes doctor`                                          |
 | where does claudes keep its files    | `claudes doctor env`                                      |
 | find a past session about X          | `claudes session ls X`, or `--in PATH`, `--since 7d`      |
+| what takes up disk space             | `claudes session du`, or `claudes session ls --sort size` |
 | resume a past session X              | `claudes session resume --bg X`; see "Past sessions"      |
 | move this session to folder Y        | `claudes session mv ID Y`; see "Past sessions"            |
 | change the default ping or timeout   | `claudes config get`, then `claudes config set KEY VALUE` |
@@ -292,8 +293,8 @@ user asks for it after seeing that.
 
 ## Past sessions
 
-`claudes session ls`, `show`, and `where` read the transcripts of every session,
-past or running, and change nothing. Run them freely.
+`claudes session ls`, `show`, `where`, and `du` read the transcripts of every
+session, past or running, and change nothing. Run them freely.
 
 `claudes session resume X` without `--bg` takes over the terminal, so never run
 it yourself. Give the user the command, or use `--bg` when they want it in the
