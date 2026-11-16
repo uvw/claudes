@@ -33,7 +33,8 @@ func stripANSI(s string) string {
 	var b bytes.Buffer
 	for i := 0; i < len(s); i++ {
 		if s[i] == 0x1b {
-			for i++; i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z' || s[i] >= 'a' && s[i] <= 'z'); i++ {
+			// The letter test reads better whole than with De Morgan's law applied.
+			for i++; i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z' || s[i] >= 'a' && s[i] <= 'z'); i++ { //nolint:staticcheck
 			}
 			continue
 		}

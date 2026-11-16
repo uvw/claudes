@@ -51,6 +51,7 @@ go vet ./...
 GOOS=windows go vet ./...
 go test -race ./...
 go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+golangci-lint run ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 go run hack/notices.go --check
 goreleaser build --snapshot --clean
@@ -64,6 +65,11 @@ npx --yes markdownlint-cli2@0.24.1 "**/*.md" "#dist" "#.claude/worktrees" "#docs
 `PATH`, or its path in `$GO_LICENSES`. It also fails on a license outside its
 allowlist. After a dependency change, run it without `--check` to rewrite
 `docs/third-party-notices.txt`.
+
+[golangci-lint](https://golangci-lint.run/welcome/install/) needs v2.15.0 or
+later, the first to read Go 1.27's packages. Run it with `GOOS=darwin` and
+`GOOS=windows` too, since each platform's files build only for it, as CI does.
+`.golangci.yaml` lists what it leaves out, and why.
 
 CI runs the Go checks on Linux, macOS, and Windows, except `gofmt`, which skips
 Windows. The coverage floor of 80% (`.github/workflows/hack/coverage.sh`),

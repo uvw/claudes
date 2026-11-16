@@ -161,6 +161,7 @@ func killChild(c child) {
 	}
 	defer windows.CloseHandle(h)
 	if started, err := startTime(h); err == nil && started.Equal(c.started) {
-		windows.TerminateProcess(h, 1)
+		// A child that exited meanwhile needs nothing more.
+		_ = windows.TerminateProcess(h, 1)
 	}
 }
