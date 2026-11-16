@@ -89,12 +89,16 @@ Weighed: nothing. The command line accepts only the job id.
 
 `claudes pin` and `unpin` edit `~/.claude/jobs/pins.json`, the file Ctrl+T in
 agent view writes. Bulk `restart`, `pause`, and `gc` skip pinned sessions; a
-session named as a target is included even when pinned.
+session named as a target is included even when pinned, and `--pinned` has the
+bulk command take every pinned session too, for a reboot or an update that
+should leave nothing out.
 
 Why: one pin list means a session pinned in agent view is protected in claudes
 too, with nothing to keep in sync.
 
-Weighed: a separate claudes pin list, which would drift from agent view.
+Weighed: a separate claudes pin list, which would drift from agent view; and
+naming every session to get past the pins, which `--pinned` replaces with one
+flag.
 
 ## 6. Safeguards are opt-in
 

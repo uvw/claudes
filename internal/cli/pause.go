@@ -18,7 +18,8 @@ func (app *App) pauseCommand() *cobra.Command {
 		Short: "Stop running sessions and remember them for claudes resume",
 		Long: `Stop running sessions and remember them in the park file, so claudes resume can
 bring them back, after a reboot if need be. With targets, pauses exactly those.
-Without, pauses every running background session except pinned ones.`,
+Without, pauses every running background session except pinned ones; --pinned
+takes those too.`,
 		ValidArgsFunction: app.completeSessions(runningSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.pause(cmd.Context(), args, &f)
@@ -27,6 +28,7 @@ Without, pauses every running background session except pinned ones.`,
 	f.addCommon(cmd, app.completeSkip(runningSession))
 	f.addWait(cmd, app.waitTimeout())
 	f.addInteractive(cmd, "also stop interactive sessions", "")
+	f.addPinned(cmd, "without targets, pause pinned sessions too")
 	app.addForce(cmd, forceUsage)
 	return cmd
 }

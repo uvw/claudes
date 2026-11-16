@@ -43,7 +43,7 @@ func requireFinished(sessions []claude.Session) error {
 
 func (app *App) gcCommand() *cobra.Command {
 	var olderThan days
-	var dryRun, withTeams bool
+	var dryRun, withTeams, withPinned bool
 	olderThan.d = 7 * 24 * time.Hour
 	cmd := &cobra.Command{
 		Use:   "gc [TARGET...]",
@@ -51,8 +51,8 @@ func (app *App) gcCommand() *cobra.Command {
 		Long: `Remove finished background sessions (done, stopped, or failed, with no process)
 from the list with claude rm, which keeps each conversation and deletes its
 worktree only when that is safe. With targets, removes those. Without, removes
-every finished session last active longer ago than --older-than, except pinned
-and parked ones.
+every finished session last active longer ago than --older-than, except parked
+ones, and pinned ones unless --pinned is given.
 
 --teams removes the agent team folders under ~/.claude/teams and the task lists
 under ~/.claude/tasks that Claude Code leaves behind: those of sessions that no
@@ -64,7 +64,7 @@ longer run and have not changed for longer than --older-than.`,
 				if len(args) > 0 {
 					return errors.New("gc --teams takes no targets")
 				}
-				return app.gcTeams(ctx, olderThan.d, dryRun)
+				return app.gcTeams(ctx, olderThan.d, dryRun, withPinned)
 			}
 			sessions, err := app.listed(ctx, true)
 			if err != nil {
@@ -77,7 +77,7 @@ longer run and have not changed for longer than --older-than.`,
 					err = requireFinished(picked)
 				}
 			} else {
-				picked, err = app.oldFinished(finished, app.Now().Add(-olderThan.d))
+				picked, err = app.oldFinished(finished, app.Now().Add(-olderThan.d), withPinned)
 			}
 			if err != nil {
 				return err
@@ -114,17 +114,21 @@ longer run and have not changed for longer than --older-than.`,
 	}
 	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d or 12h")
 	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team folders and task lists instead of sessions")
+	cmd.Flags().BoolVar(&withPinned, "pinned", false, "without targets, remove pinned sessions too")
 	addDryRun(cmd, &dryRun)
 	app.addForce(cmd, forceUsage)
 	return cmd
 }
 
 // oldFinished is the finished sessions last active before cutoff, except
-// pinned and parked ones.
-func (app *App) oldFinished(finished []claude.Session, cutoff time.Time) ([]claude.Session, error) {
-	pins, err := app.protectedPins(finished)
-	if err != nil {
-		return nil, err
+// parked ones, and pinned ones unless withPinned.
+func (app *App) oldFinished(finished []claude.Session, cutoff time.Time, withPinned bool) ([]claude.Session, error) {
+	pins := map[string]bool{}
+	if !withPinned {
+		var err error
+		if pins, err = app.protectedPins(finished); err != nil {
+			return nil, err
+		}
 	}
 	entries, err := app.Park.Load()
 	if err != nil {
@@ -192,8 +196,9 @@ func (l leftover) Label() string {
 }
 
 // gcTeams removes the team folders and task lists of sessions that no longer
-// run and that have not changed since olderThan ago.
-func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun bool) error {
+// run and that have not changed since olderThan ago, keeping a pinned
+// session's unless withPinned.
+func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, withPinned bool) error {
 	sessions, err := app.listed(ctx, false)
 	if err != nil {
 		return err
@@ -209,7 +214,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun boo
 		pinned[id] = true
 	}
 	for _, s := range sessions {
-		if s.Running() || pinned[s.JobID] {
+		if s.Running() || pinned[s.JobID] && !withPinned {
 			keep[claude.ShortID(s.SessionID)] = true
 		}
 	}

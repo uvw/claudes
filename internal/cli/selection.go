@@ -33,15 +33,16 @@ type selectOpts struct {
 	skip            []string
 	withInteractive bool
 	outdated        bool
+	withPinned      bool
 }
 
 func (f *lifecycleFlags) selectOpts() selectOpts {
-	return selectOpts{skip: f.skip, withInteractive: f.interactive || f.interactiveBG, outdated: f.outdated}
+	return selectOpts{skip: f.skip, withInteractive: f.interactive || f.interactiveBG, outdated: f.outdated, withPinned: f.pinned}
 }
 
 // selectSessions picks the running sessions a restart or pause acts on. With
 // targets it takes exactly those. Without, it takes every running session
-// except pinned ones, and interactive ones unless asked.
+// except pinned ones unless asked, and interactive ones unless asked.
 func (app *App) selectSessions(ctx context.Context, targets []string, opts selectOpts) (selection, error) {
 	// Targets are matched against finished sessions too, so a name that
 	// belongs to a stopped session never falls through to a running one whose
@@ -59,7 +60,7 @@ func (app *App) selectSessions(ctx context.Context, targets []string, opts selec
 	if len(targets) > 0 {
 		sel, err = named(targets, sessions, skip, opts.withInteractive)
 	} else {
-		sel, err = app.bulk(running, skip, opts.withInteractive)
+		sel, err = app.bulk(running, skip, opts.withInteractive, opts.withPinned)
 	}
 	if err != nil {
 		return selection{}, err
@@ -96,13 +97,16 @@ func named(targets []string, sessions []claude.Session, skip map[string]bool, wi
 	return sel, nil
 }
 
-// bulk is the selection with no targets: every running session but pinned
-// ones, skipped ones, and interactive ones unless asked.
-func (app *App) bulk(running []claude.Session, skip map[string]bool, withInteractive bool) (selection, error) {
+// bulk is the selection with no targets: every running session but skipped
+// ones, and pinned and interactive ones unless asked.
+func (app *App) bulk(running []claude.Session, skip map[string]bool, withInteractive, withPinned bool) (selection, error) {
 	var sel selection
-	pins, err := app.protectedPins(running)
-	if err != nil {
-		return sel, err
+	pins := map[string]bool{}
+	if !withPinned {
+		var err error
+		if pins, err = app.protectedPins(running); err != nil {
+			return sel, err
+		}
 	}
 	for _, s := range running {
 		switch {

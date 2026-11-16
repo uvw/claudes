@@ -16,7 +16,7 @@ func (app *App) restartCommand() *cobra.Command {
 		Use:   "restart [TARGET...]",
 		Short: "Restart running sessions: the named ones, or all but pinned ones",
 		Long: `Restart running sessions. With targets, restarts exactly those. Without, restarts
-every running background session except pinned ones.
+every running background session except pinned ones; --pinned takes those too.
 
 Background sessions are restarted with claude respawn. A session that is busy,
 waiting on a question, or running a shell task comes back idle, so --ping sends
@@ -37,6 +37,7 @@ because stopping it ends this command.`,
 		"also stop interactive sessions and resume them in the background")
 	app.addForce(cmd, forceUsage)
 	cmd.Flags().BoolVar(&f.outdated, "outdated", false, "only sessions behind the installed Claude Code")
+	f.addPinned(cmd, "without targets, restart pinned sessions too")
 	return cmd
 }
 
