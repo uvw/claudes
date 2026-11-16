@@ -88,6 +88,23 @@ func TestSessionLsListsTranscriptsNewestFirst(t *testing.T) {
 	}
 }
 
+func TestSessionAnswersToSAndSessions(t *testing.T) {
+	h := newHarness(t)
+	h.transcript(t, "old-plan", h.folder("work"), 72*time.Hour)
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	for _, alias := range []string{"s", "sessions"} {
+		h.out.Reset()
+		h.ok(t, alias, "ls")
+		if !strings.Contains(h.out.String(), "old-plan") {
+			t.Fatalf("%s ls:\n%s", alias, h.out)
+		}
+	}
+	if len(h.execs) != 0 {
+		t.Fatalf("an alias passed through to claude agents: %q", h.execs)
+	}
+}
+
 func TestSessionShowAndWherePickTheNewestOfAName(t *testing.T) {
 	h := newHarness(t)
 	h.transcript(t, "plan", h.folder("before"), 48*time.Hour)

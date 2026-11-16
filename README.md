@@ -397,10 +397,11 @@ Add `-v` to see each `claude` call claudes makes, and attach
 
 `claudes session` reads the transcripts Claude Code keeps under
 `~/.claude/projects`, so it finds every session, not only those agent view
-lists. `session ls` takes `--in PATH` for sessions run in a folder and below it,
-and `--since 7d` for recent ones. `session where --one` fails unless exactly one
-session matches, for scripts. `session resume` refuses a session that is still
-running, since resuming it would start a copy; `--bg` resumes in the background.
+lists. `claudes s` and `claudes sessions` are short for it. `session ls` takes
+`--in PATH` for sessions run in a folder and below it, and `--since 7d` for
+recent ones. `session where --one` fails unless exactly one session matches, for
+scripts. `session resume` refuses a session that is still running, since
+resuming it would start a copy; `--bg` resumes in the background.
 
 `session mv` (or `move`) copies a session's transcript, with its subagent
 transcripts and tool results, into the project folder Claude Code uses for
