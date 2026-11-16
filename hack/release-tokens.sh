@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
-# Sets up what the release workflow needs to publish to Homebrew and winget:
-# the uvw/homebrew-tap repository, a fork of microsoft/winget-pkgs, and two
-# tokens saved as secrets on uvw/claudes.
+# Sets up the tokens the release workflows use, as secrets on uvw/claudes:
 #
-# GitHub creates tokens only in the browser, so the script opens each token
-# page with its fields filled in, then reads the token you paste. It never
-# prints a token or passes one on a command line.
+#   RELEASE_PLEASE_TOKEN  opens and updates the release pull request, so its
+#                         checks start without a maintainer's approval
+#   HOMEBREW_TAP_TOKEN    pushes the formula to uvw/homebrew-tap
+#   WINGET_TOKEN          opens winget-pkgs pull requests from uvw/winget-pkgs
 #
-# Usage: hack/release-tokens.sh
+# It also creates the tap and the fork when they are missing. GitHub creates
+# tokens only in the browser, so the script opens each token page with its
+# fields filled in, then reads the token you paste. It never prints a token or
+# passes one on a command line. A secret that is already set is skipped, unless
+# its name is given to renew it.
+#
+# Usage: hack/release-tokens.sh [SECRET...]
 set -euo pipefail
 
 repo=uvw/claudes
@@ -37,8 +42,24 @@ read_token() {
   done
 }
 
+# wanted SECRET reports whether to set SECRET this run: it was named, or no
+# names were given and it is not set yet.
+renew=("$@")
+existing=
+wanted() {
+  if [[ ${#renew[@]} -gt 0 ]]; then
+    [[ " ${renew[*]} " == *" $1 "* ]]
+  else
+    [[ $'\n'$existing$'\n' != *$'\n'$1$'\n'* ]] || {
+      say "   $1 is already set; name it to renew it"
+      return 1
+    }
+  fi
+}
+
 command -v gh >/dev/null 2>&1 || die "the GitHub CLI (gh) is not installed"
 gh auth status >/dev/null 2>&1 || die "gh is not signed in: run gh auth login"
+existing=$(gh secret list -R "$repo" --json name -q '.[].name')
 
 say "1. Repositories"
 if gh repo view "$tap" >/dev/null 2>&1; then
@@ -55,29 +76,49 @@ else
 fi
 
 say ""
-say "2. HOMEBREW_TAP_TOKEN: a fine-grained token that can push to $tap"
-say "   The page opens with the name, owner, expiry, and Contents: write filled in."
-say "   Under Repository access, choose \"Only select repositories\" and pick"
-say "   $tap, then Generate token and copy it."
-open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+homebrew-tap&description=Release+workflow+pushes+the+claudes+formula+to+$tap&target_name=uvw&expires_in=366&contents=write"
-read_token "Homebrew tap"
-push=$(GH_TOKEN=$token gh api "repos/$tap" -q .permissions.push 2>/dev/null) || push=
-[[ $push == true ]] || die "that token cannot push to $tap; check its repository access and Contents permission"
-printf '%s' "$token" | gh secret set HOMEBREW_TAP_TOKEN -R "$repo"
-say "   saved HOMEBREW_TAP_TOKEN on $repo"
+say "2. RELEASE_PLEASE_TOKEN: a fine-grained token for $repo"
+if wanted RELEASE_PLEASE_TOKEN; then
+  say "   The page opens with the name, owner, expiry, and Contents and Pull requests"
+  say "   set to write. Under Repository access, choose \"Only select repositories\""
+  say "   and pick $repo, then Generate token and copy it."
+  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+release-please&description=release-please+opens+the+claudes+release+pull+request&target_name=uvw&expires_in=366&contents=write&pull_requests=write"
+  read_token "release-please"
+  push=$(GH_TOKEN=$token gh api "repos/$repo" -q .permissions.push 2>/dev/null) || push=
+  [[ $push == true ]] || die "that token cannot write to $repo; check its repository access and Contents permission"
+  GH_TOKEN=$token gh api "repos/$repo/pulls?per_page=1" >/dev/null 2>&1 ||
+    die "that token cannot read $repo's pull requests; check its Pull requests permission"
+  printf '%s' "$token" | gh secret set RELEASE_PLEASE_TOKEN -R "$repo"
+  say "   saved RELEASE_PLEASE_TOKEN on $repo"
+fi
 
 say ""
-say "3. WINGET_TOKEN: a classic token with the public_repo and workflow scopes"
-say "   winget's tools open pull requests on microsoft/winget-pkgs from your fork,"
-say "   which only a classic token can do. Check that public_repo and workflow"
-say "   are ticked, set an expiry, then Generate token and copy it."
-open_url "https://github.com/settings/tokens/new?scopes=public_repo,workflow&description=claudes+winget+releases"
-read_token "winget"
-scopes=$(GH_TOKEN=$token gh api -i user 2>/dev/null | tr -d '\r' | sed -n 's/^[Xx]-[Oo][Aa]uth-[Ss]copes: //p') || scopes=
-[[ ",${scopes// /}," == *,public_repo,* ]] || die "that token lacks the public_repo scope (it has: ${scopes:-none})"
-printf '%s' "$token" | gh secret set WINGET_TOKEN -R "$repo"
-say "   saved WINGET_TOKEN on $repo"
+say "3. HOMEBREW_TAP_TOKEN: a fine-grained token that can push to $tap"
+if wanted HOMEBREW_TAP_TOKEN; then
+  say "   The page opens with the name, owner, expiry, and Contents: write filled in."
+  say "   Under Repository access, choose \"Only select repositories\" and pick"
+  say "   $tap, then Generate token and copy it."
+  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+homebrew-tap&description=Release+workflow+pushes+the+claudes+formula+to+$tap&target_name=uvw&expires_in=366&contents=write"
+  read_token "Homebrew tap"
+  push=$(GH_TOKEN=$token gh api "repos/$tap" -q .permissions.push 2>/dev/null) || push=
+  [[ $push == true ]] || die "that token cannot push to $tap; check its repository access and Contents permission"
+  printf '%s' "$token" | gh secret set HOMEBREW_TAP_TOKEN -R "$repo"
+  say "   saved HOMEBREW_TAP_TOKEN on $repo"
+fi
+
+say ""
+say "4. WINGET_TOKEN: a classic token with the public_repo and workflow scopes"
+if wanted WINGET_TOKEN; then
+  say "   winget's tools open pull requests on microsoft/winget-pkgs from your fork,"
+  say "   which only a classic token can do. Check that public_repo and workflow"
+  say "   are ticked, set an expiry, then Generate token and copy it."
+  open_url "https://github.com/settings/tokens/new?scopes=public_repo,workflow&description=claudes+winget+releases"
+  read_token "winget"
+  scopes=$(GH_TOKEN=$token gh api -i user 2>/dev/null | tr -d '\r' | sed -n 's/^[Xx]-[Oo][Aa]uth-[Ss]copes: //p') || scopes=
+  [[ ",${scopes// /}," == *,public_repo,* ]] || die "that token lacks the public_repo scope (it has: ${scopes:-none})"
+  printf '%s' "$token" | gh secret set WINGET_TOKEN -R "$repo"
+  say "   saved WINGET_TOKEN on $repo"
+fi
 unset token
 
 say ""
-say "Done. The release workflow can now publish to $tap and open winget pull requests."
+say "Done."

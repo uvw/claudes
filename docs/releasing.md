@@ -14,9 +14,8 @@ step.
    `feat` bumps the minor version and `fix` the patch while the version is below
    1.0. release-please writes the entry with long lines, so the same workflow
    then formats `docs/changelog.md` in that pull request with Prettier
-   (`.github/workflows/hack/format-changelog.sh`). Without
-   `RELEASE_PLEASE_TOKEN` its push starts no workflows, so it starts CI on the
-   branch itself, and that run needs no approval.
+   (`.github/workflows/hack/format-changelog.sh`). It pushes with
+   `RELEASE_PLEASE_TOKEN`, so the pull request's checks start without approval.
 3. Merging that pull request makes release-please create the `vX.Y.Z` tag and a
    draft release with the changelog as its notes. It then calls
    `.github/workflows/release.yaml` with the tag.
@@ -84,7 +83,8 @@ managers. Each is skipped with a notice when its secret is missing.
 
 `hack/release-tokens.sh` sets both up: it creates the tap and the fork if they
 are missing, opens each token's page with its fields filled in, checks the token
-you paste, and saves it as a secret. Run it again when a token expires.
+you paste, and saves it as a secret. When a token expires, run it again with the
+secret's name, such as `hack/release-tokens.sh WINGET_TOKEN`.
 
 komac adds versions only to a package winget already has, so the first version
 of `uvw.claudes` is submitted by hand, on any machine with komac:
@@ -112,11 +112,11 @@ handles every version after it.
   (`gh release delete vX.Y.Z --cleanup-tag`) and merge the fix. release-please
   then proposes the next patch version, not the deleted one, and keeps the
   deleted version's changelog entry: remove it in the release pull request.
-- **The release pull request's checks wait for approval:** without the
-  `RELEASE_PLEASE_TOKEN` secret, release-please opens the pull request as
-  `github-actions[bot]`, and GitHub holds the workflows it starts until a
-  maintainer approves them. Approve them in the pull request's Checks tab, or
-  approve each waiting run:
+- **The release pull request's checks wait for approval:** without a working
+  `RELEASE_PLEASE_TOKEN` secret, as when it expired, release-please opens the
+  pull request as `github-actions[bot]`, and GitHub holds the workflows it
+  starts until a maintainer approves them. Approve them in the pull request's
+  Checks tab, or approve each waiting run:
 
   ```bash
   gh run list --branch release-please--branches--main--components--claudes \
@@ -160,9 +160,12 @@ moving or recreating the repository.
      -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
    ```
 
-   A `RELEASE_PLEASE_TOKEN` secret, a fine-grained token for this repository
-   with contents and pull requests read and write, is optional. With it, the
-   release pull request's checks start without approval.
+   `RELEASE_PLEASE_TOKEN` is a fine-grained token for this repository with
+   contents and pull requests read and write. With it, release-please opens and
+   updates the release pull request as you, so its checks start without
+   approval. `hack/release-tokens.sh` sets it up with `HOMEBREW_TAP_TOKEN` and
+   `WINGET_TOKEN`, skipping any already set; name a secret to renew it, such as
+   `hack/release-tokens.sh RELEASE_PLEASE_TOKEN`. Each token lasts a year.
 
 4. **Releases:** immutable releases are on
    (`gh api -X PUT repos/uvw/claudes/immutable-releases`).
