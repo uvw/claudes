@@ -53,6 +53,13 @@ ARCH is `amd64` or `arm64`, and Windows archives are `.zip`, the rest `.tar.gz`.
 3. Unpack it and put `claudes` (`claudes.exe` on Windows) in a folder on `PATH`,
    such as `~/.local/bin`. Ask the user which folder when none is obvious.
 
+### Upgrading
+
+`claudes upgrade --check` says whether a newer release is out, and
+`claudes upgrade` installs it in place, after checking it. Ask the user first.
+When claudes came from Homebrew, winget, or `go install`, it prints that tool's
+upgrade command instead; give the user that command.
+
 ### Other ways
 
 - **With Go 1.21 or later** (and `GOTOOLCHAIN` not set to `local`, so Go can

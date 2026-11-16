@@ -146,6 +146,13 @@ With Go 1.21 or later, `go install` builds the latest release into
 go install github.com/uvw/claudes/cmd/claudes@latest
 ```
 
+To upgrade a release you installed, run `claudes upgrade`. It downloads the
+latest release for your computer, checks it as the install script does, and puts
+it in place of the running binary. `claudes upgrade --check` only says whether a
+newer release is out, and `--to v0.1.0` installs a given release, older ones
+included. A claudes installed with Homebrew, winget, or `go install` prints the
+command that upgrades it instead.
+
 Then run `claudes doctor`. To uninstall, delete the binary, and the folders in
 [Files](#files) if you want its settings and park list gone too.
 

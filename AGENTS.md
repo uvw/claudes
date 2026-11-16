@@ -32,6 +32,7 @@ adds what an agent needs on top of them.
 | Atomic writes and lock directories        | `internal/safefile`                                |
 | Colors and the text tables' layout        | `internal/style`                                   |
 | CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`          |
+| `claudes upgrade` and its downloads       | `internal/cli/upgrade.go`, `internal/selfupdate`   |
 | Scripts the workflows run                 | `.github/workflows/hack/`                          |
 | Developer tools, such as the notices file | `hack/`                                            |
 | The agent skill and `claudes skill`       | `skills/claudes/SKILL.md`, `internal/install`      |
