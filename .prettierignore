@@ -1,6 +1,4 @@
 dist
-# release-please writes the changelog in its own format.
-docs/changelog.md
 go.sum
 
 

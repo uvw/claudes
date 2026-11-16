@@ -12,7 +12,11 @@ step.
    open pull request titled `chore(main): release X.Y.Z`. It holds the next
    version and the `docs/changelog.md` entry, worked out from those commits:
    `feat` bumps the minor version and `fix` the patch while the version is below
-   1.0.
+   1.0. release-please writes the entry with long lines, so the same workflow
+   then formats `docs/changelog.md` in that pull request with Prettier
+   (`.github/workflows/hack/format-changelog.sh`). Without
+   `RELEASE_PLEASE_TOKEN` its push starts no workflows, so it starts CI on the
+   branch itself, and that run needs no approval.
 3. Merging that pull request makes release-please create the `vX.Y.Z` tag and a
    draft release with the changelog as its notes. It then calls
    `.github/workflows/release.yaml` with the tag.

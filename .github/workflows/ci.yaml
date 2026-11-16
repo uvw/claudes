@@ -188,7 +188,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
       - run: npx --yes ${{ env.PRETTIER }} --check .
-      - run: npx --yes ${{ env.MARKDOWNLINT }} "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#docs/changelog.md"
+      - run: npx --yes ${{ env.MARKDOWNLINT }} "**/*.md" "#dist" "#.claude/worktrees" "#docs/local"
 
   # Pull requests squash-merge, so the title becomes the commit on main that
   # release-please reads for the version and the changelog.
