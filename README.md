@@ -145,6 +145,17 @@ browser is blocked by Gatekeeper on macOS until you run
 [docs/security.md](docs/security.md) explains how to check a download's
 provenance.
 
+With Homebrew, on macOS or Linux, or winget on Windows, from the release after
+0.1.0 on (winget lists it once Microsoft has reviewed the first one):
+
+```bash
+brew install uvw/tap/claudes
+```
+
+```powershell
+winget install uvw.claudes
+```
+
 With Go 1.21 or later, `go install` builds the latest release into
 `$(go env GOPATH)/bin`, `~/go/bin` by default, and fetches the Go version
 `go.mod` names if yours is older:

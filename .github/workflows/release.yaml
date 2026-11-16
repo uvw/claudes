@@ -9,6 +9,12 @@ on:
         description: The tag to release, such as v0.1.0.
         required: true
         type: string
+    # Both optional: without one, its package manager is skipped.
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        required: false
+      WINGET_TOKEN:
+        required: false
   workflow_dispatch:
     inputs:
       tag:
@@ -199,3 +205,44 @@ jobs:
           fi
           gh release upload "$TAG" dist/* --clobber
           gh release edit "$TAG" --draft=false --latest
+
+  # The package managers point at the published release, so they come after it.
+  homebrew:
+    name: Homebrew tap
+    needs: [eligibility, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Push the formula to uvw/homebrew-tap
+        env:
+          TAG: ${{ inputs.tag }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: bash .github/workflows/hack/homebrew.sh "$TAG" dist/checksums.txt
+
+  winget:
+    name: winget
+    needs: [eligibility, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - name: Open the winget-pkgs pull request
+        env:
+          TAG: ${{ inputs.tag }}
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: bash .github/workflows/hack/winget.sh "$TAG"
