@@ -87,14 +87,16 @@ func (l Lock) Acquire() (release func(), err error) {
 	}
 	delay := l.Delay
 	attempts := max(l.Attempts, 1)
+	var last error
 	for tries := 0; tries < attempts; {
 		err := os.Mkdir(l.Path, 0o755)
 		if err == nil {
 			return l.hold()
 		}
-		if !errors.Is(err, fs.ErrExist) {
+		if !busy(err) {
 			return nil, err
 		}
+		last = err
 		// Breaking an abandoned lock is not a failed attempt, so even the
 		// last attempt gets to take the lock it just freed.
 		if l.breakStale() {
@@ -103,6 +105,13 @@ func (l Lock) Acquire() (release func(), err error) {
 		if tries++; tries < attempts {
 			time.Sleep(delay)
 			delay = min(delay*2, 500*time.Millisecond)
+		}
+	}
+	// A lock folder that never appeared was never held, so the reason the
+	// folder could not be made is the error, not ErrHeld.
+	if !errors.Is(last, fs.ErrExist) {
+		if _, err := os.Lstat(l.Path); err != nil {
+			return nil, last
 		}
 	}
 	return nil, fmt.Errorf("%s is %w: try again", l.Path, ErrHeld)
