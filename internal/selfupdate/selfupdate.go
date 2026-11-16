@@ -158,8 +158,7 @@ func write(path string, r io.Reader) (string, error) {
 		return "", err
 	}
 	if _, err := io.Copy(f, r); err != nil {
-		f.Close()
-		return "", err
+		return "", errors.Join(err, f.Close())
 	}
 	return path, f.Close()
 }
