@@ -59,8 +59,9 @@ func joinNotes(notes ...string) string {
 
 func (app *App) teamCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "team",
-		Short: "See Claude Code agent teams: their leads, teammates, and tasks",
+		Use:     "team",
+		Aliases: []string{"t", "teams"},
+		Short:   "See Claude Code agent teams: their leads, teammates, and tasks",
 		Long: `Commands for Claude Code's agent teams, read from ~/.claude/teams and the shared
 task lists under ~/.claude/tasks. claude agents lists only a team's lead; these
 show its teammates and their tasks too.`,
