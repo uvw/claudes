@@ -124,10 +124,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Every archive the release ships, each on a runner that runs it.
         include:
           - { os: ubuntu-24.04, archive: linux_amd64.tar.gz }
+          - { os: ubuntu-24.04-arm, archive: linux_arm64.tar.gz }
           - { os: macos-15, archive: darwin_arm64.tar.gz }
+          - { os: macos-15-intel, archive: darwin_amd64.tar.gz }
           - { os: windows-2025, archive: windows_amd64.zip }
+          - { os: windows-11-arm, archive: windows_arm64.zip }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     permissions:

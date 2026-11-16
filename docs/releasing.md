@@ -23,9 +23,10 @@ step.
    2. **CI:** the whole of `ci.yaml` on the tag.
    3. **Build:** goreleaser builds every archive, `checksums.txt`, and one SBOM
       per archive, but publishes nothing.
-   4. **Smoke:** each OS unpacks its own archive and runs
-      `.github/workflows/hack/smoke.sh`, checking that `--version` reports the
-      tag.
+   4. **Smoke:** all six archives, each on a runner of its own OS and
+      architecture, are unpacked and run through
+      `.github/workflows/hack/smoke.sh`, which checks that `--version` reports
+      the tag, then installed with their install script.
    5. **Attest:** build provenance for every file in `checksums.txt`.
    6. **Publish:** uploads the assets to the draft and publishes it.
 
