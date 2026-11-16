@@ -27,7 +27,30 @@ Run `claudes --version`, then `claudes skill --help`. If `claudes` is missing,
 or `skill --help` prints the help of `claude agents` instead, claudes is not
 installed or is too old. Ask the user before installing or updating it.
 
-### From the latest release (preferred)
+### With the install script (preferred)
+
+The install script downloads the archive for this computer from the latest
+release, checks it against `checksums.txt` (and its build provenance, when `gh`
+is signed in), installs it, and prints the next steps. Running it again
+upgrades.
+
+On macOS and Linux it installs into `~/.local/bin`; `sh -s -- --dir FOLDER`
+picks another:
+
+```bash
+curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh | sh
+```
+
+On Windows, in PowerShell, it installs into `%LOCALAPPDATA%\Programs\claudes`
+and adds that folder to the user's `PATH`:
+
+```powershell
+irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
+```
+
+If the script is not there (a release older than the script), install by hand.
+
+### From the latest release, by hand
 
 Each release at <https://github.com/uvw/claudes/releases> carries one archive
 per platform, `claudes_VERSION_OS_ARCH`: OS is `darwin`, `linux`, or `windows`,
