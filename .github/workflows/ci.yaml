@@ -50,10 +50,16 @@ jobs:
         with:
           # A release run checks the tag it builds.
           ref: ${{ inputs.ref || github.ref }}
+          # macOS also builds the snapshot, and goreleaser reads the history
+          # for its version.
+          fetch-depth: ${{ runner.os != 'macOS' && 1 || 0 }}
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+          # macOS also builds the release binary, which uses no cache, so a
+          # poisoned cache cannot reach it.
+          cache: ${{ runner.os != 'macOS' }}
       - name: gofmt
         if: runner.os != 'Windows'
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
@@ -70,13 +76,31 @@ jobs:
       - run: go run ${{ env.STATICCHECK }} ./...
       - if: runner.os == 'Linux'
         run: go run ${{ env.GOVULNCHECK }} ./...
+      # macOS runners can take most of an hour to arrive, so the macOS release
+      # build smoke runs here, in the one macOS job, instead of in the smoke
+      # job.
+      # The setup-go cache is off on macOS, which zizmor cannot read from the
+      # expression, and this snapshot is never published.
+      - name: Release build (macOS)
+        if: runner.os == 'macOS'
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0 # zizmor: ignore[cache-poisoning]
+        with:
+          version: v2.20.2
+          args: build --snapshot --clean --single-target --output dist/claudes
+      - name: Run the release binary (macOS)
+        if: runner.os == 'macOS'
+        run: bash .github/workflows/hack/smoke.sh dist/claudes
+      - name: Install it with install.sh (macOS)
+        if: runner.os == 'macOS'
+        run: bash .github/workflows/hack/install-test.sh dist/claudes
 
   smoke:
     name: Release build smoke (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        # macOS runs these steps in its Go job.
+        os: [ubuntu-24.04, windows-2025]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
