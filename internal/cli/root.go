@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -26,6 +27,7 @@ import (
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
 	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/selfupdate"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/target"
@@ -102,6 +104,14 @@ type App struct {
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
 	Which func(file string) (string, error)
+	// HTTP downloads releases for claudes upgrade, from ReleasesURL.
+	HTTP        *http.Client
+	ReleasesURL string
+	// Executable is the path of the running claudes, as os.Executable gives.
+	Executable func() (string, error)
+	// Provenance checks a downloaded archive's build provenance, and says what
+	// it found; fromGitHub is whether the archive came from GitHub.
+	Provenance func(ctx context.Context, archive string, fromGitHub bool) (string, error)
 	// CacheDir holds the cached `claude --version`; "" turns the cache off.
 	CacheDir string
 	// HostID is the session running claudes, if any. It is handled last and
@@ -170,12 +180,16 @@ func newApp() *App {
 		Interrupt: func(ctx context.Context) (context.Context, context.CancelFunc) {
 			return signal.NotifyContext(ctx, os.Interrupt)
 		},
-		Which:   exec.LookPath,
-		Chdir:   os.Chdir,
-		HostID:  os.Getenv("CLAUDE_CODE_SESSION_ID"),
-		HostJob: hostJob(os.Getenv("CLAUDE_JOB_DIR")),
-		Environ: os.Environ,
+		Which:       exec.LookPath,
+		Chdir:       os.Chdir,
+		HTTP:        &http.Client{Timeout: 5 * time.Minute},
+		ReleasesURL: selfupdate.Releases,
+		Executable:  os.Executable,
+		HostID:      os.Getenv("CLAUDE_CODE_SESSION_ID"),
+		HostJob:     hostJob(os.Getenv("CLAUDE_JOB_DIR")),
+		Environ:     os.Environ,
 	}
+	app.Provenance = app.ghProvenance
 	client := claude.NewClient()
 	client.Log = app.log()
 	app.Agents = client
@@ -453,6 +467,7 @@ same as Ctrl+T in agent view.`,
 		app.teamCommand(),
 		app.cdCommand(),
 		app.initCommand(),
+		app.upgradeCommand(),
 	)
 	// pwsh names PowerShell here, as in claudes init pwsh. The completion
 	// scripts write to the output set when they are made, so set it first.
