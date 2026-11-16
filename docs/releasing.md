@@ -60,6 +60,41 @@ curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh |
   sh -s -- --dir "$(mktemp -d)"
 ```
 
+## Package managers
+
+Once a release is published, two jobs in the release workflow update the package
+managers. Each is skipped with a notice when its secret is missing.
+
+1. **Homebrew:** `.github/workflows/hack/homebrew.sh` writes
+   `Formula/claudes.rb` from `checksums.txt`, for macOS and Linux on Intel and
+   ARM, and pushes it to [uvw/homebrew-tap](https://github.com/uvw/homebrew-tap)
+   with `HOMEBREW_TAP_TOKEN`, a fine-grained token that can write that
+   repository's contents.
+2. **winget:** `.github/workflows/hack/winget.sh` runs
+   [komac](https://github.com/russellbanks/Komac), pinned by version and
+   checksum, to open a pull request on microsoft/winget-pkgs from the
+   uvw/winget-pkgs fork, with `WINGET_TOKEN`. That must be a classic token with
+   `public_repo`: a fine-grained one cannot open pull requests on another
+   owner's public repository.
+
+`hack/release-tokens.sh` sets both up: it creates the tap and the fork if they
+are missing, opens each token's page with its fields filled in, checks the token
+you paste, and saves it as a secret. Run it again when a token expires.
+
+komac adds versions only to a package winget already has, so the first version
+of `uvw.claudes` is submitted by hand, on any machine with komac:
+
+```bash
+GITHUB_TOKEN=<the winget token> komac new uvw.claudes --version X.Y.Z \
+  --urls https://github.com/uvw/claudes/releases/download/vX.Y.Z/claudes_X.Y.Z_windows_amd64.zip \
+         https://github.com/uvw/claudes/releases/download/vX.Y.Z/claudes_X.Y.Z_windows_arm64.zip
+```
+
+komac asks for the rest: publisher `uvw`, package name `claudes`, license MIT,
+and the portable `claudes.exe` inside each zip, with the command alias
+`claudes`. Microsoft reviews the first pull request by hand; the release job
+handles every version after it.
+
 ## When it fails
 
 - **A workflow failed before publish:** the draft and the tag exist, and nothing
