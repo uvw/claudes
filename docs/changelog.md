@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/uvw/claudes/compare/v0.2.0...v0.2.1) (2026-11-16)
+
+### Features
+
+- **cli:** answer to t and teams for claudes team
+  ([#45](https://github.com/uvw/claudes/issues/45))
+  ([1a0ffda](https://github.com/uvw/claudes/commit/1a0ffdaa0821c85b7fcd04722b33b759c6586eb2))
+
+### Bug fixes
+
+- **safefile:** wait for a lock that another process is removing on windows
+  ([#48](https://github.com/uvw/claudes/issues/48))
+  ([3a97557](https://github.com/uvw/claudes/commit/3a975572711fcd4a2d0a3592634a4e4502d358ee))
+
 ## [0.2.0](https://github.com/uvw/claudes/compare/v0.1.0...v0.2.0) (2026-11-16)
 
 ### Features
