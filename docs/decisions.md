@@ -344,7 +344,7 @@ is wrong; and rewriting the folder recorded inside the transcript, which
 
 ## 21. `claudes cd` is a shell function
 
-`claudes init bash|zsh|pwsh` prints a function named `claudes` that handles
+`claudes init bash|zsh|fish|pwsh` prints a function named `claudes` that handles
 `claudes cd NAME` in the shell and passes every other command to the program.
 Without it, `claudes cd` explains how to load it.
 

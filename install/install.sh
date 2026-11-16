@@ -159,6 +159,7 @@ say "Next steps, each optional:"
 case $(basename "${SHELL:-sh}") in
 zsh) say "  claudes cd:   add  eval \"\$(claudes init zsh)\"  to ~/.zshrc" ;;
 bash) say "  claudes cd:   add  eval \"\$(claudes init bash)\"  to ~/.bashrc" ;;
+fish) say "  claudes cd:   add  claudes init fish | source  to ~/.config/fish/config.fish" ;;
 esac
 say "  completion:   see https://github.com/$repo#shell-setup"
 say "  agent skill:  claudes skill --install"

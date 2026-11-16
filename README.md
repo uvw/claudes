@@ -195,11 +195,11 @@ source <(claudes completion bash)
 eval "$(claudes init bash)"
 ```
 
-fish, in `~/.config/fish/config.fish`, for completion only; `claudes cd` has no
-fish function yet:
+fish, in `~/.config/fish/config.fish`:
 
 ```fish
 claudes completion fish | source
+claudes init fish | source
 ```
 
 PowerShell, in `$PROFILE`:
