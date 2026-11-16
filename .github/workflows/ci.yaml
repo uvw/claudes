@@ -42,7 +42,10 @@ jobs:
         # procs, the claude agents handoff, and resume commands have a file per
         # platform. Runner images are pinned so an image change is a deliberate
         # update, not a surprise.
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        # macOS runs on Intel: GitHub's Apple silicon runners are short on
+        # capacity and drop queued jobs, and no claudes code differs between
+        # the two. Releases still test the arm64 archive on Apple silicon.
+        os: [ubuntu-24.04, macos-15-intel, windows-2025]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
