@@ -275,6 +275,7 @@ type harness struct {
 	terminated []int
 	execs      [][]string
 	chdirs     []string
+	trashed    []string
 	sleeps     []time.Duration
 	hostPID    int
 	now        time.Time
@@ -349,6 +350,10 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		Chdir: func(dir string) error {
 			h.chdirs = append(h.chdirs, dir)
 			return nil
+		},
+		Trash: func(path string) error {
+			h.trashed = append(h.trashed, path)
+			return os.RemoveAll(path)
 		},
 		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Home: h.root, Moves: filepath.Join(h.root, "state", "moves.json")},
 		Teams:       teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},

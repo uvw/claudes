@@ -3,6 +3,7 @@ package transcripts
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -84,6 +85,10 @@ func TestLeftoversAreSessionFoldersWithNoTranscript(t *testing.T) {
 		t.Fatalf("leftovers %+v", got)
 	}
 	for i := range want {
+		if got[i].Modified.IsZero() {
+			t.Fatalf("leftover %d has no change time", i)
+		}
+		got[i].Modified = time.Time{}
 		if got[i] != want[i] {
 			t.Fatalf("leftover %d: %+v, want %+v", i, got[i], want[i])
 		}
@@ -104,5 +109,77 @@ func TestAddAddsEveryPart(t *testing.T) {
 	d.Add(Disk{Transcript: 10, Sidecar: 20, Copies: 30, FileHistory: 40, Total: 100})
 	if want := (Disk{Transcript: 11, Sidecar: 22, Copies: 33, FileHistory: 44, Total: 110}); d != want {
 		t.Fatalf("sum %+v, want %+v", d, want)
+	}
+}
+
+func TestEmptyIsATranscriptWithNoConversation(t *testing.T) {
+	dir := t.TempDir()
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	empty := filepath.Join(dir, "-a", sid+".jsonl")
+	write(t, empty, at,
+		line(t, map[string]any{"type": "system", "sessionId": sid, "cwd": "/a"}),
+		line(t, map[string]any{"type": "last-prompt", "lastPrompt": "from before", "sessionId": sid}))
+	talked := filepath.Join(dir, "-a", "0f000000-0000-0000-0000-000000000000.jsonl")
+	write(t, talked, at, line(t, map[string]any{"type": "assistant", "sessionId": sid, "cwd": "/a"}))
+	big := filepath.Join(dir, "-a", "0e000000-0000-0000-0000-000000000000.jsonl")
+	write(t, big, at, line(t, map[string]any{"type": "system", "sessionId": sid, "cwd": "/a", "pad": strings.Repeat("x", headSize)}))
+
+	for path, want := range map[string]bool{empty: true, talked: false, big: false} {
+		s, err := summarize(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Empty != want {
+			t.Errorf("%s: Empty %v, want %v", filepath.Base(path), s.Empty, want)
+		}
+	}
+}
+
+func TestSessionFilesListsWhatExists(t *testing.T) {
+	root := t.TempDir()
+	st := Store{Dir: filepath.Join(root, "projects"), Home: root}
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	rec := line(t, map[string]any{"type": "user", "sessionId": sid, "cwd": "/a"})
+	write(t, filepath.Join(st.Dir, "-a", sid+".jsonl"), at, rec)
+	write(t, filepath.Join(st.Dir, "-b", sid+".jsonl"), at.Add(time.Hour), rec)
+	write(t, filepath.Join(st.Dir, "-a", sid, "tool-results", "r.txt"), at, "r")
+	write(t, filepath.Join(root, "file-history", sid, "f@v1"), at, "v1")
+	write(t, filepath.Join(root, "debug", sid+".txt"), at, "log")
+
+	list, err := st.List()
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list %v, err %v", list, err)
+	}
+	want := []string{
+		filepath.Join(st.Dir, "-b", sid+".jsonl"),
+		filepath.Join(st.Dir, "-a", sid+".jsonl"),
+		filepath.Join(st.Dir, "-a", sid),
+		filepath.Join(root, "file-history", sid),
+		filepath.Join(root, "debug", sid+".txt"),
+	}
+	if got := st.SessionFiles(list[0]); !slices.Equal(got, want) {
+		t.Fatalf("files\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestForgetMoveDropsOnlyThatCopy(t *testing.T) {
+	root := t.TempDir()
+	st := Store{Dir: filepath.Join(root, "projects"), Moves: filepath.Join(root, "moves.json")}
+	a, b := filepath.Join(st.Dir, "-a", sid+".jsonl"), filepath.Join(st.Dir, "-b", sid+".jsonl")
+	if err := st.recordMove(a, sid, "/a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.recordMove(b, sid, "/b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.ForgetMove(a, sid); err != nil {
+		t.Fatal(err)
+	}
+	moves, err := st.loadMoves()
+	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)] != "/b" {
+		t.Fatalf("moves %v, err %v", moves, err)
+	}
+	if err := st.ForgetMove(a, sid); err != nil {
+		t.Fatalf("forgetting twice: %v", err)
 	}
 }
