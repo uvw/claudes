@@ -6,7 +6,8 @@ import "os"
 
 // swap puts staged in place of exe. Windows cannot overwrite a running
 // program, but it can rename one, so exe moves aside to exe.old first. The
-// .old file is removed the next time swap runs, once nothing runs it.
+// .old file is removed at once when nothing runs it, and otherwise the next
+// time swap runs.
 func swap(staged, exe string) error {
 	old := exe + ".old"
 	os.Remove(old)
@@ -17,5 +18,6 @@ func swap(staged, exe string) error {
 		os.Rename(old, exe)
 		return err
 	}
+	os.Remove(old)
 	return nil
 }
