@@ -22,8 +22,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      # Starts CI on the release pull request after formatting its changelog.
-      actions: write
     outputs:
       created: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
@@ -50,7 +48,6 @@ jobs:
         if: steps.release.outputs.release_created != 'true'
         env:
           TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
-          OWN_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
           GH_TOKEN: ${{ github.token }}
           # The runner has no git identity; the commit is the workflow's own.
           GIT_AUTHOR_NAME: github-actions[bot]
