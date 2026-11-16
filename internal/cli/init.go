@@ -38,26 +38,40 @@ function claudes {
 }
 `
 
-var shellInits = map[string]string{"bash": posixInit, "zsh": posixInit, "pwsh": pwshInit, "powershell": pwshInit}
+// fishInit mirrors posixInit. Fish sets $status after a command substitution,
+// and string collect keeps a folder with a trailing newline or spaces whole.
+const fishInit = `# claudes shell integration: claudes cd NAME changes to a session's folder.
+function claudes --wraps claudes --description 'claudes, with claudes cd NAME'
+    if test (count $argv) -gt 0; and test "$argv[1]" = cd
+        set -l dir (command claudes session where --one -o text -- $argv[2..-1] | string collect)
+        and cd -- $dir
+    else
+        command claudes $argv
+    end
+end
+`
+
+var shellInits = map[string]string{"bash": posixInit, "zsh": posixInit, "fish": fishInit, "pwsh": pwshInit, "powershell": pwshInit}
 
 func (app *App) initCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init bash|zsh|pwsh",
+		Use:   "init bash|zsh|fish|pwsh",
 		Short: "Print the shell integration that makes claudes cd work",
 		Long: `Print a shell function that makes claudes cd NAME change your shell's folder
 to a session's folder. Load it from your shell's profile:
 
   bash:  eval "$(claudes init bash)"
   zsh:   eval "$(claudes init zsh)"
+  fish:  claudes init fish | source
   pwsh:  claudes init pwsh | Out-String | Invoke-Expression
 
 Every other command runs claudes as before.`,
 		Args:      cobra.ExactArgs(1),
-		ValidArgs: []string{"bash", "zsh", "pwsh"},
+		ValidArgs: []string{"bash", "zsh", "fish", "pwsh"},
 		RunE: func(_ *cobra.Command, args []string) error {
 			script, ok := shellInits[args[0]]
 			if !ok {
-				return fmt.Errorf("no integration for %q: use bash, zsh, or pwsh", args[0])
+				return fmt.Errorf("no integration for %q: use bash, zsh, fish, or pwsh", args[0])
 			}
 			fmt.Fprint(app.Out, script)
 			return nil
@@ -77,6 +91,7 @@ func (app *App) cdCommand() *cobra.Command {
 			return errors.New(`claudes cd needs the shell integration, since a program cannot change its shell's folder. Add one line to your shell's profile:
   bash:  eval "$(claudes init bash)"
   zsh:   eval "$(claudes init zsh)"
+  fish:  claudes init fish | source
   pwsh:  claudes init pwsh | Out-String | Invoke-Expression`)
 		},
 	}
