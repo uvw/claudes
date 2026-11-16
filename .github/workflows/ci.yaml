@@ -136,6 +136,29 @@ jobs:
         shell: pwsh
         run: .github/workflows/hack/install-test.ps1 -Binary dist/claudes.exe
 
+  lint:
+    name: golangci-lint (${{ matrix.goos }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # The platform files only build for their own GOOS, so each is linted.
+        goos: [linux, darwin, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        env:
+          GOOS: ${{ matrix.goos }}
+        with:
+          version: v2.15.0
+
   licenses:
     name: Licenses and notices
     runs-on: ubuntu-24.04
@@ -186,7 +209,7 @@ jobs:
   all-green:
     name: CI (all green)
     if: always()
-    needs: [go, smoke, licenses, docs, pr-title]
+    needs: [go, smoke, lint, licenses, docs, pr-title]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

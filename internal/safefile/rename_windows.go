@@ -18,7 +18,8 @@ func rename(from, to string) error {
 	var err error
 	for range renameAttempts {
 		err = os.Rename(from, to)
-		if err == nil || !(errors.Is(err, windows.ERROR_ACCESS_DENIED) || errors.Is(err, windows.ERROR_SHARING_VIOLATION)) {
+		held := errors.Is(err, windows.ERROR_ACCESS_DENIED) || errors.Is(err, windows.ERROR_SHARING_VIOLATION)
+		if err == nil || !held {
 			return err
 		}
 		time.Sleep(delay)
