@@ -492,6 +492,7 @@ entries, so a session Claude Code moved resumes from its new folder.
 
 With Claude Code's agent teams on, a session can lead teammates that work in the
 same process. `claude agents` lists only the lead; claudes shows the rest.
+`claudes t` and `claudes teams` are short for `claudes team`.
 
 ```console
 $ claudes team ls
