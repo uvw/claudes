@@ -3,6 +3,10 @@
 Manage your Claude Code sessions from the command line: list, restart, pause,
 resume, follow, and find them.
 
+![claudes listing sessions, restarting and pinging the busy ones while the
+pinned one stays put, pausing and resuming them, then sizing and cleaning up
+past sessions](docs/demo/demo.gif)
+
 You run Claude Code sessions in the background (`claude --bg`), and
 `claude agents` lists them. Then Claude Code updates, and every running session
 stays on the old version until it restarts. Or you reboot, and every session
