@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/shell"
+	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/transcripts"
 )
 
 func (app *App) sessionShowCommand() *cobra.Command {
@@ -42,6 +44,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				{"version", p.Version},
 				{"last prompt", firstLine(p.LastPrompt, 100)},
 				{"transcript", p.Path},
+				{"size", sizeDetail(p.Disk)},
 			} {
 				fmt.Fprintf(tw, "%s:\t%s\n", kv[0], dash(shell.Printable(kv[1])))
 			}
@@ -72,4 +75,10 @@ func firstLine(s string, limit int) string {
 		return s + " …"
 	}
 	return s
+}
+
+// sizeDetail is a session's size, with what makes it up.
+func sizeDetail(d transcripts.Disk) string {
+	return fmt.Sprintf("%s (transcript %s, sidecar %s, copies %s, file history %s)", style.Size(d.Total),
+		style.Size(d.Transcript), style.Size(d.Sidecar), style.Size(d.Copies), style.Size(d.FileHistory))
 }

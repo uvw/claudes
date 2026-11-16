@@ -19,6 +19,8 @@ type pastSession struct {
 	ShortID string `json:"id"`
 	transcripts.Session
 	Running bool `json:"running"`
+	// Disk is the space the session takes on disk.
+	Disk transcripts.Disk `json:"disk"`
 }
 
 func (app *App) sessionCommand() *cobra.Command {
@@ -32,7 +34,7 @@ for session mv, which copies one.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(app.sessionLsCommand(), app.sessionShowCommand(), app.sessionWhereCommand(),
+	cmd.AddCommand(app.sessionLsCommand(), app.sessionDuCommand(), app.sessionShowCommand(), app.sessionWhereCommand(),
 		alone(app.sessionResumeCommand()), alone(app.sessionMvCommand()))
 	return cmd
 }
@@ -57,9 +59,10 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 	} else {
 		app.warn("claudes: cannot tell which sessions are running: %v", err)
 	}
+	disks := app.Transcripts.Measure(list)
 	out := make([]pastSession, 0, len(list))
-	for _, t := range list {
-		p := pastSession{ShortID: t.ID(), Session: t}
+	for i, t := range list {
+		p := pastSession{ShortID: t.ID(), Session: t, Disk: disks[i]}
 		if s, ok := live[t.SessionID]; ok {
 			p.Running = true
 			// claude agents names an unnamed session by its job id.

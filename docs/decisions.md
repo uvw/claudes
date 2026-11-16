@@ -34,6 +34,7 @@ current.
 | [23](#23-one-claudes-changes-sessions-at-a-time-and-exit-codes-say-why-one-stopped) | One claudes changes sessions at a time, and exit codes say why one stopped |
 | [24](#24-colors-come-from-lipgloss-and-only-reach-a-terminal)                       | Colors come from lipgloss, and only reach a terminal                       |
 | [25](#25-claudes-reads-agent-teams-from-their-files-and-guards-their-leads)         | claudes reads agent teams from their files, and guards their leads         |
+| [26](#26-every-session-listing-measures-disk-use)                                   | Every session listing measures disk use                                    |
 
 ## 1. Go, in one static binary
 
@@ -437,3 +438,23 @@ Weighed: refusing to restart a lead at all, which blocks the emergency use;
 reading the undocumented `inFlight` field of a job's `state.json`, which the
 team config makes unnecessary; and leaving team folders to Claude Code, which
 kept them for weeks here.
+
+## 26. Every session listing measures disk use
+
+`claudes session` measures each session's disk use whenever it lists sessions:
+the transcript, its sidecar folder of subagent transcripts and tool results, the
+older copies `session mv` left, and Claude Code's backups of the files it edited
+under `~/.claude/file-history`. Sizes are bytes of file content, links are never
+followed, and `session du` (or `df`) adds them up by project folder. Leftovers,
+the sidecar and file-history folders whose transcript is gone, count only when
+nothing narrows the sessions.
+
+Why: `session ls` already reads every transcript, and measuring the rest adds
+about 50 ms to 0.5 s for 436 sessions here, so a SIZE column costs little and is
+always there when the disk fills. File content is the same on every platform,
+where allocated blocks are not.
+
+Weighed: a `session ls --size` flag, which hides the column until someone thinks
+to ask; and only `session du`, which totals folders but cannot say which session
+is big. The command is `du`, since it measures files, not free space; `df` is
+there for those who reach for it.

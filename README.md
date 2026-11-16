@@ -428,6 +428,14 @@ recent ones. `session where --one` fails unless exactly one session matches, for
 scripts. `session resume` refuses a session that is still running, since
 resuming it would start a copy; `--bg` resumes in the background.
 
+`session ls` shows the space each session takes on disk: its transcript, its
+subagent transcripts and tool results, older copies `session mv` left, and
+Claude Code's backups of the files it edited, under `~/.claude/file-history`.
+`--sort size` lists the biggest first, and `session show` breaks one session's
+size down. `session du` (or `df`) adds it all up by project folder, biggest
+first, and counts leftovers: subagent and file-history folders whose transcript
+is gone.
+
 `session mv` (or `move`) copies a session's transcript, with its subagent
 transcripts and tool results, into the project folder Claude Code uses for
 `FOLDER`, which must already exist. Use it after cloning a repository

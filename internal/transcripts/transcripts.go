@@ -31,6 +31,9 @@ import (
 // Store is the projects folder.
 type Store struct {
 	Dir string
+	// Home is Claude Code's folder, which holds each session's file history,
+	// or "" to leave it out.
+	Home string
 	// Moves is claudes' own record of the folders session mv copied
 	// sessions to, or "" for none. A copy's records still name the folder it
 	// came from until it is resumed, and a project folder's name cannot be
@@ -505,7 +508,7 @@ func DefaultStore() (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	st := Store{Dir: filepath.Join(home, "projects")}
+	st := Store{Dir: filepath.Join(home, "projects"), Home: home}
 	if state, err := paths.State(); err == nil {
 		st.Moves = filepath.Join(state, "moves.json")
 	}

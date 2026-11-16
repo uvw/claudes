@@ -420,3 +420,98 @@ func TestSessionCommandsSeeAFolderRecordedThroughALink(t *testing.T) {
 	h.fails(t, "session", "mv", "plan", real)
 	assertContains(t, h.err.String(), "already lives under")
 }
+
+func TestSessionLsShowsSizesAndSortsBySize(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	h.transcript(t, "small", work, time.Hour)
+	big := h.transcript(t, "big", work, 48*time.Hour)
+	writeFile(t, filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(work), big, "tool-results", "r.txt"), strings.Repeat("x", 4096))
+	writeFile(t, filepath.Join(h.root, "file-history", big, "f@v1"), strings.Repeat("y", 1024))
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "ls")
+	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
+	if !strings.Contains(lines[0], "SIZE") || !strings.HasPrefix(lines[1], "small") {
+		t.Fatalf("table:\n%s", h.out)
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "ls", "--sort", "size")
+	lines = strings.Split(strings.TrimSpace(h.out.String()), "\n")
+	if !strings.HasPrefix(lines[1], "big") || !strings.Contains(lines[1], "5.") {
+		t.Fatalf("--sort size:\n%s", h.out)
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "ls", "big", "-o", "json")
+	var rows []pastSession
+	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil {
+		t.Fatal(err)
+	}
+	if d := rows[0].Disk; len(rows) != 1 || d.Sidecar != 4096 || d.FileHistory != 1024 || d.Total != d.Transcript+5120 {
+		t.Fatalf("rows %+v", rows)
+	}
+
+	h.fails(t, "session", "ls", "--sort", "name")
+	if !strings.Contains(h.err.String(), "--sort takes active or size") {
+		t.Fatalf("stderr:\n%s", h.err)
+	}
+}
+
+func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
+	h := newHarness(t)
+	work, other := h.folder("work"), h.folder("other")
+	a := h.transcript(t, "a", work, time.Hour)
+	h.transcript(t, "b", work, 2*time.Hour)
+	h.transcript(t, "c", other, 3*time.Hour)
+	writeFile(t, filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(work), a, "tool-results", "r.txt"), strings.Repeat("x", 2048))
+	orphan := sessionID("orphan")
+	writeFile(t, filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(other), orphan, "tool-results", "r.txt"), strings.Repeat("z", 300))
+	writeFile(t, filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(other), "memory", "MEMORY.md"), "notes")
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "du", "-o", "json")
+	var report duReport
+	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Folders) != 2 || report.Folders[0].Folder != work || report.Folders[0].Sessions != 2 ||
+		report.Folders[0].Disk.Sidecar != 2048 || report.Folders[1].Sessions != 1 {
+		t.Fatalf("folders %+v", report.Folders)
+	}
+	if len(report.Leftovers) != 1 || report.Leftovers[0].SessionID != orphan || report.Leftovers[0].Size != 300 {
+		t.Fatalf("leftovers %+v", report.Leftovers)
+	}
+	if want := report.Folders[0].Disk.Total + report.Folders[1].Disk.Total + 300; report.Total != want {
+		t.Fatalf("total %d, want %d", report.Total, want)
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "df")
+	text := h.out.String()
+	if !strings.Contains(text, "1 leftover folder(s)") || !strings.Contains(text, "all") {
+		t.Fatalf("df:\n%s", text)
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "du", "--in", other, "-o", "json")
+	report = duReport{}
+	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Folders) != 1 || len(report.Leftovers) != 0 {
+		t.Fatalf("--in counted other folders or leftovers: %+v", report)
+	}
+}
+
+func TestSessionShowPrintsTheSize(t *testing.T) {
+	h := newHarness(t)
+	h.transcript(t, "plan", h.folder("work"), time.Hour)
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "show", "plan")
+	if !strings.Contains(h.out.String(), "size:") || !strings.Contains(h.out.String(), "file history 0B") {
+		t.Fatalf("show:\n%s", h.out)
+	}
+}
