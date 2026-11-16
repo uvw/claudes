@@ -18,6 +18,10 @@
     { "type": "chore", "section": "Chores", "hidden": true }
   ],
   "packages": {
-    ".": { "package-name": "claudes", "changelog-path": "docs/changelog.md" }
+    ".": {
+      "package-name": "claudes",
+      "changelog-path": "docs/changelog.md",
+      "release-as": "0.2.1"
+    }
   }
 }
