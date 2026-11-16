@@ -165,3 +165,13 @@ func killChild(c child) {
 		_ = windows.TerminateProcess(h, 1)
 	}
 }
+
+// Executable is the path of the program a process runs.
+func Executable(pid int) (string, error) {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	if err != nil {
+		return "", err
+	}
+	defer windows.CloseHandle(h)
+	return imagePath(h)
+}

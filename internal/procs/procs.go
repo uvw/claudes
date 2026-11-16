@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -71,4 +72,28 @@ func Running(pid int, started time.Time) bool {
 		return false
 	}
 	return started.IsZero() || now.Equal(started)
+}
+
+// versionDir matches the native installer's layout, where each Claude Code
+// version is a file named for it under a versions folder, such as
+// ~/.local/share/claude/versions/2.1.326.
+var versionDir = regexp.MustCompile(`(?i)[/\\]claude[/\\]versions[/\\](\d+\.\d+\.\d+)(\.exe)?$`)
+
+// VersionOf is the Claude Code version a native-installer executable path
+// names, or "" for any other path, such as node running the npm package.
+func VersionOf(executable string) string {
+	if m := versionDir.FindStringSubmatch(executable); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+// RunningVersion is the Claude Code version the process pid runs, read from
+// its executable's path, or "" when that path does not say.
+func RunningVersion(pid int) string {
+	exe, err := Executable(pid)
+	if err != nil {
+		return ""
+	}
+	return VersionOf(exe)
 }

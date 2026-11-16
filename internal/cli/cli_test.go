@@ -510,6 +510,36 @@ func TestLsMarksSessionsBehindTheInstalledVersion(t *testing.T) {
 	assertContains(t, h.out.String(), "2.1.322 (old)")
 }
 
+func TestTheRunningExecutableOutranksAStaleCliVersion(t *testing.T) {
+	h := newHarness(t)
+	respawned, unknown := h.bg("respawned", "idle"), h.bg("npm", "idle")
+	h.agents.snapshots = [][]claude.Session{{respawned, unknown}}
+	// Claude Code keeps the old cliVersion until a respawned session takes a
+	// turn; the executable it runs already names the new version.
+	writeState(t, h, respawned.JobID, "2.1.322")
+	writeState(t, h, unknown.JobID, "2.1.322")
+	h.app.RunningVersion = func(pid int) string {
+		if pid == respawned.PID {
+			return "2.1.325"
+		}
+		return ""
+	}
+
+	h.ok(t, "ls")
+	out := h.out.String()
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(line, "respawned") && strings.Contains(line, "(old)"):
+			t.Fatalf("a session running the installed version is marked old:\n%s", out)
+		case strings.Contains(line, "npm") && !strings.Contains(line, "2.1.322 (old)"):
+			t.Fatalf("a session with no version in its path lost its cliVersion:\n%s", out)
+		}
+	}
+
+	h.ok(t, "restart", "--outdated")
+	assertCalls(t, h, "respawn "+unknown.JobID)
+}
+
 func writeState(t *testing.T, h *harness, jobID, cliVersion string) {
 	t.Helper()
 	dir := filepath.Join(h.app.Jobs.Dir, jobID)

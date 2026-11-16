@@ -83,7 +83,7 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	}
 	rows := make([]row, 0, len(sessions))
 	for _, s := range sessions {
-		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.Jobs.Version(s.JobID), Teammates: app.Teams.Teammates(s.SessionID)}
+		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
 		rows = append(rows, r)
 	}

@@ -85,6 +85,20 @@ func TestOutdatedWarnsWhenNoVersionCanBeRead(t *testing.T) {
 	assertContains(t, h.err.String(), "cannot read the Claude Code version of any session")
 }
 
+func TestOutdatedWithEverySessionPinnedDoesNotWarn(t *testing.T) {
+	h := newHarness(t)
+	p := h.bg("pinned", "idle")
+	h.agents.snapshots = [][]claude.Session{{p}}
+	h.pin(t, p)
+
+	h.ok(t, "restart", "--outdated")
+
+	assertCalls(t, h)
+	if strings.Contains(h.err.String(), "cannot read the Claude Code version") {
+		t.Fatalf("warned about versions with no session to check:\n%s", h.err)
+	}
+}
+
 func TestHomeShort(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

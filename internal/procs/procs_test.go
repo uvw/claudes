@@ -266,3 +266,19 @@ func TestRunningNoticesAReusedPID(t *testing.T) {
 		t.Fatal("a process that exited still counts")
 	}
 }
+
+func TestVersionOf(t *testing.T) {
+	for path, want := range map[string]string{
+		"/Users/me/.local/share/claude/versions/2.1.326":       "2.1.326",
+		"/home/me/.local/share/claude/versions/2.1.326":        "2.1.326",
+		`C:\Users\me\.local\share\claude\versions\2.1.326.exe`: "2.1.326",
+		"/opt/homebrew/bin/node":                               "",
+		"/usr/local/bin/claude":                                "",
+		"/Users/me/.local/share/claude/versions/2.1.326/extra": "",
+		"/Users/me/notclaude/versions/2.1.326":                 "",
+	} {
+		if got := VersionOf(path); got != want {
+			t.Errorf("VersionOf(%q) = %q, want %q", path, got, want)
+		}
+	}
+}

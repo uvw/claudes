@@ -21,6 +21,7 @@ adds what an agent needs on top of them.
 | gc                                        | `internal/cli/gc.go`                               |
 | The calls to the `claude` command line    | `internal/claude/client.go`                        |
 | Agent view's pins and per-job versions    | `internal/jobs/jobs.go`                            |
+| The version a running session runs        | `internal/procs`, `cli.App.sessionVersion`         |
 | The park file                             | `internal/park/park.go`                            |
 | `config.yaml` and `claudes config`        | `internal/config`, `internal/cli/config*.go`       |
 | Compatibility checks and `claudes doctor` | `internal/compat`, `internal/cli/doctor.go`        |
