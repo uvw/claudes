@@ -19,7 +19,10 @@
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
    build tags, never in runtime checks.
-6. Unknown commands pass through to `claude agents`. A new claudes command name
+6. Keep to the README's [goals and non-goals](../README.md#goals-and-non-goals):
+   claudes manages Claude Code sessions and does not orchestrate agents or
+   support other coding agents.
+7. Unknown commands pass through to `claude agents`. A new claudes command name
    or alias hides a `claude agents` argument of the same name, so check
    `claude agents --help` before adding one.
 
