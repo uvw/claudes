@@ -91,11 +91,30 @@ func TestDoctorPassesOnAFamiliarClaudeCode(t *testing.T) {
 	h.withConfig(t, "")
 
 	h.ok(t, "doctor")
-	for _, want := range []string{"claude", "command line", "agents --json", "pins.json", "transcripts", "config.yaml", "park file"} {
+	for _, want := range []string{"claude", "command line", "agents --json", "pins.json", "pins lock", "transcripts", "config.yaml", "park file"} {
 		assertContains(t, h.out.String(), want)
 	}
 	if strings.Contains(h.out.String(), "fail") {
 		t.Fatalf("a check failed:\n%s", h.out)
+	}
+}
+
+func TestDoctorWarnsWhenClaudeCodeMayWritePinsWithoutTheLock(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{}}
+	h.withConfig(t, "")
+	for _, tc := range []struct{ features, want string }{
+		{`{"tengu_hover_rest":false}`, "ok      pins lock      Claude Code takes pins.json.lock"},
+		{`{"tengu_hover_rest":true}`, "warn    pins lock      tengu_hover_rest is on"},
+	} {
+		writeFile(t, h.app.ClaudeConfig, `{"cachedGrowthBookFeatures":`+tc.features+`}`)
+		h.out.Reset()
+		h.run("doctor")
+		assertContains(t, h.out.String(), tc.want)
+	}
+	h.err.Reset()
+	if code := h.run("doctor", "--strict"); code == 0 {
+		t.Fatalf("doctor --strict passed with the flag on:\n%s", h.out)
 	}
 }
 

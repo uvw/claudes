@@ -233,11 +233,14 @@ interface. So before a command changes anything, claudes checks what it read:
 - A Claude Code outside the range claudes was tested with gets a warning, once
   per run. The installed version is cached for six hours.
 
-`claudes doctor` runs every check and says what failed. `--cli-only` checks only
-the version and that `claude --help` and `claude agents --help` still list every
-command and flag claudes calls, and `--strict` fails on warnings too.
-`claudes doctor env` prints the versions, file locations, and environment
-variables for a bug report.
+`claudes doctor` runs every check and says what failed. It also warns when a
+flag in Claude Code's own settings file, `~/.claude.json`, says Claude Code may
+write `pins.json` without the lock claudes takes. Pinning from agent view and
+from claudes at the same moment could then lose one of the pins. `--cli-only`
+checks only the version and that `claude --help` and `claude agents --help`
+still list every command and flag claudes calls, and `--strict` fails on
+warnings too. `claudes doctor env` prints the versions, file locations, and
+environment variables for a bug report.
 
 ## Logging
 
