@@ -121,11 +121,26 @@ Changes reach `main` through pull requests, which squash-merge. The pull request
 title becomes the commit on `main`, so it follows the commit rules below; CI
 checks it.
 
+With write access to the repository:
+
 1. Branch from `main`: `git switch -c fix/short-name`.
 2. Open the pull request with `gh pr create --fill`, then turn on auto-merge
    with `gh pr merge --squash --auto`. It merges once "CI (all green)" passes.
 3. Dependabot opens grouped pull requests weekly. Read the changelog of anything
    that changes behavior before you merge.
+
+### From a fork
+
+Without write access, work from a fork:
+
+1. Fork `uvw/claudes`, clone your fork, and branch from `main`.
+2. Run the [checks](#checks), then open the pull request against `uvw/claudes`
+   with `gh pr create --fill`.
+3. On your first pull request, CI waits until a maintainer approves its runs.
+   Later ones run on every push. Runs from a fork get a read-only token and none
+   of the repository's secrets.
+4. A maintainer merges it once "CI (all green)" passes. You cannot turn on
+   auto-merge yourself.
 
 ## Releases
 
