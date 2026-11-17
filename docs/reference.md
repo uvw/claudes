@@ -26,6 +26,9 @@ every key is always present:
   (its other transcripts, after a `session mv`), `size`, `running`, and
   `activity`. `activity` is null in `session ls`. In `session show` it has
   `prompts`, `commands`, `toolCalls`, `edits`, `firstPrompt`, and `teammate`.
+- `session du` prints `folders`, each with `folder`, `project`, `sessions`, and
+  `disk`; `top`, the biggest sessions with `--top`, each with `id`, `sessionId`,
+  `name`, `cwd`, `running`, and `disk`; `leftovers`; and `total`.
 - `session triage` prints `remove`, `review`, and `keep`, each a list of
   sessions with `id`, `sessionId`, `name`, `nameSource`, `cwd`, `size`,
   `lastActive`, `why` (the kind `session gc` removes it as, `review`, or why it
