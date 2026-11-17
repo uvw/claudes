@@ -27,7 +27,7 @@ const gcFloor = 24 * time.Hour
 // of one, or a leftover folder.
 type gcItem struct {
 	sessionID, name string
-	// why is empty, trivial, gone, old, copy, leftover, or named.
+	// why is empty, trivial, gone, old, copy, sidecar, leftover, or named.
 	why    string
 	folder string
 	paths  []string
@@ -43,9 +43,9 @@ func (g gcItem) ID() string    { return claude.ShortID(g.sessionID) }
 func (g gcItem) Label() string { return g.name }
 
 type gcFlags struct {
-	olderThan                               days
-	empty, trivial, gone, copies, leftovers bool
-	dryRun, purge                           bool
+	olderThan                                         days
+	empty, trivial, gone, copies, leftovers, sidecars bool
+	dryRun, purge                                     bool
 }
 
 func (app *App) sessionGcCommand() *cobra.Command {
@@ -72,6 +72,13 @@ by an agent team is never trivial. --gone takes sessions whose folder no longer
 exists, which includes a folder on a disk that is not attached, so read the
 plan first. --older-than takes sessions last active longer ago than that.
 
+--sidecars keeps each session and trims its sidecar folder instead: the big
+command outputs Claude Code saved to tool-results, which the transcript keeps a
+preview of. With --older-than, it also takes the subagent transcripts of
+sessions last active longer ago than that, and removes no whole session. A
+session resumes as before; it only cannot read a saved output again, or
+continue a subagent it ran.
+
 It never removes a running session, one agent view still lists (claudes gc
 removes those from the list), a parked one, or the session running claudes.
 Without targets, it also leaves alone anything that changed in the last day.
@@ -85,6 +92,7 @@ Targets remove exactly those sessions, whatever kind they are.`,
 	cmd.Flags().BoolVar(&f.trivial, "trivial", false, "sessions that only ran slash commands, or got one prompt and made no tool call")
 	cmd.Flags().BoolVar(&f.gone, "gone", false, "sessions whose folder no longer exists")
 	cmd.Flags().BoolVar(&f.copies, "copies", false, "older copies session mv left")
+	cmd.Flags().BoolVar(&f.sidecars, "sidecars", false, "saved command outputs, and with --older-than subagent transcripts, keeping the sessions")
 	cmd.Flags().BoolVar(&f.leftovers, "leftovers", false, "subagent and file-history folders whose transcript is gone")
 	cmd.Flags().Var(&f.olderThan, "older-than", "sessions last active longer ago than this, such as 90d")
 	cmd.Flags().Lookup("older-than").DefValue = ""
@@ -94,10 +102,10 @@ Targets remove exactly those sessions, whatever kind they are.`,
 }
 
 func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) error {
-	if len(targets) > 0 && (f.empty || f.trivial || f.gone || f.copies || f.leftovers || f.olderThan.d > 0) {
+	if len(targets) > 0 && (f.empty || f.trivial || f.gone || f.copies || f.leftovers || f.sidecars || f.olderThan.d > 0) {
 		return errors.New("session gc takes targets or kinds to remove, not both")
 	}
-	if !f.empty && !f.trivial && !f.gone && !f.copies && !f.leftovers && f.olderThan.d == 0 {
+	if !f.empty && !f.trivial && !f.gone && !f.copies && !f.leftovers && !f.sidecars && f.olderThan.d == 0 {
 		f.empty, f.copies, f.leftovers = true, true, true
 	}
 	list, err := app.pastSessions(ctx)
@@ -201,6 +209,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 		if f.trivial && !p.Empty {
 			readActivity(&p, false)
 		}
+		whole := len(items)
 		switch {
 		case f.empty && p.Empty:
 			items = append(items, app.wholeSession(p, "empty"))
@@ -208,7 +217,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			items = append(items, app.wholeSession(p, "trivial"))
 		case f.gone && folderGone(p.Cwd):
 			items = append(items, app.wholeSession(p, "gone"))
-		case f.olderThan.d > 0 && p.LastActive.Before(now.Add(-f.olderThan.d)):
+		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
 			items = append(items, app.wholeSession(p, "old"))
 		case f.copies:
 			for _, c := range p.Copies {
@@ -217,6 +226,13 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 					items = append(items, gcItem{sessionID: p.SessionID, name: p.Label() + " (older copy)", why: "copy",
 						folder: filepath.Dir(c), paths: paths, size: sizeOf(paths), transcript: c, changed: changed})
 				}
+			}
+		}
+		removed := len(items) > whole && items[whole].why != "copy"
+		if f.sidecars && !removed {
+			old := f.olderThan.d > 0 && p.LastActive.Before(now.Add(-f.olderThan.d))
+			if it, ok := sidecarItem(p, old); ok {
+				items = append(items, it)
 			}
 		}
 	}
@@ -239,6 +255,28 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			why: "leftover", folder: l.Path, paths: []string{l.Path}, size: l.Size})
 	}
 	return items, nil
+}
+
+// sidecarItem is the part of p's sidecar folder --sidecars trims: its saved
+// command outputs, and its subagent transcripts too when withSubagents.
+func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
+	sidecar := transcripts.Sidecar(p.Session)
+	parts := []struct{ folder, what string }{{"tool-results", "saved outputs"}}
+	if withSubagents {
+		parts = append(parts, struct{ folder, what string }{"subagents", "subagents"})
+	}
+	var paths, what []string
+	for _, part := range parts {
+		path := filepath.Join(sidecar, part.folder)
+		if info, err := os.Lstat(path); err == nil && info.IsDir() && sizeOf([]string{path}) > 0 {
+			paths, what = append(paths, path), append(what, part.what)
+		}
+	}
+	if len(paths) == 0 {
+		return gcItem{}, false
+	}
+	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: "sidecar", folder: cmp.Or(p.Cwd, sidecar),
+		paths: paths, size: sizeOf(paths), transcript: p.Path, changed: modTime(p.Path)}, true
 }
 
 // trivial reports whether p holds nothing worth keeping: it changed no file,
@@ -323,12 +361,13 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 }
 
 // gcRemoveItem removes each of an item's paths. It refuses a path outside
-// root, or one whose name does not carry the session id, so nothing else is
-// ever touched.
+// root, or one whose name, or whose folder's name, does not carry the session
+// id, so nothing else is ever touched.
 func (app *App) gcRemoveItem(it gcItem, root string, purge bool) error {
 	for _, p := range it.paths {
 		rel, err := filepath.Rel(root, p)
-		if err != nil || rel == "." || strings.HasPrefix(rel, "..") || !strings.Contains(filepath.Base(p), it.sessionID) {
+		owned := strings.Contains(filepath.Base(p), it.sessionID) || filepath.Base(filepath.Dir(p)) == it.sessionID
+		if err != nil || rel == "." || strings.HasPrefix(rel, "..") || !owned {
 			return fmt.Errorf("refused to remove %s, which is not a file of session %s under %s", p, it.sessionID, root)
 		}
 		if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {

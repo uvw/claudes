@@ -481,12 +481,14 @@ Bin, or the freedesktop.org trash. `--purge` deletes for good. Without flags it
 removes empty sessions, older copies `session mv` left, and leftover folders;
 `--trivial`, `--gone`, and `--older-than` are opt-in. A trivial session changed
 no file, made no tool call, was not named with `/rename` or started by an agent
-team, and either only ran slash commands or got one prompt. It never removes a
-running session, one agent view still lists, a parked one, or the session
-running claudes, and without targets nothing that changed in the last day. It
-lists what runs again just before removing, skips a transcript that changed
-since the plan, and removes only paths under `~/.claude` whose names carry the
-session's id.
+team, and either only ran slash commands or got one prompt. `--sidecars` keeps
+each session and trims its sidecar folder: the command outputs saved under
+`tool-results`, and with `--older-than` the subagent transcripts of sessions
+idle that long, removing no whole session. It never removes a running session,
+one agent view still lists, a parked one, or the session running claudes, and
+without targets nothing that changed in the last day. It lists what runs again
+just before removing, skips a transcript that changed since the plan, and
+removes only paths under `~/.claude` whose names carry the session's id.
 
 Why: a transcript is the only record of a session's work, so a mistaken removal
 must be recoverable, unlike `claudes gc`, which only drops a job from agent
@@ -496,8 +498,14 @@ can be a disk that is not attached, and age says nothing about value, so those
 wait for a flag. So does `--trivial`: a one-prompt answer can still be worth
 keeping, though one with no tool call holds only what the model already knew.
 Which of the one-prompt sessions with tool calls to keep takes reading the
-prompt, so claudes leaves that to the user or their agent. A session that
-changed in the last day may be starting, before its transcript says what it is.
+prompt, so claudes leaves that to the user or their agent. A test resumed
+sessions with each part of the sidecar moved away: both resumed with their
+context, since the transcript keeps a preview of each saved output and each
+subagent's answer. Without `tool-results`, reading a saved output again fails;
+without `subagents`, continuing a past subagent fails. Subagents held 1.3 GB
+against 227 MB of saved outputs here, so they go too, but only for sessions old
+enough that nobody continues their subagents. A session that changed in the last
+day may be starting, before its transcript says what it is.
 
 Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
 cannot undo a mistake; previewing by default with `--yes` to act, which goes
