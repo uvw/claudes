@@ -5,52 +5,150 @@ compatibility checks, logging, and the files claudes keeps.
 
 ## Output
 
-`ls`, `where`, `team ls`, `session ls`, `session show`, `session where`,
-`session du`, `session triage`, `doctor`, and `doctor env` take `-o text`,
-`-o json`, or `-o yaml`; `ls --json` is short for `-o json`. When `where`
-matches one session, `text` prints only its folder, so
-`cd "$(claudes where NAME)"` works; add `-o text` when `output.format` is set.
-`claudes init` does that itself. `logs` takes `-o text` or `-o json`, which
-prints the transcript records themselves, one per line.
+Pick a format with `-o`:
 
-`json` and `yaml` use the camelCase field names of `claude agents --json`, and
-every key is always present:
+| Commands                                          | Formats          | Default                  |
+| ------------------------------------------------- | ---------------- | ------------------------ |
+| `ls`, `where`, `team ls`                          | text, json, yaml | `output.format`, or text |
+| `session ls`, `show`, `where`, `du`, and `triage` | text, json, yaml | `output.format`, or text |
+| `doctor`, `doctor env`                            | text, json, yaml | `output.format`, or text |
+| `restart`, `pause`, `resume`, `ping`, and `stop`  | text, json, yaml | text                     |
+| `gc`, `pin`, `unpin`                              | text, json, yaml | text                     |
+| `logs`                                            | text, json       | text                     |
 
-- A session from `ls` or `where` has `id`, `sessionId`, `name`, `cwd`, `kind`,
-  `state`, `status`, `pid`, and `startedAt`, plus `pinned`, `version`,
-  `outdated`, and `teammates`. An interactive session has no job id, so its `id`
-  is empty; the table shows its short session id instead.
-- A session from `session ls` or `session show` has `id`, `sessionId`, `name`,
-  `nameSource` (`custom` for `/rename`, `agent`, `ai`, or empty), `cwd`,
-  `branch`, `started`, `lastActive`, `lastPrompt`, `version`, `path`, `copies`
-  (its other transcripts, after a `session mv`), `size`, `running`, and
-  `activity`. `activity` is null in `session ls`. In `session show` it has
-  `prompts`, `commands`, `toolCalls`, `edits`, `firstPrompt`, and `teammate`.
-- `session du` prints `folders`, each with `folder`, `project`, `sessions`, and
-  `disk`; `top`, the biggest sessions with `--top`, each with `id`, `sessionId`,
-  `name`, `cwd`, `running`, and `disk`; `leftovers`; and `total`.
-- `session triage` prints `remove`, `review`, and `keep`, each a list of
-  sessions with `id`, `sessionId`, `name`, `nameSource`, `cwd`, `size`,
-  `lastActive`, `why` (the kind `session gc` removes it as, `review`, or why it
-  is kept), `lastPrompt`, and `activity`. Folders in `remove` have only `id`,
-  `sessionId`, `name`, `cwd`, `size`, and `why`.
-- A team from `team ls` has `team`, `id`, `sessionId`, `lead`, `cwd`, `running`,
-  `teammates`, and `tasks`, each task with `id`, `subject`, `status`, `owner`,
-  and `blockedBy`.
-- A `doctor` check has `name`, `result` (`ok`, `warn`, or `fail`), and `detail`.
-  `doctor env` prints sections of keys and values.
+A few cases differ:
 
-`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, and `unpin` take `-o`
-too, and print one report when they finish: `command`, `dryRun`, then lists of
-sessions under `plan`, `results`, `leftOut`, `manual`, `failures`, and
-`notReached`. Each entry has `id`, `name`, `cwd`, `result` (such as `restarted`,
-`failed`, or why one was left out: `pinned`, `interactive`, `leads a team`,
-`skipped`, or `no job id`), `note`, `command` (a resume command to run by hand),
-and `error`. `resume --forget` lists each dropped session in `results` as
-`forgotten`. `warnings` lists what the command warned about, such as teammates
-that stop with their lead, and `error` is why it stopped, or empty. Warnings and
-errors still go to stderr as well. These commands default to `text`, whatever
-`output.format` says.
+1. `ls --json` is short for `ls -o json`.
+2. When `where` matches one session, text prints only its folder, so
+   `cd "$(claudes where NAME)"` works. Add `-o text` when `output.format` sets
+   another format; `claudes init` does that itself.
+3. `logs -o json` prints the transcript records themselves, one per line.
+
+### Fields
+
+JSON and YAML use the camelCase field names of `claude agents --json`. Every key
+is always present, and an empty list is `[]`.
+
+#### Running sessions
+
+`ls` and `where` print a list of:
+
+| Field                     | Meaning                                                  |
+| ------------------------- | -------------------------------------------------------- |
+| `id`                      | The short job id; empty for an interactive session       |
+| `sessionId`               | The full session id                                      |
+| `name`, `cwd`             | Its name and folder                                      |
+| `kind`, `state`, `status` | As `claude agents` reports them                          |
+| `pid`, `startedAt`        | Its process, and when it started, in Unix milliseconds   |
+| `pinned`                  | Whether it is pinned in agent view                       |
+| `version`                 | The Claude Code it runs                                  |
+| `outdated`                | Whether that is older than the installed Claude Code     |
+| `teammates`               | The names of its agent team's members, when it leads one |
+
+#### Past sessions
+
+`session ls` prints a list of these, and `session show` prints one:
+
+| Field                   | Meaning                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `id`, `sessionId`       | The short and the full session id                           |
+| `name`                  | Its name, or empty                                          |
+| `nameSource`            | Where the name came from: `custom`, `agent`, `ai`, or empty |
+| `cwd`, `branch`         | The folder and git branch it ran in                         |
+| `started`, `lastActive` | When it started, and when its transcript last changed       |
+| `lastPrompt`            | The last prompt                                             |
+| `version`               | The Claude Code that wrote the transcript                   |
+| `path`                  | The transcript                                              |
+| `copies`                | The older copies `session mv` left                          |
+| `size`                  | The transcript's size in bytes                              |
+| `empty`                 | Whether it never got a prompt                               |
+| `running`               | Whether it runs now                                         |
+| `disk`                  | The bytes it takes on disk, broken down                     |
+| `activity`              | What it did; null in `session ls`                           |
+
+`nameSource` is `custom` for a name set with `/rename`, `agent` for agent view's
+name, and `ai` for Claude Code's own title. `disk` has `transcript`, `sidecar`,
+`copies`, `fileHistory`, and `total`. `activity` comes from reading the whole
+transcript, and has `prompts`, `commands` (slash and `!` commands), `toolCalls`,
+`edits`, `firstPrompt`, and `teammate`, which is true when an agent team's lead
+started the session.
+
+#### Disk use
+
+`session du` prints one object:
+
+| Field       | Meaning                                                   |
+| ----------- | --------------------------------------------------------- |
+| `folders`   | The project folders, biggest first                        |
+| `top`       | The biggest sessions, with `--top`                        |
+| `leftovers` | Sidecar and file-history folders whose transcript is gone |
+| `total`     | The bytes all of it takes, leftovers included             |
+
+Each folder has `folder`, `project`, `sessions`, and `disk`. Each session in
+`top` has `id`, `sessionId`, `name`, `cwd`, `running`, and `disk`. Each leftover
+has `path`, `sessionId`, `kind`, `size`, and `modified`.
+
+#### Triage
+
+`session triage` prints `remove`, `review`, and `keep`, each a list of:
+
+| Field                     | Meaning                                            |
+| ------------------------- | -------------------------------------------------- |
+| `id`, `sessionId`, `name` | The session                                        |
+| `nameSource`, `cwd`       | As for a past session                              |
+| `size`                    | The bytes it takes                                 |
+| `lastActive`              | When its transcript last changed                   |
+| `why`                     | Its `session gc` kind, `review`, or why it is kept |
+| `lastPrompt`, `activity`  | As for a past session                              |
+
+A folder in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
+`cwd`, `size`, and `why`.
+
+#### Teams
+
+`team ls` prints a list of:
+
+| Field             | Meaning                                |
+| ----------------- | -------------------------------------- |
+| `team`            | The team's name                        |
+| `id`, `sessionId` | The lead's short job id and session id |
+| `lead`, `cwd`     | The lead's name and folder             |
+| `running`         | Whether the lead runs                  |
+| `teammates`       | The members' names                     |
+| `tasks`           | The task list                          |
+
+Each task has `id`, `subject`, `status`, `owner`, and `blockedBy`.
+
+#### Checks
+
+`doctor` prints a list of checks, each with `name`, `result` (`ok`, `warn`, or
+`fail`), and `detail`. `doctor env` prints its sections, `claude`, `claudes`,
+`environment`, and `files`, as keys and values.
+
+#### Reports
+
+`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, and `unpin` print one
+report when they finish:
+
+| Field        | Meaning                                                           |
+| ------------ | ----------------------------------------------------------------- |
+| `command`    | The command, such as `restart`                                    |
+| `dryRun`     | Whether it was a dry run                                          |
+| `plan`       | The sessions it set out to act on                                 |
+| `results`    | What happened to each                                             |
+| `leftOut`    | The sessions it chose not to act on, and why                      |
+| `manual`     | Commands to run by hand, such as resuming an interactive session  |
+| `failures`   | The sessions that need attention, and why                         |
+| `notReached` | The sessions a Ctrl-C left as they were                           |
+| `warnings`   | What it warned about, such as teammates that stop with their lead |
+| `error`      | Why it stopped, or empty                                          |
+
+Each session in those lists has `id`, `name`, `cwd`, `result`, `note` (such as
+`will be pinged`), `command` (a resume command to run by hand), and `error`.
+`result` says what happened, such as `restarted` or `failed`, or why the session
+was left out: `pinned`, `interactive`, `leads a team`, `skipped`, or
+`no job id`. `resume --forget` reports each dropped session as `forgotten`.
+Warnings and errors go to stderr as well.
 
 ### Colors
 
