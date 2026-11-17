@@ -17,12 +17,12 @@ import (
 
 // WriteFile replaces path with data. Readers see the old file or the new one,
 // never a part of either, and the data is on disk before the rename. The
-// folder must exist, so a wrong folder fails instead of being created.
+// directory must exist, so a wrong directory fails instead of being created.
 func WriteFile(path string, data []byte, perm fs.FileMode) error {
 	return WriteFrom(path, bytes.NewReader(data), perm)
 }
 
-// WriteFileAll is WriteFile that first creates the folders above path.
+// WriteFileAll is WriteFile that first creates the directories above path.
 func WriteFileAll(path string, data []byte, perm fs.FileMode) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -107,8 +107,8 @@ func (l Lock) Acquire() (release func(), err error) {
 			delay = min(delay*2, 500*time.Millisecond)
 		}
 	}
-	// A lock folder that never appeared was never held, so the reason the
-	// folder could not be made is the error, not ErrHeld.
+	// A lock directory that never appeared was never held, so the reason the
+	// directory could not be made is the error, not ErrHeld.
 	if !errors.Is(last, fs.ErrExist) {
 		if _, err := os.Lstat(l.Path); err != nil {
 			return nil, last

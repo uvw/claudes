@@ -19,7 +19,7 @@ Pick a format with `-o`:
 A few cases differ:
 
 1. `ls --json` is short for `ls -o json`.
-2. When `where` matches one session, text prints only its folder, so
+2. When `where` matches one session, text prints only its directory, so
    `cd "$(claudes where NAME)"` works. Add `-o text` when `output.format` sets
    another format; `claudes init` does that itself.
 3. `logs -o json` prints the transcript records themselves, one per line.
@@ -42,7 +42,7 @@ is always present, and an empty list is `[]`.
 | ------------------------- | -------------------------------------------------------- |
 | `id`                      | The short job id; empty for an interactive session       |
 | `sessionId`               | The full session id                                      |
-| `name`, `cwd`             | Its name and folder                                      |
+| `name`, `cwd`             | Its name and directory                                   |
 | `kind`, `state`, `status` | As `claude agents` reports them                          |
 | `pid`, `startedAt`        | Its process, and when it started, in Unix milliseconds   |
 | `pinned`                  | Whether it is pinned in agent view                       |
@@ -59,7 +59,7 @@ is always present, and an empty list is `[]`.
 | `id`, `sessionId`       | The short and the full session id                           |
 | `name`                  | Its name, or empty                                          |
 | `nameSource`            | Where the name came from: `custom`, `agent`, `ai`, or empty |
-| `cwd`, `branch`         | The folder and git branch it ran in                         |
+| `cwd`, `branch`         | The directory and git branch it ran in                      |
 | `started`, `lastActive` | When it started, and when its transcript last changed       |
 | `lastPrompt`            | The last prompt                                             |
 | `version`               | The Claude Code that wrote the transcript                   |
@@ -82,16 +82,16 @@ started the session.
 
 `session du` prints one object:
 
-| Field       | Meaning                                                   |
-| ----------- | --------------------------------------------------------- |
-| `folders`   | The project folders, biggest first                        |
-| `top`       | The biggest sessions, with `--top`                        |
-| `leftovers` | Sidecar and file-history folders whose transcript is gone |
-| `total`     | The bytes all of it takes, leftovers included             |
+| Field       | Meaning                                                       |
+| ----------- | ------------------------------------------------------------- |
+| `dirs`      | The project directories, biggest first                        |
+| `top`       | The biggest sessions, with `--top`                            |
+| `leftovers` | Sidecar and file-history directories whose transcript is gone |
+| `total`     | The bytes all of it takes, leftovers included                 |
 
-Each folder has `folder`, `project`, `sessions`, and `disk`. Each session in
-`top` has `id`, `sessionId`, `name`, `cwd`, `running`, and `disk`. Each leftover
-has `path`, `sessionId`, `kind`, `size`, and `modified`.
+Each entry in `dirs` has `dir`, `project`, `sessions`, and `disk`. Each session
+in `top` has `id`, `sessionId`, `name`, `cwd`, `running`, and `disk`. Each
+leftover has `path`, `sessionId`, `kind`, `size`, and `modified`.
 
 #### Triage
 
@@ -106,7 +106,7 @@ has `path`, `sessionId`, `kind`, `size`, and `modified`.
 | `why`                     | Its `session gc` kind, `review`, or why it is kept |
 | `lastPrompt`, `activity`  | As for a past session                              |
 
-A folder in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
+A directory in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
 `cwd`, `size`, and `why`.
 
 #### Teams
@@ -117,7 +117,7 @@ A folder in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
 | ----------------- | -------------------------------------- |
 | `team`            | The team's name                        |
 | `id`, `sessionId` | The lead's short job id and session id |
-| `lead`, `cwd`     | The lead's name and folder             |
+| `lead`, `cwd`     | The lead's name and directory          |
 | `running`         | Whether the lead runs                  |
 | `teammates`       | The members' names                     |
 | `tasks`           | The task list                          |
@@ -158,7 +158,7 @@ Warnings and errors go to stderr as well.
 ### Colors
 
 Text output is colored when it goes to a terminal: session status, pins,
-outdated versions, and folders in the tables, what happened to each session,
+outdated versions, and directories in the tables, what happened to each session,
 failures and errors, and each `doctor` result. Stdout and stderr are checked
 apart, so a pipe gets plain text. `NO_COLOR`, set to any value but empty, turns
 colors off. `CLICOLOR=0` turns them off too, and `CLICOLOR=1` turns them on even
@@ -242,11 +242,11 @@ variables for a bug report.
 ## Logging
 
 claudes logs nothing by default. `-v` (`--verbose`) prints a debug log to
-stderr: each `claude` call with its arguments, folder, time, and result, and the
-steps a command takes, such as the run lock and each wait. `CLAUDES_LOG=debug`
-does the same without the flag, and `info`, `warn`, or `error` log less. What a
-command reports to you still goes to stdout and stderr as usual. `--version`
-prints the version.
+stderr: each `claude` call with its arguments, directory, time, and result, and
+the steps a command takes, such as the run lock and each wait.
+`CLAUDES_LOG=debug` does the same without the flag, and `info`, `warn`, or
+`error` log less. What a command reports to you still goes to stdout and stderr
+as usual. `--version` prints the version.
 
 ## Files
 
@@ -261,17 +261,17 @@ prints the version.
 - `parked.json` lists paused sessions, and is deleted when it's empty. On
   Windows, claudes also reads one in `~/.local/state/claudes`, and moves it
   under `%LOCALAPPDATA%` the first time it changes the list.
-- `moves.json` maps each copy `session mv` made to the folder it belongs to.
-- `run.lock` is a folder that exists only while a command changes sessions.
-- An `XDG_` variable that holds an absolute path moves its folder on every
+- `moves.json` maps each copy `session mv` made to the directory it belongs to.
+- `run.lock` is a directory that exists only while a command changes sessions.
+- An `XDG_` variable that holds an absolute path moves its directory on every
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and
   must be an absolute path.
 - `CLAUDE_CONFIG_DIR` moves `~/.claude`, as it does for Claude Code, and must be
-  an absolute path. When background sessions run but its `jobs` folder is
+  an absolute path. When background sessions run but its `jobs` directory is
   missing, commands that change sessions stop rather than read pins from the
   wrong place.
 - claudes itself writes under `~/.claude` only to pin and unpin, as agent view
   does, for `session mv`, which adds a copy, for `skill --install`, and for
-  `gc --teams`, which removes leftover team and task folders. Unpinning also
+  `gc --teams`, which removes leftover team and task directories. Unpinning also
   deletes the job's `order` file, as agent view does. Everything else it changes
   goes through the `claude` command.

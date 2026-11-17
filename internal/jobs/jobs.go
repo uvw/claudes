@@ -1,5 +1,5 @@
 // Package jobs reads and writes the files Claude Code keeps for background
-// sessions under ~/.claude/jobs. The Claude Code docs call that folder not a
+// sessions under ~/.claude/jobs. The Claude Code docs call that directory not a
 // stable interface, so everything here may need to follow its changes.
 package jobs
 
@@ -22,7 +22,7 @@ import (
 // pins.json: an older lock is treated as abandoned.
 const lockStale = 5 * time.Second
 
-// Store is the jobs folder.
+// Store is the jobs directory.
 type Store struct {
 	Dir string
 	// LockAttempts and LockDelay bound the wait for the pins.json lock.
@@ -30,7 +30,7 @@ type Store struct {
 	LockDelay    time.Duration
 }
 
-// DefaultStore is the jobs folder in Claude Code's folder (paths.ClaudeHome).
+// DefaultStore is the jobs directory in Claude Code's directory (paths.ClaudeHome).
 func DefaultStore() (Store, error) {
 	base, err := paths.ClaudeHome()
 	if err != nil {
@@ -42,7 +42,7 @@ func DefaultStore() (Store, error) {
 func (s Store) pinsPath() string { return filepath.Join(s.Dir, "pins.json") }
 
 // statePath is a job's state.json, or "" for an id that is not a job id, so
-// a malformed id never names a path outside the jobs folder.
+// a malformed id never names a path outside the jobs directory.
 func (s Store) statePath(jobID string) string {
 	if !ValidID(jobID) {
 		return ""
@@ -55,8 +55,8 @@ var validID = regexp.MustCompile(`^[0-9a-f]{8}$`)
 // ValidID reports whether id has the form of a job id: eight hex digits.
 func ValidID(id string) bool { return validID.MatchString(id) }
 
-// Exists reports whether the jobs folder is there. A missing one under a
-// claude agents that lists background sessions means the wrong folder.
+// Exists reports whether the jobs directory is there. A missing one under a
+// claude agents that lists background sessions means the wrong directory.
 func (s Store) Exists() bool {
 	info, err := os.Stat(s.Dir)
 	return err == nil && info.IsDir()
@@ -177,7 +177,7 @@ func (s Store) Has(jobID, sessionID string) bool {
 	return json.Unmarshal(data, &state) == nil && state.SessionID == sessionID
 }
 
-// Folder is the folder a background session's job runs in, from its
+// Folder is the directory a background session's job runs in, from its
 // state.json, or "" when the job is unknown or belongs to another session.
 // claude --bg --resume wakes an existing job there, wherever it is run from.
 func (s Store) Folder(jobID, sessionID string) string {

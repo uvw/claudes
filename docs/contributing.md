@@ -10,7 +10,7 @@
    with a fake.
 3. Files under `~/.claude/jobs/` are read and written only in `internal/jobs`.
    The park file is owned by `internal/park`, `config.yaml` by
-   `internal/config`, the folders claudes keeps its own files in by
+   `internal/config`, the directories claudes keeps its own files in by
    `internal/paths`, the transcripts under `~/.claude/projects` by
    `internal/transcripts`, the agent teams under `~/.claude/teams` and their
    task lists under `~/.claude/tasks` by `internal/teams`, and installing the
@@ -48,6 +48,10 @@ Update a doc in the same change as the code it describes.
 The README opens with `docs/demo/demo.gif`. When a command it shows changes its
 output, run `hack/demo.sh`, which needs Docker, to render it again from
 `docs/demo/demo.tape`.
+
+Say "directory", "dir" in column headers and placeholders such as `DIR`, or
+"path" for a full path, in docs, help, messages, and code comments alike. Never
+say "folder".
 
 Prettier wraps Markdown at 80 columns. Run `npx prettier --write` on a doc after
 editing it rather than wrapping by hand.
@@ -99,7 +103,7 @@ Write tests alongside the code. Every behavior a user relies on gets a test that
 fails without it, and CI keeps total coverage at 80% or more.
 
 1. Command flows run in `internal/cli` tests against a fake `claude.Agents`, a
-   temporary jobs folder, and a temporary park file. The fake accepts only an
+   temporary jobs directory, and a temporary park file. The fake accepts only an
    8-character job id for `stop`, `respawn`, and `rm`, as the real command line
    does, and models stops that land late and the host session dying.
 2. `test/e2e` builds the real `claudes` and a fake `claude`

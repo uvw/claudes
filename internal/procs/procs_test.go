@@ -217,7 +217,7 @@ func TestIsClaudeCommandWithASpaceInThePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !isClaudeCommand(claude + " --resume abc") {
-		t.Error("claude under a folder with a space was refused")
+		t.Error("claude under a directory with a space was refused")
 	}
 	if isClaudeCommand(filepath.Join(dir, "vim") + " " + claude) {
 		t.Error("an editor opening a file named claude was taken for claude")

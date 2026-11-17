@@ -48,7 +48,7 @@ func TestLogsTailCountsRecordsInJSON(t *testing.T) {
 	}
 }
 
-// Teammate names, task owners, and member folders come from config.json and
+// Teammate names, task owners, and member directories come from config.json and
 // task files, and reach the terminal without shell.Printable.
 func TestTeamLsStripsControlCharacters(t *testing.T) {
 	h := newHarness(t)

@@ -223,7 +223,7 @@ func TestBulkCommandsRefuseAMissingJobsFolder(t *testing.T) {
 	}
 	h.fails(t, "restart")
 	assertCalls(t, h)
-	assertContains(t, h.err.String(), "CLAUDE_CONFIG_DIR may point to the wrong folder")
+	assertContains(t, h.err.String(), "CLAUDE_CONFIG_DIR may point to the wrong directory")
 	h.err.Reset()
 	h.ok(t, "restart", "--force")
 }

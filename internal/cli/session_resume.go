@@ -17,8 +17,8 @@ func (app *App) sessionResumeCommand() *cobra.Command {
 	var bg bool
 	cmd := &cobra.Command{
 		Use:   "resume TARGET [PROMPT]",
-		Short: "Resume a past session in its own folder, from any folder",
-		Long: `Resume a past session in this terminal, in the folder it ran in, with an
+		Short: "Resume a past session in its own directory, from any directory",
+		Long: `Resume a past session in this terminal, in the directory it ran in, with an
 optional prompt. --bg resumes it in the background instead. A session that is
 still running is refused: resuming it would start a copy.`,
 		Args:              cobra.RangeArgs(1, 2),
@@ -48,7 +48,7 @@ still running is refused: resuming it would start a copy.`,
 	return cmd
 }
 
-// resumePast resumes p in its own folder: in the background with bg, or in
+// resumePast resumes p in its own directory: in the background with bg, or in
 // this terminal otherwise, which ends claudes.
 func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg bool) error {
 	if !claude.FolderExists(p.Cwd) {
@@ -83,7 +83,7 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 	return app.Exec("claude", args...)
 }
 
-// sameFolder reports whether a and b name the same folder, which on Windows
+// sameFolder reports whether a and b name the same directory, which on Windows
 // can differ in case.
 func sameFolder(a, b string) bool {
 	if filepath.Clean(a) == filepath.Clean(b) {

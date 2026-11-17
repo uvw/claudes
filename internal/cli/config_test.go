@@ -14,7 +14,7 @@ import (
 	"github.com/uvw/claudes/internal/config"
 )
 
-// withConfig points h at a config.yaml in its temporary folder, loaded the way
+// withConfig points h at a config.yaml in its temporary directory, loaded the way
 // newApp loads it.
 func (h *harness) withConfig(t *testing.T, body string) string {
 	t.Helper()

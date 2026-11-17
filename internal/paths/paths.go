@@ -1,7 +1,7 @@
 // Package paths says where claudes keeps its own files: its config, its state
 // such as the park file, and its cache. It follows the XDG base directory
-// variables on every platform, and each platform's own folders otherwise. It
-// also finds Claude Code's own folder.
+// variables on every platform, and each platform's own directories otherwise. It
+// also finds Claude Code's own directory.
 package paths
 
 import (
@@ -12,16 +12,16 @@ import (
 
 const app = "claudes"
 
-// Config is the folder holding config.yaml: $XDG_CONFIG_HOME/claudes, or
+// Config is the directory holding config.yaml: $XDG_CONFIG_HOME/claudes, or
 // ~/.config/claudes on macOS and Linux, or %APPDATA%\claudes on Windows.
 func Config() (string, error) { return dir("XDG_CONFIG_HOME", configDefault) }
 
-// State is the folder for files claudes keeps between runs, such as the park
+// State is the directory for files claudes keeps between runs, such as the park
 // file: $XDG_STATE_HOME/claudes, ~/.local/state/claudes, or
 // %LOCALAPPDATA%\claudes\state on Windows.
 func State() (string, error) { return dir("XDG_STATE_HOME", stateDefault) }
 
-// Cache is the folder for files claudes can rebuild: $XDG_CACHE_HOME/claudes,
+// Cache is the directory for files claudes can rebuild: $XDG_CACHE_HOME/claudes,
 // ~/.cache/claudes, or %LOCALAPPDATA%\claudes\cache on Windows.
 func Cache() (string, error) { return dir("XDG_CACHE_HOME", cacheDefault) }
 
@@ -33,20 +33,20 @@ func dir(variable string, platformDefault func() (string, error)) (string, error
 	}
 	d, err := platformDefault()
 	if err != nil {
-		return "", fmt.Errorf("cannot find a folder for claudes' files: %w", err)
+		return "", fmt.Errorf("cannot find a directory for claudes' files: %w", err)
 	}
 	return d, nil
 }
 
-// ClaudeHome is Claude Code's folder: $CLAUDE_CONFIG_DIR, or ~/.claude. It
-// fails rather than guess: a wrong folder has no pins, and bulk commands would
+// ClaudeHome is Claude Code's directory: $CLAUDE_CONFIG_DIR, or ~/.claude. It
+// fails rather than guess: a wrong directory has no pins, and bulk commands would
 // then act on pinned sessions.
 func ClaudeHome() (string, error) {
 	base := os.Getenv("CLAUDE_CONFIG_DIR")
 	if base == "" {
 		h, err := home(".claude")
 		if err != nil {
-			return "", fmt.Errorf("cannot find the Claude Code folder: %w", err)
+			return "", fmt.Errorf("cannot find the Claude Code directory: %w", err)
 		}
 		return h, nil
 	}

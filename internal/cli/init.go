@@ -8,8 +8,8 @@ import (
 )
 
 // posixInit wraps claudes in a shell function, because only the shell itself
-// can change its folder. Every other command goes to the claudes program.
-const posixInit = `# claudes shell integration: claudes cd NAME changes to a session's folder.
+// can change its directory. Every other command goes to the claudes program.
+const posixInit = `# claudes shell integration: claudes cd NAME changes to a session's directory.
 claudes() {
   if [ "$1" = cd ]; then
     shift
@@ -21,7 +21,7 @@ claudes() {
 }
 `
 
-const pwshInit = `# claudes shell integration: claudes cd NAME changes to a session's folder.
+const pwshInit = `# claudes shell integration: claudes cd NAME changes to a session's directory.
 function claudes {
   $exe = Get-Command claudes -CommandType Application -ErrorAction Stop | Select-Object -First 1
   if ($args.Count -gt 0 -and $args[0] -eq 'cd') {
@@ -39,8 +39,8 @@ function claudes {
 `
 
 // fishInit mirrors posixInit. Fish sets $status after a command substitution,
-// and string collect keeps a folder with a trailing newline or spaces whole.
-const fishInit = `# claudes shell integration: claudes cd NAME changes to a session's folder.
+// and string collect keeps a directory with a trailing newline or spaces whole.
+const fishInit = `# claudes shell integration: claudes cd NAME changes to a session's directory.
 function claudes --wraps claudes --description 'claudes, with claudes cd NAME'
     if test (count $argv) -gt 0; and test "$argv[1]" = cd
         set -l dir (command claudes session where --one -o text -- $argv[2..-1] | string collect)
@@ -57,8 +57,8 @@ func (app *App) initCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init bash|zsh|fish|pwsh",
 		Short: "Print the shell integration that makes claudes cd work",
-		Long: `Print a shell function that makes claudes cd NAME change your shell's folder
-to a session's folder. Load it from your shell's profile:
+		Long: `Print a shell function that makes claudes cd NAME change your shell's directory
+to a session's directory. Load it from your shell's profile:
 
   bash:  eval "$(claudes init bash)"
   zsh:   eval "$(claudes init zsh)"
@@ -84,11 +84,11 @@ Every other command runs claudes as before.`,
 func (app *App) cdCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:               "cd TARGET",
-		Short:             "Change to a session's folder (needs claudes init)",
+		Short:             "Change to a session's directory (needs claudes init)",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: app.completePast(true),
 		RunE: func(*cobra.Command, []string) error {
-			return errors.New(`claudes cd needs the shell integration, since a program cannot change its shell's folder. Add one line to your shell's profile:
+			return errors.New(`claudes cd needs the shell integration, since a program cannot change its shell's directory. Add one line to your shell's profile:
   bash:  eval "$(claudes init bash)"
   zsh:   eval "$(claudes init zsh)"
   fish:  claudes init fish | source

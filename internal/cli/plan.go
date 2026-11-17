@@ -29,7 +29,7 @@ func (app *App) printPlan(heading string, rows []planRow) {
 	app.printPlanOf(heading, "session(s)", "STATUS", rows)
 }
 
-// printPlanOf is printPlan for rows that are not sessions, such as folders,
+// printPlanOf is printPlan for rows that are not sessions, such as directories,
 // or whose label is not a status. Like every table, it starts with the id and
 // ends with the directory, the name, and any note; a column no row fills is left
 // out.
@@ -182,8 +182,8 @@ func labels[T interface{ Label() string }](items []T) string {
 
 type failure struct {
 	label, reason string
-	// of is the session or folder that failed, when there is one, so the
-	// report gives its id and folder.
+	// of is the session or directory that failed, when there is one, so the
+	// report gives its id and directory.
 	of subject
 }
 

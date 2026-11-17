@@ -53,7 +53,7 @@ func (o *outputFlag) encode(w io.Writer, v any) error {
 		return err
 	}
 	clearStyle(&node)
-	// v3's layout, with no line folded, so a long folder or prompt stays on
+	// v3's layout, with no line folded, so a long directory or prompt stays on
 	// one line for grep.
 	d, err := yaml.NewDumper(w, yaml.WithV3Defaults(), yaml.WithIndent(2), yaml.WithLineWidth(-1))
 	if err != nil {

@@ -94,7 +94,7 @@ func (app *App) environment(ctx context.Context) []envSection {
 	case configFile != "" && !config.Exists(configFile):
 		configFile += " (none, so the built-in defaults apply)"
 	}
-	cache := "(no cache folder, so claude --version runs every time)"
+	cache := "(no cache directory, so claude --version runs every time)"
 	if app.CacheDir != "" {
 		cache = compat.CachePath(app.CacheDir)
 	}

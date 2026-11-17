@@ -10,8 +10,8 @@ import (
 
 const skillName = "claudes"
 
-// ClaudeSkillsDir is Claude Code's personal skills folder: skills in Claude
-// Code's folder (paths.ClaudeHome).
+// ClaudeSkillsDir is Claude Code's personal skills directory: skills in Claude
+// Code's directory (paths.ClaudeHome).
 func ClaudeSkillsDir() (string, error) {
 	home, err := paths.ClaudeHome()
 	if err != nil {

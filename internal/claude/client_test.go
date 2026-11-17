@@ -217,7 +217,7 @@ func TestResumeRunsInTheFolderWithThePromptLast(t *testing.T) {
 
 func TestResumeChecksTheFolderFirst(t *testing.T) {
 	r := &fakeRunner{}
-	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", "/no/such/folder", "", "")
+	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", "/no/such/directory", "", "")
 	if err == nil || !strings.Contains(err.Error(), "is gone") || len(r.calls) != 0 {
 		t.Fatalf("err %v, calls %q", err, r.calls)
 	}

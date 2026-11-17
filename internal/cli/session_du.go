@@ -13,11 +13,11 @@ import (
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
-// duFolder is the space the sessions of one project folder take.
+// duFolder is the space the sessions of one project directory take.
 type duFolder struct {
 	// Folder is where the newest of its sessions ran.
-	Folder string `json:"folder"`
-	// Project is the project folder under ~/.claude/projects.
+	Folder string `json:"dir"`
+	// Project is the project directory under ~/.claude/projects.
 	Project  string           `json:"project"`
 	Sessions int              `json:"sessions"`
 	Disk     transcripts.Disk `json:"disk"`
@@ -34,7 +34,7 @@ type duSession struct {
 }
 
 type duReport struct {
-	Folders []duFolder `json:"folders"`
+	Folders []duFolder `json:"dirs"`
 	// Top is the biggest sessions, with --top.
 	Top       []duSession            `json:"top"`
 	Leftovers []transcripts.Leftover `json:"leftovers"`
@@ -50,13 +50,13 @@ func (app *App) sessionDuCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "du [TARGET...]",
 		Aliases: []string{"df"},
-		Short:   "Show how much disk space sessions take, by folder",
-		Long: `Add up the space sessions take on disk, one line per project folder under
+		Short:   "Show how much disk space sessions take, by directory",
+		Long: `Add up the space sessions take on disk, one line per project directory under
 ~/.claude/projects, biggest first: transcripts, subagent transcripts and tool
 results (SIDECARS), older copies session mv left, and Claude Code's backups of
 the files each session edited (HISTORY).
 
-Leftovers are sidecar and file-history folders whose transcript is gone. They
+Leftovers are sidecar and file-history directories whose transcript is gone. They
 count only when no target, --in, or --since narrows the sessions.
 
 --top N also lists the N sessions that take the most space, with the share their
@@ -105,7 +105,7 @@ session.`,
 					size += l.Size
 				}
 				table = append(table, []string{style.Size(size), "-", "-", "-", "-", "-",
-					app.colors.Faint(fmt.Sprintf("%d leftover folder(s) with no transcript", len(leftovers)))})
+					app.colors.Faint(fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers)))})
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = style.Size(report.Total)
@@ -125,7 +125,7 @@ session.`,
 			return style.Table(app.Out, table)
 		},
 	}
-	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this folder or below it")
+	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this directory or below it")
 	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
 	cmd.Flags().IntVar(&top, "top", 0, "also list the N sessions that take the most space")
@@ -152,7 +152,7 @@ func duRow(d transcripts.Disk, sessions, folder string) []string {
 		style.Size(d.Copies), style.Size(d.FileHistory), sessions, folder}
 }
 
-// duTally groups list, which is newest first, by project folder, biggest
+// duTally groups list, which is newest first, by project directory, biggest
 // first.
 func duTally(list []pastSession, leftovers []transcripts.Leftover) duReport {
 	report := duReport{Folders: []duFolder{}, Leftovers: leftovers}

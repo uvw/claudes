@@ -1,6 +1,6 @@
 // Package transcripts reads the session transcripts Claude Code keeps under
-// ~/.claude/projects, one folder per working directory, and copies one to
-// another folder. Their format is not a stable Claude Code interface: records
+// ~/.claude/projects, one directory per working directory, and copies one to
+// another directory. Their format is not a stable Claude Code interface: records
 // claudes does not recognize are skipped.
 package transcripts
 
@@ -28,16 +28,16 @@ import (
 	"github.com/uvw/claudes/internal/shell"
 )
 
-// Store is the projects folder.
+// Store is the projects directory.
 type Store struct {
 	Dir string
-	// Home is Claude Code's folder, which holds each session's file history,
+	// Home is Claude Code's directory, which holds each session's file history,
 	// or "" to leave it out.
 	Home string
-	// Moves is claudes' own record of the folders session mv copied
-	// sessions to, or "" for none. A copy's records still name the folder it
-	// came from until it is resumed, and a project folder's name cannot be
-	// turned back into the folder.
+	// Moves is claudes' own record of the directories session mv copied
+	// sessions to, or "" for none. A copy's records still name the directory it
+	// came from until it is resumed, and a project directory's name cannot be
+	// turned back into the directory.
 	Moves string
 }
 
@@ -57,7 +57,7 @@ type Session struct {
 	LastPrompt string    `json:"lastPrompt"`
 	Version    string    `json:"version"`
 	// Path is the transcript. A session moved with claudes session mv has a
-	// copy in each folder; Path is the newest, and Copies lists the rest.
+	// copy in each directory; Path is the newest, and Copies lists the rest.
 	Path   string   `json:"path"`
 	Copies []string `json:"copies"`
 	Size   int64    `json:"size"`
@@ -65,7 +65,7 @@ type Session struct {
 	// enough to read whole, has no user or assistant record.
 	Empty bool `json:"empty"`
 	// fits is whether the transcript's own records place it in its project
-	// folder, or Claude Code relocated it, so no recorded move applies.
+	// directory, or Claude Code relocated it, so no recorded move applies.
 	fits bool
 }
 
@@ -79,7 +79,7 @@ func (s Session) Label() string { return cmp.Or(shell.Printable(s.Name), s.ID())
 // Aliases are the exact strings that select the session.
 func (s Session) Aliases() []string { return claude.NonEmpty(s.Name, s.SessionID, s.ID()) }
 
-// Folder is the project folder that holds a working directory's transcripts:
+// Folder is the project directory that holds a working directory's transcripts:
 // every character that is not an ASCII letter or digit becomes '-'. Claude
 // Code counts UTF-16 code units, so a character outside the Basic
 // Multilingual Plane, such as an emoji, becomes two.
@@ -98,14 +98,14 @@ func Folder(cwd string) string {
 	return b.String()
 }
 
-// maxFolder is the longest folder name Claude Code uses as is. It shortens a
+// maxFolder is the longest directory name Claude Code uses as is. It shortens a
 // longer one and adds a hash claudes does not reproduce.
 const maxFolder = 200
 
 // List reads every session in the store, newest activity first. A transcript
 // that cannot be read is left out.
 func (st Store) List() ([]Session, error) {
-	// Glob ignores I/O errors, so one on the folder itself is caught here.
+	// Glob ignores I/O errors, so one on the directory itself is caught here.
 	if _, err := os.Stat(st.Dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
@@ -167,9 +167,9 @@ func (st Store) List() ([]Session, error) {
 	return out, nil
 }
 
-// moveKey names a copy in the moves file: its project folder and session id.
-// The folder is in lower case, since Windows and macOS put a copy into an
-// existing folder whose name differs only in case.
+// moveKey names a copy in the moves file: its project directory and session id.
+// The directory is in lower case, since Windows and macOS put a copy into an
+// existing directory whose name differs only in case.
 func moveKey(path, sessionID string) string {
 	return strings.ToLower(filepath.Base(filepath.Dir(path))) + "/" + sessionID
 }
@@ -351,8 +351,8 @@ func (m *summary) take(r record) {
 	m.conversation = m.conversation || r.Type == "user" || r.Type == "assistant"
 }
 
-// folder is the session's folder: where Claude Code relocated it, or else the
-// recorded folder that names the project folder it lives in, so a session
+// directory is the session's directory: where Claude Code relocated it, or else the
+// recorded directory that names the project directory it lives in, so a session
 // that wandered into a subfolder resumes where Claude Code looks for it.
 func (m *summary) folder(project string) string {
 	switch {
@@ -384,20 +384,20 @@ func records(data []byte, partial bool) []record {
 	return out
 }
 
-// Copy copies s's transcript, and its folder of subagent transcripts and tool
-// results when there is one, into the project folder for dir. It never moves
+// Copy copies s's transcript, and its directory of subagent transcripts and tool
+// results when there is one, into the project directory for dir. It never moves
 // or deletes: the original stays, so the session still resumes from its old
-// folder. It returns the folder it copied into.
+// directory. It returns the directory it copied into.
 func (st Store) Copy(s Session, dir string) (string, error) {
 	name := Folder(dir)
 	if len(name) > maxFolder {
-		return "", fmt.Errorf("%s is too long: Claude Code shortens the names of such folders in a way claudes cannot match, so it would not find the copy", dir)
+		return "", fmt.Errorf("%s is too long: Claude Code shortens the names of such directories in a way claudes cannot match, so it would not find the copy", dir)
 	}
 	dest := filepath.Join(st.Dir, name)
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return "", err
 	}
-	// The same folder can differ in case, or be reached through a link.
+	// The same directory can differ in case, or be reached through a link.
 	if same(filepath.Dir(s.Path), dest) {
 		return "", fmt.Errorf("%s already lives under %s", s.Label(), dir)
 	}
@@ -420,7 +420,7 @@ func (st Store) Copy(s Session, dir string) (string, error) {
 	return dest, nil
 }
 
-// RemoveOriginal deletes s's transcript and its folder of subagent
+// RemoveOriginal deletes s's transcript and its directory of subagent
 // transcripts and tool results, once every file of the copy in dest matches
 // the original byte for byte.
 func (st Store) RemoveOriginal(s Session, dest string) error {
@@ -433,7 +433,7 @@ func (st Store) RemoveOriginal(s Session, dest string) error {
 	}
 	sidecar := Sidecar(s)
 	if err := sameTree(sidecar, filepath.Join(dest, filepath.Base(sidecar))); err != nil {
-		return fmt.Errorf("kept the original, since the copy of its subagent folder does not match it: %w", err)
+		return fmt.Errorf("kept the original, since the copy of its subagent directory does not match it: %w", err)
 	}
 	if err := os.RemoveAll(sidecar); err != nil {
 		return err
@@ -442,7 +442,7 @@ func (st Store) RemoveOriginal(s Session, dest string) error {
 }
 
 // sameTree checks that every file under src has an identical copy under
-// dest. A src that does not exist matches. Anything but a folder or a regular
+// dest. A src that does not exist matches. Anything but a directory or a regular
 // file, such as a link, is not copied, so it does not match.
 func sameTree(src, dest string) error {
 	if _, err := os.Lstat(src); errors.Is(err, fs.ErrNotExist) {
@@ -487,7 +487,7 @@ func same(a, b string) bool {
 	return errA == nil && errB == nil && os.SameFile(ai, bi)
 }
 
-// Sidecar is the folder beside a transcript that holds its subagent
+// Sidecar is the directory beside a transcript that holds its subagent
 // transcripts and tool results.
 func Sidecar(s Session) string { return strings.TrimSuffix(s.Path, ".jsonl") }
 
@@ -529,8 +529,8 @@ func copyFile(src, dest string) error {
 	return os.Chtimes(dest, info.ModTime(), info.ModTime())
 }
 
-// Files are the transcript and, when there is one, its sidecar folder: what
-// removing the session from its folder would take.
+// Files are the transcript and, when there is one, its sidecar directory: what
+// removing the session from its directory would take.
 func Files(s Session) []string {
 	out := []string{s.Path}
 	if info, err := os.Stat(Sidecar(s)); err == nil && info.IsDir() {
@@ -539,7 +539,7 @@ func Files(s Session) []string {
 	return out
 }
 
-// DefaultStore is the projects folder in Claude Code's folder
+// DefaultStore is the projects directory in Claude Code's directory
 // (paths.ClaudeHome).
 func DefaultStore() (Store, error) {
 	home, err := paths.ClaudeHome()
@@ -553,9 +553,9 @@ func DefaultStore() (Store, error) {
 	return st, nil
 }
 
-// FolderNamesMatch reports whether Folder still names the project folders
+// FolderNamesMatch reports whether Folder still names the project directories
 // Claude Code writes: at least one of the ten most recently active sessions
-// lives in the folder Folder gives for its working directory. Older sessions
+// lives in the directory Folder gives for its working directory. Older sessions
 // and moved copies can differ, so one match among the newest is enough. With
 // no sessions there is nothing to contradict it.
 func FolderNamesMatch(newestFirst []Session) bool {

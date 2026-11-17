@@ -1,5 +1,5 @@
 # Sourced by demo.tape, hidden, inside the VHS container: makes a throwaway
-# home folder with sessions run by the fake claude from test/e2e, so the demo
+# home directory with sessions run by the fake claude from test/e2e, so the demo
 # never touches real sessions and comes out the same every time.
 # shellcheck shell=bash
 
@@ -43,7 +43,7 @@ for id in 3f2a9c41 8b7e1d02 c41d7e93 5e9b2a64 72ac5f15; do
 done
 printf '{"cliVersion":"2.1.322"}' >"$CLAUDE_CONFIG_DIR/jobs/c41d7e93/state.json"
 
-# transcript NAME ID FOLDER KB DAYS_AGO writes a transcript of about KB
+# transcript NAME ID DIR KB DAYS_AGO writes a transcript of about KB
 # kilobytes, last active DAYS_AGO days ago. An empty NAME writes a session that
 # never got a prompt.
 pad=$(head -c 1000 /dev/zero | tr '\0' 'x')

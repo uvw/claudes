@@ -41,5 +41,5 @@ body:
     id: sessions
     attributes:
       label: claudes ls -a -o json
-      description: Optional. Remove anything private, such as folder names.
+      description: Optional. Remove anything private, such as directory names.
       render: json

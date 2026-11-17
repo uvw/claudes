@@ -1,5 +1,5 @@
 // Package e2e runs the compiled claudes binary against fakeclaude, a stand-in
-// for the claude command line, with every folder claudes touches moved into a
+// for the claude command line, with every directory claudes touches moved into a
 // temporary directory.
 package e2e
 
@@ -24,7 +24,7 @@ import (
 	"github.com/uvw/claudes/test/e2e/internal/fake"
 )
 
-// binEnv names a folder that already holds claudes and claude, built for this
+// binEnv names a directory that already holds claudes and claude, built for this
 // platform, so the tests can run where there is no Go toolchain, such as a
 // cross-compiled test binary in WSL.
 const binEnv = "CLAUDES_E2E_BIN"
@@ -66,8 +66,8 @@ func exe() string {
 	return ""
 }
 
-// world is one test's machine: a home folder, a Claude Code folder, a state
-// folder for the park file, and the fake's sessions.
+// world is one test's machine: a home directory, a Claude Code directory, a state
+// directory for the park file, and the fake's sessions.
 type world struct {
 	t *testing.T
 	// claudeDir is CLAUDE_CONFIG_DIR and stateHome is XDG_STATE_HOME.
@@ -112,7 +112,7 @@ func sessionID(name string) string {
 	return fmt.Sprintf("%08x-1111-2222-3333-444455556666", crc32.ChecksumIEEE([]byte("session/"+name)))
 }
 
-// folder makes a session folder. Its name has a space and a quote, so a resume
+// directory makes a session directory. Its name has a space and a quote, so a resume
 // in it must survive quoting on every platform.
 func (w *world) folder(name string) string {
 	dir := filepath.Join(w.root, "work dir", "it's "+name)
@@ -222,7 +222,7 @@ type result struct {
 }
 
 // environ is the test process's environment with every Claude Code variable
-// and every folder claudes reads replaced, and the color variables dropped.
+// and every directory claudes reads replaced, and the color variables dropped.
 // PATH holds only the fake, so the real claude can never be found.
 func (w *world) environ() []string {
 	drop := []string{"PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PWD", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "TTY_FORCE"}
@@ -361,7 +361,7 @@ func assertContains(t *testing.T, text, want string) {
 }
 
 // assertIn checks that a call ran in dir. Paths are compared as files, since
-// a temporary folder can be reached through a symlink, as on macOS.
+// a temporary directory can be reached through a symlink, as on macOS.
 func assertIn(t *testing.T, c fake.Call, dir string) {
 	t.Helper()
 	a, errA := os.Stat(c.Cwd)

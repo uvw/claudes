@@ -246,10 +246,10 @@ func (app *App) unpark(sessionID string) error {
 
 // relaunch stops a session and resumes it in the background with prompt. The
 // session is parked until it is back, and is not stopped at all when its
-// folder is gone, because it could not be resumed.
+// directory is gone, because it could not be resumed.
 func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) error {
 	if !claude.FolderExists(s.Cwd) {
-		return fmt.Errorf("folder %s is gone, so it was not stopped", s.Cwd)
+		return fmt.Errorf("directory %s is gone, so it was not stopped", s.Cwd)
 	}
 	if err := app.parkOne(s, prompt != ""); err != nil {
 		return err

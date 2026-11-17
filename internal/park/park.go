@@ -75,7 +75,7 @@ type File struct {
 	Legacy string
 }
 
-// DefaultFile is parked.json in claudes' state folder (paths.State).
+// DefaultFile is parked.json in claudes' state directory (paths.State).
 func DefaultFile() (File, error) {
 	dir, err := paths.State()
 	if err != nil {

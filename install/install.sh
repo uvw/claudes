@@ -7,7 +7,7 @@
 # It downloads the archive for this computer and checks it against the
 # release's checksums.txt. When the GitHub CLI is installed and signed in, it
 # also checks the archive's build provenance. CLAUDES_INSTALL_DIR and
-# CLAUDES_VERSION set the folder and the version, as --dir and --version do.
+# CLAUDES_VERSION set the directory and the version, as --dir and --version do.
 set -eu
 
 repo=uvw/claudes
@@ -21,9 +21,9 @@ die() {
 }
 
 usage() {
-  say "Usage: install.sh [--version vX.Y.Z] [--dir FOLDER]"
+  say "Usage: install.sh [--version vX.Y.Z] [--dir DIR]"
   say ""
-  say "Installs claudes into FOLDER, ~/.local/bin by default, from the latest"
+  say "Installs claudes into DIR, ~/.local/bin by default, from the latest"
   say "release or the one --version names. Run it again to upgrade."
 }
 
@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   --dir)
-    [ $# -ge 2 ] || die "--dir needs a folder"
+    [ $# -ge 2 ] || die "--dir needs a directory"
     dir=$2
     shift 2
     ;;
@@ -70,7 +70,7 @@ if [ "$os" = darwin ] && [ "$arch" = amd64 ] && [ "$(sysctl -in sysctl.proc_tran
   arch=arm64
 fi
 
-# CLAUDES_DOWNLOAD_URL, a URL or a folder, replaces the release, so the
+# CLAUDES_DOWNLOAD_URL, a URL or a directory, replaces the release, so the
 # release workflow can try this script on the archives it just built.
 if [ -n "${CLAUDES_DOWNLOAD_URL:-}" ]; then
   base=$CLAUDES_DOWNLOAD_URL

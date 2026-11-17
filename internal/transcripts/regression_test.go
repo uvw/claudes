@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-// On Windows a project folder can exist in another case than Folder(dir)
+// On Windows a project directory can exist in another case than Folder(dir)
 // gives, as when Claude Code ran from a cwd typed in lower case. The copy lands
-// in that folder, but moves.json keys it by the computed name, so List never
-// finds the entry and the copy resumes in the old folder.
+// in that directory, but moves.json keys it by the computed name, so List never
+// finds the entry and the copy resumes in the old directory.
 func TestAMoveIntoAFolderInAnotherCaseIsFound(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("case-insensitive file system")
