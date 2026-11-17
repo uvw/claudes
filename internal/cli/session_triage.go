@@ -163,9 +163,9 @@ func triageOf(p pastSession, why string) triageItem {
 func (app *App) printTriage(r triageReport) error {
 	if len(r.Remove) > 0 {
 		app.say("Remove %d session(s) and folder(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
-		table := [][]string{{"ID", "NAME", "WHY", "SIZE", "FOLDER"}}
+		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
-			table = append(table, []string{t.ID, shell.Printable(cmp.Or(t.Name, t.ID)), t.Why, style.Size(t.Size), app.colors.Faint(homeShort(t.Cwd))})
+			table = append(table, []string{t.ID, t.Why, style.Size(t.Size), app.colors.Faint(homeShort(t.Cwd)), nameCell(cmp.Or(t.Name, t.ID))})
 		}
 		if err := style.Table(app.Out, table); err != nil {
 			return err
@@ -174,10 +174,10 @@ func (app *App) printTriage(r triageReport) error {
 	}
 	if len(r.Review) > 0 {
 		app.say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), style.Size(triageSize(r.Review)))
-		table := [][]string{{"ID", "NAME", "TOOLS", "SIZE", "FIRST PROMPT"}}
+		table := [][]string{{"ID", "TOOLS", "SIZE", "NAME", "FIRST PROMPT"}}
 		for _, t := range r.Review {
-			table = append(table, []string{t.ID, shell.Printable(cmp.Or(t.Name, t.ID)), strconv.Itoa(t.Activity.ToolCalls),
-				style.Size(t.Size), shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
+			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(cmp.Or(t.Name, t.ID)),
+				shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
 		}
 		if err := style.Table(app.Out, table); err != nil {
 			return err

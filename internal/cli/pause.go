@@ -50,7 +50,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 			note = "this session: paused last"
 		}
 		note = joinNotes(note, app.teamNote(s))
-		rows = append(rows, planRow{s.ID(), s.Label(), dash(s.Activity()), s.Cwd, note})
+		rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: dash(s.Activity()), cwd: s.Cwd, note: note})
 	}
 	app.printPlan("Pausing", rows)
 	if proceed, err := app.gate(f, "Pause these sessions?"); !proceed {

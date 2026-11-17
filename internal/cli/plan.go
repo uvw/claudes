@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"strings"
 
 	"github.com/uvw/claudes/internal/claude"
@@ -10,24 +11,60 @@ import (
 
 type planRow struct {
 	id, name, label, cwd, note string
+	// size is what removing it frees, or "".
+	size string
 }
 
+// maxName is the most characters of a name a table shows. Claude Code's own
+// titles for sessions run past 60.
+const maxName = 40
+
+// nameCell is a name as a table shows it: printable, on one line, and cut to
+// maxName characters.
+func nameCell(name string) string { return firstLine(shell.Printable(name), maxName) }
+
+// printPlan prints the sessions a command is about to act on, with their
+// status.
 func (app *App) printPlan(heading string, rows []planRow) {
-	app.printPlanOf(heading, "session(s)", rows)
+	app.printPlanOf(heading, "session(s)", "STATUS", rows)
 }
 
-// printPlanOf is printPlan for rows that are not sessions, such as folders.
-func (app *App) printPlanOf(heading, noun string, rows []planRow) {
+// printPlanOf is printPlan for rows that are not sessions, such as folders,
+// or whose label is not a status. Like every table, it starts with the id and
+// ends with the directory, the name, and any note; a column no row fills is left
+// out.
+func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 	app.say("%s %d %s:", heading, len(rows), noun)
+	var labels, sizes, notes bool
 	for _, r := range rows {
 		app.record(func(rep *report) {
-			rep.Plan = append(rep.Plan, reportEntry{ID: r.id, Name: r.name, Cwd: r.cwd, Result: r.label, Note: r.note})
+			rep.Plan = append(rep.Plan, reportEntry{ID: r.id, Name: r.name, Cwd: r.cwd, Result: r.label, Note: cmp.Or(r.note, r.size)})
 		})
-		note := ""
-		if r.note != "" {
-			note = "  (" + r.note + ")"
+		labels, sizes, notes = labels || r.label != "", sizes || r.size != "", notes || r.note != ""
+	}
+	pick := func(r planRow) []string {
+		cells := []string{r.id}
+		if labels {
+			cells = append(cells, r.label)
 		}
-		app.say("  %-8s  %-26s  %-8s  %s%s", r.id, r.name, r.label, homeShort(r.cwd), note)
+		if sizes {
+			cells = append(cells, r.size)
+		}
+		cells = append(cells, r.cwd, r.name)
+		if notes {
+			cells = append(cells, r.note)
+		}
+		return cells
+	}
+	table := [][]string{pick(planRow{id: "ID", label: labelHeader, size: "SIZE", cwd: "DIR", name: "NAME", note: "NOTE"})}
+	for _, r := range rows {
+		r.cwd, r.name = app.colors.Faint(homeShort(r.cwd)), nameCell(r.name)
+		table = append(table, pick(r))
+	}
+	var b strings.Builder
+	_ = style.Table(&b, table)
+	for line := range strings.Lines(b.String()) {
+		app.say("  %s", strings.TrimRight(line, " \n"))
 	}
 }
 

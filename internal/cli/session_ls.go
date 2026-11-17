@@ -51,14 +51,14 @@ backups of the files it edited. claudes session du adds them up by folder.`,
 				fmt.Fprintln(app.Out, "No sessions.")
 				return nil
 			}
-			table := [][]string{{"NAME", "ID", "STATE", "ACTIVE", "SIZE", "BRANCH", "CWD"}}
+			table := [][]string{{"ID", "RUNNING", "ACTIVE", "SIZE", "BRANCH", "DIR", "NAME"}}
 			for _, p := range list {
-				state := "-"
+				running := "-"
 				if p.Running {
-					state = app.colors.Green("running")
+					running = app.colors.Green("yes")
 				}
-				table = append(table, []string{shell.Printable(p.Label()), p.ShortID, state,
-					age(app.Now(), p.LastActive), style.Size(p.Disk.Total), dash(shell.Printable(p.Branch)), app.colors.Faint(homeShort(p.Cwd))})
+				table = append(table, []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total),
+					dash(shell.Printable(p.Branch)), app.colors.Faint(homeShort(p.Cwd)), nameCell(p.Label())})
 			}
 			return style.Table(app.Out, table)
 		},

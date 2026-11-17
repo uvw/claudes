@@ -174,7 +174,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			case promptFor(r) != "":
 				note = "will be pinged"
 			}
-			rows = append(rows, planRow{r.ShortID(), r.Label(), label, r.Cwd, note})
+			rows = append(rows, planRow{id: r.ShortID(), name: r.Label(), label: label, cwd: r.Cwd, note: note})
 		}
 		app.printPlan("Resuming", rows)
 	}

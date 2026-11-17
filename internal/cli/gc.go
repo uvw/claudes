@@ -88,9 +88,9 @@ longer run and have not changed for longer than --older-than.`,
 			}
 			rows := make([]planRow, 0, len(picked))
 			for _, s := range picked {
-				rows = append(rows, planRow{s.ID(), s.Label(), s.State, s.Cwd, "last active " + ago(app.Now(), app.lastActive(s))})
+				rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: s.State, cwd: s.Cwd, note: "last active " + ago(app.Now(), app.lastActive(s))})
 			}
-			app.printPlan("Removing", rows)
+			app.printPlanOf("Removing", "session(s)", "STATE", rows)
 			if dryRun {
 				app.say("\nDry run: nothing was changed.")
 				return nil
@@ -236,9 +236,9 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, wi
 	rows := make([]planRow, 0, len(folders))
 	for _, f := range folders {
 		l := leftover{f}
-		rows = append(rows, planRow{l.ID(), l.Label(), "", f.Path, "last changed " + ago(app.Now(), f.Modified)})
+		rows = append(rows, planRow{id: l.ID(), name: l.Label(), cwd: f.Path, note: "last changed " + ago(app.Now(), f.Modified)})
 	}
-	app.printPlanOf("Removing", "team folder(s) and task list(s)", rows)
+	app.printPlanOf("Removing", "team folder(s) and task list(s)", "", rows)
 	if dryRun {
 		app.say("\nDry run: nothing was changed.")
 		return nil

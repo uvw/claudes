@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -92,7 +91,7 @@ session.`,
 				fmt.Fprintln(app.Out, "No sessions.")
 				return nil
 			}
-			table := [][]string{{"TOTAL", "TRANSCRIPTS", "SIDECARS", "COPIES", "HISTORY", "SESSIONS", "FOLDER"}}
+			table := [][]string{{"TOTAL", "TRANSCRIPTS", "SIDECARS", "COPIES", "HISTORY", "SESSIONS", "DIR"}}
 			var sum transcripts.Disk
 			sessions := 0
 			for _, f := range report.Folders {
@@ -114,14 +113,14 @@ session.`,
 				return err
 			}
 			fmt.Fprintf(app.Out, "\nThe %d biggest session(s):\n", len(report.Top))
-			table = [][]string{{"ID", "NAME", "TOTAL", "SIDECARS", "SHARE", "FOLDER"}}
+			table = [][]string{{"ID", "TOTAL", "SIDECARS", "SHARE", "DIR", "NAME"}}
 			for _, s := range report.Top {
 				share := "-"
 				if s.Disk.Total > 0 {
 					share = strconv.FormatInt(s.Disk.Sidecar*100/s.Disk.Total, 10) + "%"
 				}
-				table = append(table, []string{s.ID, shell.Printable(cmp.Or(s.Name, s.ID)), style.Size(s.Disk.Total),
-					style.Size(s.Disk.Sidecar), share, app.colors.Faint(homeShort(s.Cwd))})
+				table = append(table, []string{s.ID, style.Size(s.Disk.Total), style.Size(s.Disk.Sidecar), share,
+					app.colors.Faint(homeShort(s.Cwd)), nameCell(cmp.Or(s.Name, s.ID))})
 			}
 			return style.Table(app.Out, table)
 		},

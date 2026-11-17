@@ -488,13 +488,13 @@ func TestLsPutsPinnedFirstAndMarksThem(t *testing.T) {
 	h.ok(t, "ls")
 
 	lines := strings.Split(h.out.String(), "\n")
-	if !strings.HasPrefix(lines[0], "PINNED ") || !strings.HasPrefix(lines[1], "yes ") || !strings.Contains(lines[1], "pinned-one") {
+	if !strings.HasPrefix(lines[0], "ID ") || !strings.Contains(lines[1], " yes ") || !strings.HasSuffix(lines[1], "pinned-one") {
 		t.Fatalf("pinned row is not first and marked:\n%s", h.out)
 	}
 	if !strings.Contains(lines[2], "busy-one") {
 		t.Fatalf("busy row is not second:\n%s", h.out)
 	}
-	if !strings.HasPrefix(lines[2], "- ") || strings.Contains(h.out.String(), "* pinned") {
+	if !strings.Contains(lines[2], " - ") || strings.Contains(h.out.String(), "* pinned") {
 		t.Fatalf("unpinned row or footer wrong:\n%s", h.out)
 	}
 }

@@ -18,8 +18,9 @@ claudes does those jobs in one command, without losing work:
 ```console
 $ claudes restart --outdated --ping --dry-run
 Restarting 2 session(s):
-  034d46b9  api-refactor                busy      ~/src/api-refactor  (will be pinged)
-  51572bb7  docs                        idle      ~/src/docs
+  ID        STATUS  DIR                 NAME          NOTE
+  034d46b9  busy    ~/src/api-refactor  api-refactor  will be pinged
+  51572bb7  idle    ~/src/docs          docs
 
 Dry run: nothing was changed.
 
@@ -27,8 +28,9 @@ Pinned, not restarted: release-notes. Name a session, or add --pinned, to includ
 
 $ claudes restart --outdated --ping
 Restarting 2 session(s):
-  034d46b9  api-refactor                busy      ~/src/api-refactor  (will be pinged)
-  51572bb7  docs                        idle      ~/src/docs
+  ID        STATUS  DIR                 NAME          NOTE
+  034d46b9  busy    ~/src/api-refactor  api-refactor  will be pinged
+  51572bb7  idle    ~/src/docs          docs
   restarted  api-refactor and pinged
   restarted  docs
 ```
@@ -41,10 +43,10 @@ resumes or moves it from any folder. Anything it doesn't handle goes straight to
 
 ```console
 $ claudes ls
-PINNED  ID        NAME          KIND  STATE    STATUS  TEAM    AGE  VERSION  CWD
-yes     3ec56511  api-refactor  bg    working  busy    lead+2  3h   2.1.325  ~/src/api
--       ff78d735  claudes-mvp   bg    done     idle    -       5h   2.1.325  ~/src/claudes
--       e89ec2c4  e89ec2c4      tty   -        idle    -       20m  -        ~/src/claudes
+ID        PINNED  KIND  STATE    STATUS  TEAM    AGE  VERSION  DIR            NAME
+3ec56511  yes     bg    working  busy    lead+2  3h   2.1.325  ~/src/api      api-refactor
+ff78d735  -       bg    done     idle    -       5h   2.1.325  ~/src/claudes  claudes-mvp
+e89ec2c4  -       tty   -        idle    -       20m  -        ~/src/claudes  e89ec2c4
 ```
 
 ## Quick start
