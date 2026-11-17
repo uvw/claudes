@@ -355,3 +355,60 @@ func TestSessionShowSaysWhatASessionDid(t *testing.T) {
 		t.Errorf("json: %+v", got)
 	}
 }
+
+func TestSessionGcSidecarsKeepsTheSessionAndTrimsItsSidecar(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	sidecarOf := func(id string) string {
+		return filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(work), id)
+	}
+	old := h.transcript(t, "old", work, 60*24*time.Hour)
+	recent := h.transcript(t, "recent", work, 3*24*time.Hour)
+	today := h.transcript(t, "today", work, time.Hour)
+	for _, id := range []string{old, recent, today} {
+		writeFile(t, filepath.Join(sidecarOf(id), "tool-results", "r.txt"), strings.Repeat("x", 500))
+		writeFile(t, filepath.Join(sidecarOf(id), "subagents", "agent-a1.jsonl"), "{}")
+		h.aged(t, sidecarOf(id), time.Hour)
+	}
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "gc", "--sidecars")
+	for _, gone := range []string{filepath.Join(sidecarOf(old), "tool-results"), filepath.Join(sidecarOf(recent), "tool-results")} {
+		if exists(gone) || !slices.Contains(h.trashed, gone) {
+			t.Errorf("%s was not trashed: %q", gone, h.trashed)
+		}
+	}
+	for _, still := range []string{
+		filepath.Join(sidecarOf(old), "subagents"), filepath.Join(sidecarOf(today), "tool-results"),
+		sidecarOf(old) + ".jsonl", sidecarOf(recent) + ".jsonl",
+	} {
+		if !exists(still) {
+			t.Errorf("%s was removed", still)
+		}
+	}
+
+	h.trashed = nil
+	h.ok(t, "session", "gc", "--sidecars", "--older-than", "30d")
+	if want := []string{filepath.Join(sidecarOf(old), "subagents")}; !slices.Equal(h.trashed, want) {
+		t.Errorf("trashed %q, want %q", h.trashed, want)
+	}
+	if !exists(sidecarOf(old)+".jsonl") || !exists(filepath.Join(sidecarOf(recent), "subagents")) {
+		t.Error("--sidecars --older-than removed a whole session or a recent session's subagents")
+	}
+}
+
+func TestSessionGcRemovesOnlyFoldersInsideTheSessionsSidecar(t *testing.T) {
+	h := newHarness(t)
+	id := sessionID("x")
+	mine := filepath.Join(h.root, "projects", "-w", id, "tool-results")
+	writeFile(t, filepath.Join(mine, "r.txt"), "x")
+	theirs := filepath.Join(h.root, "projects", "-w", sessionID("y"), "tool-results")
+	writeFile(t, filepath.Join(theirs, "r.txt"), "keep me")
+
+	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{theirs}}, h.root, true); err == nil || !exists(theirs) {
+		t.Fatalf("removed another session's folder: %v", err)
+	}
+	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{mine}}, h.root, true); err != nil || exists(mine) {
+		t.Fatalf("kept the session's own folder: %v", err)
+	}
+}

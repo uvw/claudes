@@ -182,6 +182,15 @@ and one with file history are never trivial. To tell, claudes reads each
 transcript up to 2 MB in full; a bigger one is never trivial. Targets remove
 exactly the sessions named. `--dry-run` shows the plan and what it frees.
 
+`--sidecars` keeps every session and trims its sidecar folder instead, which is
+often most of a big session (`session du --top 10` shows how much). It takes the
+big command outputs Claude Code saved under `tool-results`. The transcript keeps
+a preview of each, so the session resumes with everything the model saw, but
+cannot read a saved output again. With `--older-than 30d`, it also takes the
+subagent transcripts of sessions idle that long. Such a session still resumes,
+but cannot continue a subagent it ran, and `claudes logs X/TEAMMATE` has nothing
+to show. With `--sidecars`, `--older-than` removes no whole session.
+
 `session gc` never removes a running session, one agent view still lists
 (`claudes gc` removes those from the list first), a parked one, or the session
 running claudes. Without targets, it also leaves alone anything that changed in
