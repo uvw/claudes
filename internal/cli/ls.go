@@ -111,7 +111,7 @@ func (app *App) printTable(w io.Writer, rows []row) {
 		return
 	}
 	c := app.colors
-	table := [][]string{{"PINNED", "ID", "NAME", "KIND", "STATE", "STATUS", "TEAM", "AGE", "VERSION", "CWD"}}
+	table := [][]string{{"ID", "PINNED", "KIND", "STATE", "STATUS", "TEAM", "AGE", "VERSION", "DIR", "NAME"}}
 	outdated := false
 	for _, r := range rows {
 		mark := "-"
@@ -126,8 +126,8 @@ func (app *App) printTable(w io.Writer, rows []row) {
 		if n := len(r.Teammates); n > 0 {
 			team = c.Magenta(fmt.Sprintf("lead+%d", n))
 		}
-		table = append(table, []string{mark, r.ID(), r.Label(), kind(r.Session), dash(r.State),
-			app.status(dash(r.Status)), team, age(app.Now(), r.Started()), ver, c.Faint(homeShort(r.Cwd))})
+		table = append(table, []string{r.ID(), mark, kind(r.Session), dash(r.State),
+			app.status(dash(r.Status)), team, age(app.Now(), r.Started()), ver, c.Faint(homeShort(r.Cwd)), nameCell(r.Label())})
 	}
 	style.Table(w, table)
 	if outdated {

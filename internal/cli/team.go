@@ -119,17 +119,17 @@ runs, which claudes gc --teams removes.`,
 				return nil
 			}
 			c := app.colors
-			table := [][]string{{"LEAD", "ID", "TEAMMATES", "TASKS", "CWD"}}
+			table := [][]string{{"ID", "TEAMMATES", "TASKS", "DIR", "LEAD"}}
 			for _, r := range rows {
 				mates := "-"
 				if len(r.Teammates) > 0 {
 					mates = c.Magenta(printableList(r.Teammates))
 				}
-				lead := r.Label()
+				lead := nameCell(r.Label())
 				if !r.Running {
 					lead = c.Faint(lead + " (not running)")
 				}
-				table = append(table, []string{lead, r.LeadID, mates, taskSummary(r.Tasks), c.Faint(homeShort(r.Cwd))})
+				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), c.Faint(homeShort(r.Cwd)), lead})
 			}
 			return style.Table(app.Out, table)
 		},

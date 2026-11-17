@@ -62,8 +62,8 @@ func TestSessionLsListsTranscriptsNewestFirst(t *testing.T) {
 
 	h.ok(t, "session", "ls")
 	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
-	if len(lines) != 3 || !strings.HasPrefix(lines[1], "live") || !strings.Contains(lines[1], "running") ||
-		!strings.HasPrefix(lines[2], "old-plan") || !strings.Contains(lines[2], "3d") {
+	if len(lines) != 3 || !strings.HasSuffix(lines[1], "live") || !strings.Contains(lines[1], " yes ") ||
+		!strings.HasSuffix(lines[2], "old-plan") || !strings.Contains(lines[2], "3d") {
 		t.Fatalf("table:\n%s", h.out)
 	}
 
@@ -433,14 +433,14 @@ func TestSessionLsShowsSizesAndSortsBySize(t *testing.T) {
 
 	h.ok(t, "session", "ls")
 	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
-	if !strings.Contains(lines[0], "SIZE") || !strings.HasPrefix(lines[1], "small") {
+	if !strings.Contains(lines[0], "SIZE") || !strings.HasSuffix(lines[1], "small") {
 		t.Fatalf("table:\n%s", h.out)
 	}
 
 	h.out.Reset()
 	h.ok(t, "session", "ls", "--sort", "size")
 	lines = strings.Split(strings.TrimSpace(h.out.String()), "\n")
-	if !strings.HasPrefix(lines[1], "big") || !strings.Contains(lines[1], "5.") {
+	if !strings.HasSuffix(lines[1], "big") || !strings.Contains(lines[1], "5.") {
 		t.Fatalf("--sort size:\n%s", h.out)
 	}
 
@@ -542,7 +542,7 @@ func TestSessionDuTopListsTheBiggestSessionsWithTheirSidecarShare(t *testing.T) 
 	if !strings.Contains(text, "The 3 biggest session(s):") || strings.Index(text, "big") > strings.Index(text, "small") {
 		t.Fatalf("output:\n%s", text)
 	}
-	if !regexp.MustCompile(`big\s+\S+\s+8\.8K\s+9\d%`).MatchString(text) {
+	if !regexp.MustCompile(`(?m)8\.8K\s+9\d%\s+\S+\s+big$`).MatchString(text) {
 		t.Fatalf("no sidecar share for big:\n%s", text)
 	}
 
@@ -550,5 +550,31 @@ func TestSessionDuTopListsTheBiggestSessionsWithTheirSidecarShare(t *testing.T) 
 	h.ok(t, "session", "du", "-o", "json")
 	if !strings.Contains(h.out.String(), `"top": []`) {
 		t.Fatalf("top is not an empty list without --top:\n%s", h.out)
+	}
+}
+
+func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
+	h := newHarness(t)
+	long := strings.Repeat("A long title Claude Code wrote ", 3)
+	live := h.bg("live", "idle")
+	live.Name = long
+	h.transcriptAs(t, live.SessionID, long, live.Cwd, 2*time.Hour)
+	h.agents.snapshots = [][]claude.Session{{live}}
+
+	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+NOTE)?$`)
+	for _, args := range [][]string{{"ls"}, {"session", "ls"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
+		h.out.Reset()
+		h.ok(t, args...)
+		var headed, cut bool
+		for line := range strings.Lines(h.out.String()) {
+			line = strings.TrimSpace(line)
+			headed = headed || header.MatchString(line)
+			if strings.Contains(line, long[:20]) {
+				cut = strings.HasSuffix(line, strings.TrimSpace(long[:maxName-1])+"…")
+			}
+		}
+		if !headed || !cut {
+			t.Errorf("%v: want ID first, then DIR and a name cut to %d characters last:\n%s", args, maxName, h.out)
+		}
 	}
 }

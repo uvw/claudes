@@ -145,10 +145,10 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 	var total int64
 	rows := make([]planRow, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, planRow{it.ID(), it.name, it.why, it.folder, style.Size(it.size)})
+		rows = append(rows, planRow{id: it.ID(), name: it.name, label: it.why, cwd: it.folder, size: style.Size(it.size)})
 		total += it.size
 	}
-	app.printPlanOf("Removing", "session(s) and folder(s)", rows)
+	app.printPlanOf("Removing", "session(s) and folder(s)", "WHY", rows)
 	where := "Moves them to the trash; --purge deletes them for good."
 	if f.purge {
 		where = "Deletes them for good."

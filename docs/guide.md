@@ -247,8 +247,8 @@ same process. `claude agents` lists only the lead; claudes shows the rest.
 
 ```console
 $ claudes team ls
-LEAD        ID        TEAMMATES       TASKS                      CWD
-teams-lead  62d022d3  writer, tester  1/2 done, working: tester  ~/src/rev
+ID        TEAMMATES       TASKS                      DIR       LEAD
+62d022d3  writer, tester  1/2 done, working: tester  ~/src/rev  teams-lead
 ```
 
 - `ls` marks a lead with its teammate count, such as `lead+2`, and `-o json`

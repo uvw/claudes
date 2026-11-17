@@ -24,6 +24,11 @@ A few cases differ:
    another format; `claudes init` does that itself.
 3. `logs -o json` prints the transcript records themselves, one per line.
 
+Every text table, and every plan a command prints before it acts, starts with
+the id and ends with the directory and the name, followed by a note when there
+is one. Names longer than 40 characters are cut, with `…`; JSON, YAML, and
+`session show` keep them whole.
+
 ### Fields
 
 JSON and YAML use the camelCase field names of `claude agents --json`. Every key
