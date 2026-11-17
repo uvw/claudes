@@ -47,27 +47,6 @@ yes     3ec56511  api-refactor  bg    working  busy    lead+2  3h   2.1.325  ~/s
 -       e89ec2c4  e89ec2c4      tty   -        idle    -       20m  -        ~/src/claudes
 ```
 
-## Goals and non-goals
-
-claudes is a tool: a pocketknife for the Claude Code command line. Its goals:
-
-1. Handle the jobs around running Claude Code sessions: restarting, pausing,
-   resuming, finding, moving, and cleaning up after them.
-2. Act through the `claude` command and the files Claude Code keeps, and pass
-   anything else to `claude agents`.
-3. Stay safe to run against live work, as one small binary with no service
-   behind it.
-
-Its non-goals:
-
-1. Growing into an agent orchestrator or a multi-agent platform. claudes does
-   not plan work, split it across agents, or decide what a session does next.
-2. Other coding agents, such as Copilot, Codex, or Pi. claudes manages Claude
-   Code only.
-
-[Decision 29](docs/decisions.md#29-claudes-is-a-tool-for-claude-code-and-nothing-else)
-says why.
-
 ## Quick start
 
 ```bash
@@ -248,6 +227,27 @@ lists the checks to run before a commit.
 go test ./...
 goreleaser build --snapshot --clean
 ```
+
+### Goals and non-goals
+
+claudes is a tool: a pocketknife for the Claude Code command line. Its goals:
+
+1. Handle the jobs around running Claude Code sessions: restarting, pausing,
+   resuming, finding, moving, and cleaning up after them.
+2. Act through the `claude` command and the files Claude Code keeps, and pass
+   anything else to `claude agents`.
+3. Stay safe to run against live work, as one small binary with no service
+   behind it.
+
+Its non-goals:
+
+1. Growing into an agent orchestrator or a multi-agent platform. claudes does
+   not plan work, split it across agents, or decide what a session does next.
+2. Other coding agents, such as Copilot, Codex, or Pi. claudes manages Claude
+   Code only.
+
+[Decision 29](docs/decisions.md#29-claudes-is-a-tool-for-claude-code-and-nothing-else)
+says why.
 
 ## License
 
