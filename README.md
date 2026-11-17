@@ -183,6 +183,7 @@ Every session with a transcript, past or running (`claudes s` and
 | `session resume TARGET [PROMPT]` | Resume one in its own folder, from anywhere            |
 | `session mv TARGET FOLDER`       | Copy one to another folder, so it resumes there        |
 | `session du`                     | Disk space by project folder, with leftovers           |
+| `session triage`                 | Sort them into remove, review, and keep                |
 | `session gc [TARGET...]`         | Move empty, copied, and leftover sessions to the trash |
 | `cd TARGET`                      | Change to a session's folder (needs `init`)            |
 

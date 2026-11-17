@@ -6,11 +6,12 @@ compatibility checks, logging, and the files claudes keeps.
 ## Output
 
 `ls`, `where`, `team ls`, `session ls`, `session show`, `session where`,
-`doctor`, and `doctor env` take `-o text`, `-o json`, or `-o yaml`; `ls --json`
-is short for `-o json`. When `where` matches one session, `text` prints only its
-folder, so `cd "$(claudes where NAME)"` works; add `-o text` when
-`output.format` is set. `claudes init` does that itself. `logs` takes `-o text`
-or `-o json`, which prints the transcript records themselves, one per line.
+`session du`, `session triage`, `doctor`, and `doctor env` take `-o text`,
+`-o json`, or `-o yaml`; `ls --json` is short for `-o json`. When `where`
+matches one session, `text` prints only its folder, so
+`cd "$(claudes where NAME)"` works; add `-o text` when `output.format` is set.
+`claudes init` does that itself. `logs` takes `-o text` or `-o json`, which
+prints the transcript records themselves, one per line.
 
 `json` and `yaml` use the camelCase field names of `claude agents --json`, and
 every key is always present:
@@ -25,6 +26,11 @@ every key is always present:
   (its other transcripts, after a `session mv`), `size`, `running`, and
   `activity`. `activity` is null in `session ls`. In `session show` it has
   `prompts`, `commands`, `toolCalls`, `edits`, `firstPrompt`, and `teammate`.
+- `session triage` prints `remove`, `review`, and `keep`, each a list of
+  sessions with `id`, `sessionId`, `name`, `nameSource`, `cwd`, `size`,
+  `lastActive`, `why` (the kind `session gc` removes it as, `review`, or why it
+  is kept), `lastPrompt`, and `activity`. Folders in `remove` have only `id`,
+  `sessionId`, `name`, `cwd`, `size`, and `why`.
 - A team from `team ls` has `team`, `id`, `sessionId`, `lead`, `cwd`, `running`,
   `teammates`, and `tasks`, each task with `id`, `subject`, `status`, `owner`,
   and `blockedBy`.

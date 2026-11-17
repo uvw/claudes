@@ -186,6 +186,20 @@ running claudes. Without targets, it also leaves alone anything that changed in
 the last day. It checks again which sessions run just before removing, and only
 removes paths under `~/.claude` named by the session's id.
 
+`session triage` sorts past sessions into three groups and changes nothing:
+
+1. **Remove:** what `session gc` takes without flags, and trivial sessions. It
+   prints the `session gc` command that removes them.
+2. **Review:** sessions with one prompt, or only slash commands, that changed no
+   file and made at most 20 tool calls, and that were not named with `/rename`.
+   Whether to keep one takes reading its prompt: a commit message or a quick
+   lookup can go, while findings or a decision should stay. `-o json` gives each
+   one's first and last prompt, and the [agent skill](install.md#agent-skill)
+   tells an agent how to judge them. Remove the ones you pick with
+   `session gc ID...`.
+3. **Keep:** everything else, counted by reason, such as more than one prompt,
+   changed files, or running.
+
 `session mv` (or `move`) copies a session's transcript, with its subagent
 transcripts and tool results, into the project folder Claude Code uses for
 `FOLDER`, which must already exist. Use it after cloning a repository
