@@ -27,7 +27,7 @@ const gcFloor = 24 * time.Hour
 // of one, or a leftover folder.
 type gcItem struct {
 	sessionID, name string
-	// why is empty, gone, old, copy, leftover, or named.
+	// why is empty, trivial, gone, old, copy, leftover, or named.
 	why    string
 	folder string
 	paths  []string
@@ -43,9 +43,9 @@ func (g gcItem) ID() string    { return claude.ShortID(g.sessionID) }
 func (g gcItem) Label() string { return g.name }
 
 type gcFlags struct {
-	olderThan                      days
-	empty, gone, copies, leftovers bool
-	dryRun, purge                  bool
+	olderThan                               days
+	empty, trivial, gone, copies, leftovers bool
+	dryRun, purge                           bool
 }
 
 func (app *App) sessionGcCommand() *cobra.Command {
@@ -64,10 +64,13 @@ Without flags or targets, removes:
   copies     older copies session mv left, keeping the newest
   leftovers  subagent and file-history folders whose transcript is gone
 
---empty, --gone, --copies, --leftovers, and --older-than pick exactly the kinds
-they name instead. --gone takes sessions whose folder no longer exists, which
-includes a folder on a disk that is not attached, so read the plan first.
---older-than takes sessions last active longer ago than that.
+--empty, --trivial, --gone, --copies, --leftovers, and --older-than pick
+exactly the kinds they name instead. --trivial takes sessions that changed no
+file and made no tool call, and either only ran slash commands or got one
+prompt, such as a quick health check; a session renamed with /rename or started
+by an agent team is never trivial. --gone takes sessions whose folder no longer
+exists, which includes a folder on a disk that is not attached, so read the
+plan first. --older-than takes sessions last active longer ago than that.
 
 It never removes a running session, one agent view still lists (claudes gc
 removes those from the list), a parked one, or the session running claudes.
@@ -79,6 +82,7 @@ Targets remove exactly those sessions, whatever kind they are.`,
 		},
 	}
 	cmd.Flags().BoolVar(&f.empty, "empty", false, "sessions that never got a prompt")
+	cmd.Flags().BoolVar(&f.trivial, "trivial", false, "sessions that only ran slash commands, or got one prompt and made no tool call")
 	cmd.Flags().BoolVar(&f.gone, "gone", false, "sessions whose folder no longer exists")
 	cmd.Flags().BoolVar(&f.copies, "copies", false, "older copies session mv left")
 	cmd.Flags().BoolVar(&f.leftovers, "leftovers", false, "subagent and file-history folders whose transcript is gone")
@@ -90,10 +94,10 @@ Targets remove exactly those sessions, whatever kind they are.`,
 }
 
 func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) error {
-	if len(targets) > 0 && (f.empty || f.gone || f.copies || f.leftovers || f.olderThan.d > 0) {
+	if len(targets) > 0 && (f.empty || f.trivial || f.gone || f.copies || f.leftovers || f.olderThan.d > 0) {
 		return errors.New("session gc takes targets or kinds to remove, not both")
 	}
-	if !f.empty && !f.gone && !f.copies && !f.leftovers && f.olderThan.d == 0 {
+	if !f.empty && !f.trivial && !f.gone && !f.copies && !f.leftovers && f.olderThan.d == 0 {
 		f.empty, f.copies, f.leftovers = true, true, true
 	}
 	list, err := app.pastSessions(ctx)
@@ -194,9 +198,14 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 		if _, kept := keep[p.SessionID]; kept || p.LastActive.After(recent) {
 			continue
 		}
+		if f.trivial && !p.Empty {
+			readActivity(&p, false)
+		}
 		switch {
 		case f.empty && p.Empty:
 			items = append(items, app.wholeSession(p, "empty"))
+		case f.trivial && trivial(p):
+			items = append(items, app.wholeSession(p, "trivial"))
 		case f.gone && folderGone(p.Cwd):
 			items = append(items, app.wholeSession(p, "gone"))
 		case f.olderThan.d > 0 && p.LastActive.Before(now.Add(-f.olderThan.d)):
@@ -230,6 +239,17 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			why: "leftover", folder: l.Path, paths: []string{l.Path}, size: l.Size})
 	}
 	return items, nil
+}
+
+// trivial reports whether p holds nothing worth keeping: it changed no file,
+// made no tool call, was not named with /rename or started by an agent team,
+// and either only ran commands or got exactly one prompt.
+func trivial(p pastSession) bool {
+	a := p.Activity
+	if a == nil || p.Empty || a.Edits > 0 || a.ToolCalls > 0 || a.Teammate || p.NameSource == "custom" || p.Disk.FileHistory > 0 {
+		return false
+	}
+	return a.Prompts == 1 || a.Prompts == 0 && a.Commands > 0
 }
 
 func (app *App) wholeSession(p pastSession, why string) gcItem {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -257,5 +258,100 @@ func TestSessionGcRefusesWhenItCannotTellWhatRuns(t *testing.T) {
 	}
 	if len(h.trashed) != 0 {
 		t.Fatalf("trashed %q", h.trashed)
+	}
+}
+
+// sessionOf writes a transcript of records for a new session in cwd, last
+// active ago before now, and returns its session id.
+func (h *harness) sessionOf(t *testing.T, name, cwd string, ago time.Duration, records ...string) string {
+	t.Helper()
+	id := sessionID("records " + name)
+	lines := []string{fmt.Sprintf(`{"type":"system","sessionId":%q,"cwd":%q}`, id, cwd)}
+	lines = append(lines, records...)
+	path := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(cwd), id+".jsonl")
+	writeFile(t, path, strings.Join(lines, "\n")+"\n")
+	h.aged(t, path, ago)
+	return id
+}
+
+const (
+	slashLogin = `{"type":"user","message":{"content":"<command-name>/login</command-name>"}}`
+	toolCall   = `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{}}]}}`
+	editCall   = `{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit","input":{}}]}}`
+	reply      = `{"type":"assistant","message":{"content":[{"type":"text","text":"Pong."}]}}`
+)
+
+func prompt(text string) string {
+	return fmt.Sprintf(`{"type":"user","message":{"content":%q}}`, text)
+}
+
+func TestSessionGcTrivialTakesSessionsThatDidNothing(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	week := 7 * 24 * time.Hour
+	picked := map[string]string{
+		"slash only": h.sessionOf(t, "slash only", work, week, slashLogin),
+		"ping":       h.sessionOf(t, "ping", work, week, prompt("ping"), reply),
+	}
+	kept := map[string]string{
+		"one prompt, a tool call": h.sessionOf(t, "tool", work, week, prompt("what branch is this?"), toolCall),
+		"slash then a tool call":  h.sessionOf(t, "skill", work, week, slashLogin, toolCall),
+		"two prompts":             h.sessionOf(t, "two", work, week, prompt("hi"), reply, prompt("and?"), reply),
+		"an edit":                 h.sessionOf(t, "edit", work, week, prompt("fix it"), editCall),
+		"renamed":                 h.sessionOf(t, "renamed", work, week, prompt("ping"), `{"type":"custom-title","customTitle":"keep me"}`),
+		"teammate":                h.sessionOf(t, "teammate", work, week, `{"type":"user","message":{"content":"<teammate-message teammate_id=\"lead\">go</teammate-message>"}}`),
+		"active today":            h.sessionOf(t, "today", work, time.Hour, prompt("ping")),
+	}
+	history := h.sessionOf(t, "history", work, week, prompt("ping"))
+	kept["file history"] = history
+	writeFile(t, filepath.Join(h.root, "file-history", history, "f@v1"), "v1")
+	big := h.sessionOf(t, "big", work, week, prompt(strings.Repeat("x", transcripts.ActivityLimit)))
+	kept["too big to count"] = big
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "gc")
+	if len(h.trashed) != 0 {
+		t.Fatalf("gc without --trivial trashed %q", h.trashed)
+	}
+
+	h.ok(t, "session", "gc", "--trivial")
+	for what, id := range picked {
+		if !slices.ContainsFunc(h.trashed, func(p string) bool { return strings.Contains(p, id) }) {
+			t.Errorf("%s was not trashed", what)
+		}
+	}
+	for what, id := range kept {
+		if slices.ContainsFunc(h.trashed, func(p string) bool { return strings.Contains(p, id) }) {
+			t.Errorf("%s was trashed", what)
+		}
+	}
+	if !strings.Contains(h.out.String(), "trivial") {
+		t.Errorf("the plan does not say why:\n%s", h.out)
+	}
+}
+
+func TestSessionShowSaysWhatASessionDid(t *testing.T) {
+	h := newHarness(t)
+	h.sessionOf(t, "did", h.folder("work"), time.Hour, prompt("fix the\nflaky test"), editCall, `{"type":"custom-title","customTitle":"flaky"}`)
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "show", "flaky")
+	for _, want := range []string{"flaky (set with /rename)", "1 prompt, 0 commands, 1 tool call, 1 edit", "fix the flaky test"} {
+		if !strings.Contains(h.out.String(), want) {
+			t.Errorf("no %q in:\n%s", want, h.out)
+		}
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "show", "flaky", "-o", "json")
+	var got struct {
+		NameSource string               `json:"nameSource"`
+		Activity   transcripts.Activity `json:"activity"`
+	}
+	if err := json.Unmarshal(h.out.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.NameSource != "custom" || got.Activity.Prompts != 1 || got.Activity.Edits != 1 {
+		t.Errorf("json: %+v", got)
 	}
 }

@@ -20,8 +20,11 @@ every key is always present:
   `outdated`, and `teammates`. An interactive session has no job id, so its `id`
   is empty; the table shows its short session id instead.
 - A session from `session ls` or `session show` has `id`, `sessionId`, `name`,
-  `cwd`, `branch`, `started`, `lastActive`, `lastPrompt`, `version`, `path`,
-  `copies` (its other transcripts, after a `session mv`), `size`, and `running`.
+  `nameSource` (`custom` for `/rename`, `agent`, `ai`, or empty), `cwd`,
+  `branch`, `started`, `lastActive`, `lastPrompt`, `version`, `path`, `copies`
+  (its other transcripts, after a `session mv`), `size`, `running`, and
+  `activity`. `activity` is null in `session ls`. In `session show` it has
+  `prompts`, `commands`, `toolCalls`, `edits`, `firstPrompt`, and `teammate`.
 - A team from `team ls` has `team`, `id`, `sessionId`, `lead`, `cwd`, `running`,
   `teammates`, and `tasks`, each task with `id`, `subject`, `status`, `owner`,
   and `blockedBy`.

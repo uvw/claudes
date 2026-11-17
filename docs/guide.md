@@ -155,9 +155,11 @@ resuming it would start a copy; `--bg` resumes in the background.
 subagent transcripts and tool results, older copies `session mv` left, and
 Claude Code's backups of the files it edited, under `~/.claude/file-history`.
 `--sort size` lists the biggest first, and `session show` breaks one session's
-size down. `session du` (or `df`) adds it all up by project folder, biggest
-first, and counts leftovers: subagent and file-history folders whose transcript
-is gone.
+size down. `session show` also reads the whole transcript to count the prompts,
+slash commands, tool calls, and file edits, and says where the name came from:
+`/rename`, agent view, or Claude Code's own title. `session du` (or `df`) adds
+it all up by project folder, biggest first, and counts leftovers: subagent and
+file-history folders whose transcript is gone.
 
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,
@@ -169,8 +171,13 @@ can be undone; `--purge` deletes them for good. Without flags it removes:
 2. Older copies `session mv` left, keeping the newest.
 3. Leftovers: subagent and file-history folders whose transcript is gone.
 
-`--empty`, `--copies`, `--leftovers`, `--gone` (the session's folder no longer
-exists), and `--older-than 90d` pick exactly those kinds instead. Targets remove
+`--empty`, `--copies`, `--leftovers`, `--trivial`, `--gone` (the session's
+folder no longer exists), and `--older-than 90d` pick exactly those kinds
+instead. A trivial session changed no file and made no tool call, and either
+only ran slash commands, such as `/login`, or got one prompt, such as a quick
+health check. A session named with `/rename`, one an agent team's lead started,
+and one with file history are never trivial. To tell, claudes reads each
+transcript up to 2 MB in full; a bigger one is never trivial. Targets remove
 exactly the sessions named. `--dry-run` shows the plan and what it frees.
 
 `session gc` never removes a running session, one agent view still lists

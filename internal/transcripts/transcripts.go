@@ -46,7 +46,10 @@ type Session struct {
 	SessionID string `json:"sessionId"`
 	// Name is the name given with /rename, or agent view's name, or the title
 	// Claude Code wrote for it, in that order.
-	Name       string    `json:"name"`
+	Name string `json:"name"`
+	// NameSource is where Name came from: custom for /rename, agent for agent
+	// view, ai for Claude Code's title, or "" when it has none.
+	NameSource string    `json:"nameSource"`
 	Cwd        string    `json:"cwd"`
 	Branch     string    `json:"branch"`
 	Started    time.Time `json:"started"`
@@ -304,7 +307,14 @@ func summarize(path string) (Session, error) {
 		}
 	}
 	s.SessionID = cmp.Or(sum.sessionID, strings.TrimSuffix(filepath.Base(path), ".jsonl"))
-	s.Name = cmp.Or(sum.customTitle, sum.agentName, sum.aiTitle)
+	switch {
+	case sum.customTitle != "":
+		s.Name, s.NameSource = sum.customTitle, "custom"
+	case sum.agentName != "":
+		s.Name, s.NameSource = sum.agentName, "agent"
+	case sum.aiTitle != "":
+		s.Name, s.NameSource = sum.aiTitle, "ai"
+	}
 	project := filepath.Base(filepath.Dir(path))
 	s.Cwd = sum.folder(project)
 	s.fits = sum.relocated != "" || strings.EqualFold(Folder(s.Cwd), project)

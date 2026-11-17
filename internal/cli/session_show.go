@@ -25,6 +25,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			readActivity(&p, true)
 			if out.format != "text" {
 				return out.encode(app.Out, p)
 			}
@@ -34,7 +35,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 			}
 			tw := tabwriter.NewWriter(app.Out, 0, 0, 2, ' ', 0)
 			for _, kv := range [][2]string{
-				{"name", p.Name},
+				{"name", nameWithSource(p.Name, p.NameSource)},
 				{"id", p.SessionID},
 				{"state", state},
 				{"folder", p.Cwd},
@@ -42,6 +43,8 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				{"started", stamp(p.Started)},
 				{"active", stamp(p.LastActive) + " (" + ago(app.Now(), p.LastActive) + ")"},
 				{"version", p.Version},
+				{"activity", activity(p.Activity)},
+				{"first prompt", firstPrompt(p.Activity)},
 				{"last prompt", firstLine(p.LastPrompt, 100)},
 				{"transcript", p.Path},
 				{"size", sizeDetail(p.Disk)},
@@ -75,6 +78,49 @@ func firstLine(s string, limit int) string {
 		return s + " …"
 	}
 	return s
+}
+
+// nameWithSource is a name with where it came from.
+func nameWithSource(name, source string) string {
+	switch {
+	case name == "":
+		return ""
+	case source == "custom":
+		return name + " (set with /rename)"
+	case source == "agent":
+		return name + " (from agent view)"
+	case source == "ai":
+		return name + " (Claude Code's title)"
+	}
+	return name
+}
+
+// activity is what a session did, such as "3 prompts, 1 command, 12 tool
+// calls, 2 edits".
+func activity(a *transcripts.Activity) string {
+	if a == nil {
+		return ""
+	}
+	s := fmt.Sprintf("%s, %s, %s, %s", count(a.Prompts, "prompt"), count(a.Commands, "command"),
+		count(a.ToolCalls, "tool call"), count(a.Edits, "edit"))
+	if a.Teammate {
+		s += ", started by an agent team's lead"
+	}
+	return s
+}
+
+func firstPrompt(a *transcripts.Activity) string {
+	if a == nil {
+		return ""
+	}
+	return firstLine(a.FirstPrompt, 100)
+}
+
+func count(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // sizeDetail is a session's size, with what makes it up.

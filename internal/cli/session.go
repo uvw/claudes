@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"time"
@@ -21,6 +20,20 @@ type pastSession struct {
 	Running bool `json:"running"`
 	// Disk is the space the session takes on disk.
 	Disk transcripts.Disk `json:"disk"`
+	// Activity is what the session did, or nil when its transcript was not
+	// read in full.
+	Activity *transcripts.Activity `json:"activity"`
+}
+
+// readActivity counts what p did, unless its transcript is bigger than
+// transcripts.ActivityLimit, or force reads it whatever its size.
+func readActivity(p *pastSession, force bool) {
+	if p.Activity != nil || !force && p.Size > transcripts.ActivityLimit {
+		return
+	}
+	if a, err := transcripts.ReadActivity(p.Path); err == nil {
+		p.Activity = &a
+	}
 }
 
 func (app *App) sessionCommand() *cobra.Command {
@@ -66,8 +79,8 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 		if s, ok := live[t.SessionID]; ok {
 			p.Running = true
 			// claude agents names an unnamed session by its job id.
-			if s.Name != s.JobID {
-				p.Name = cmp.Or(s.Name, p.Name)
+			if s.Name != s.JobID && s.Name != "" && s.Name != p.Name {
+				p.Name, p.NameSource = s.Name, "agent"
 			}
 		}
 		out = append(out, p)
