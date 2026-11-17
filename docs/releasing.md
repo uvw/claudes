@@ -108,10 +108,13 @@ handles every version after it.
   from `main` but everything else from the tag, such as `go.mod`,
   `.goreleaser.yaml`, and the scripts under `.github/workflows/hack/`. The
   publish job uploads with `--clobber`, so it replaces any partial upload.
-- **The fix is in the tagged code:** delete the draft and the tag
-  (`gh release delete vX.Y.Z --cleanup-tag`) and merge the fix. release-please
-  then proposes the next patch version, not the deleted one, and keeps the
-  deleted version's changelog entry: remove it in the release pull request.
+- **The fix is in the tagged code, or the release should wait:** delete the
+  draft and the tag (`gh release delete vX.Y.Z --cleanup-tag`), then revert the
+  `chore(main): release X.Y.Z` commit through a pull request. That puts the
+  manifest and `docs/changelog.md` back on the last published version, so
+  release-please proposes X.Y.Z again, with every change since that release.
+  Without the revert, it finds no release for the manifest's version, and
+  proposes the next one with every change since the first commit.
 - **The release pull request's checks wait for approval:** without a working
   `RELEASE_PLEASE_TOKEN` secret, as when it expired, release-please opens the
   pull request as `github-actions[bot]`, and GitHub holds the workflows it
