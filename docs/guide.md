@@ -159,7 +159,9 @@ size down. `session show` also reads the whole transcript to count the prompts,
 slash commands, tool calls, and file edits, and says where the name came from:
 `/rename`, agent view, or Claude Code's own title. `session du` (or `df`) adds
 it all up by project folder, biggest first, and counts leftovers: subagent and
-file-history folders whose transcript is gone.
+file-history folders whose transcript is gone. `--top 10` also lists the 10
+sessions that take the most space, with the share their sidecar folder of tool
+results and subagent transcripts takes.
 
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,

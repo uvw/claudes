@@ -129,7 +129,7 @@ binary by its full path rather than assuming it is gone.
 | is claudes still compatible          | `claudes doctor`                                          |
 | where does claudes keep its files    | `claudes doctor env`                                      |
 | find a past session about X          | `claudes session ls X`, or `--in PATH`, `--since 7d`      |
-| what takes up disk space             | `claudes session du`, or `claudes session ls --sort size` |
+| what takes up disk space             | `claudes session du --top 10`                             |
 | clean up old or empty sessions       | `claudes session gc --dry-run`; see "Past sessions"       |
 | tidy up sessions, a smarter clean-up | `claudes session triage -o json`; see "Triage"            |
 | resume a past session X              | `claudes session resume --bg X`; see "Past sessions"      |

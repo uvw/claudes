@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -23,8 +24,20 @@ type duFolder struct {
 	Disk     transcripts.Disk `json:"disk"`
 }
 
+// duSession is one of the sessions that take the most space.
+type duSession struct {
+	ID        string           `json:"id"`
+	SessionID string           `json:"sessionId"`
+	Name      string           `json:"name"`
+	Cwd       string           `json:"cwd"`
+	Running   bool             `json:"running"`
+	Disk      transcripts.Disk `json:"disk"`
+}
+
 type duReport struct {
-	Folders   []duFolder             `json:"folders"`
+	Folders []duFolder `json:"folders"`
+	// Top is the biggest sessions, with --top.
+	Top       []duSession            `json:"top"`
 	Leftovers []transcripts.Leftover `json:"leftovers"`
 	// Total includes the leftovers.
 	Total int64 `json:"total"`
@@ -33,6 +46,7 @@ type duReport struct {
 func (app *App) sessionDuCommand() *cobra.Command {
 	var in string
 	var since days
+	var top int
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "du [TARGET...]",
@@ -44,7 +58,11 @@ results (SIDECARS), older copies session mv left, and Claude Code's backups of
 the files each session edited (HISTORY).
 
 Leftovers are sidecar and file-history folders whose transcript is gone. They
-count only when no target, --in, or --since narrows the sessions.`,
+count only when no target, --in, or --since narrows the sessions.
+
+--top N also lists the N sessions that take the most space, with the share their
+sidecars take: tool results and subagent transcripts are often most of a big
+session.`,
 		ValidArgsFunction: app.completePast(false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			list, err := app.pastSessions(cmd.Context())
@@ -66,6 +84,7 @@ count only when no target, --in, or --since narrows the sessions.`,
 				return err
 			}
 			report := duTally(list, leftovers)
+			report.Top = duTop(list, top)
 			if out.format != "text" {
 				return out.encode(app.Out, report)
 			}
@@ -91,14 +110,42 @@ count only when no target, --in, or --since narrows the sessions.`,
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = style.Size(report.Total)
+			if err := style.Table(app.Out, table); err != nil || len(report.Top) == 0 {
+				return err
+			}
+			fmt.Fprintf(app.Out, "\nThe %d biggest session(s):\n", len(report.Top))
+			table = [][]string{{"ID", "NAME", "TOTAL", "SIDECARS", "SHARE", "FOLDER"}}
+			for _, s := range report.Top {
+				share := "-"
+				if s.Disk.Total > 0 {
+					share = strconv.FormatInt(s.Disk.Sidecar*100/s.Disk.Total, 10) + "%"
+				}
+				table = append(table, []string{s.ID, shell.Printable(cmp.Or(s.Name, s.ID)), style.Size(s.Disk.Total),
+					style.Size(s.Disk.Sidecar), share, app.colors.Faint(homeShort(s.Cwd))})
+			}
 			return style.Table(app.Out, table)
 		},
 	}
 	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this folder or below it")
 	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
+	cmd.Flags().IntVar(&top, "top", 0, "also list the N sessions that take the most space")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
+}
+
+// duTop is the n sessions in list that take the most space, biggest first.
+func duTop(list []pastSession, n int) []duSession {
+	out := []duSession{}
+	if n <= 0 {
+		return out
+	}
+	sorted := slices.Clone(list)
+	slices.SortStableFunc(sorted, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
+	for _, p := range sorted[:min(n, len(sorted))] {
+		out = append(out, duSession{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name, Cwd: p.Cwd, Running: p.Running, Disk: p.Disk})
+	}
+	return out
 }
 
 func duRow(d transcripts.Disk, sessions, folder string) []string {
