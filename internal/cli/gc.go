@@ -54,7 +54,7 @@ worktree only when that is safe. With targets, removes those. Without, removes
 every finished session last active longer ago than --older-than, except parked
 ones, and pinned ones unless --pinned is given.
 
---teams removes the agent team folders under ~/.claude/teams and the task lists
+--teams removes the agent team directories under ~/.claude/teams and the task lists
 under ~/.claude/tasks that Claude Code leaves behind: those of sessions that no
 longer run and have not changed for longer than --older-than.`,
 		ValidArgsFunction: app.completeSessions(finishedSession, false),
@@ -113,7 +113,7 @@ longer run and have not changed for longer than --older-than.`,
 		},
 	}
 	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d or 12h")
-	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team folders and task lists instead of sessions")
+	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team directories and task lists instead of sessions")
 	cmd.Flags().BoolVar(&withPinned, "pinned", false, "without targets, remove pinned sessions too")
 	addDryRun(cmd, &dryRun)
 	app.addForce(cmd, forceUsage)
@@ -183,7 +183,7 @@ func (v *days) Set(s string) error {
 
 func (v *days) Type() string { return "duration" }
 
-// leftover is a team or task-list folder gc --teams removes.
+// leftover is a team or task-list directory gc --teams removes.
 type leftover struct{ teams.Folder }
 
 func (l leftover) ID() string { return strings.TrimPrefix(l.Name, "session-") }
@@ -195,7 +195,7 @@ func (l leftover) Label() string {
 	return "task list"
 }
 
-// gcTeams removes the team folders and task lists of sessions that no longer
+// gcTeams removes the team directories and task lists of sessions that no longer
 // run and that have not changed since olderThan ago, keeping a pinned
 // session's unless withPinned.
 func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, withPinned bool) error {
@@ -230,7 +230,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, wi
 		return err
 	}
 	if len(folders) == 0 {
-		app.say("No team folders or task lists to clean up.")
+		app.say("No team directories or task lists to clean up.")
 		return nil
 	}
 	rows := make([]planRow, 0, len(folders))
@@ -238,7 +238,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, wi
 		l := leftover{f}
 		rows = append(rows, planRow{id: l.ID(), name: l.Label(), cwd: f.Path, note: "last changed " + ago(app.Now(), f.Modified)})
 	}
-	app.printPlanOf("Removing", "team folder(s) and task list(s)", "", rows)
+	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
 	if dryRun {
 		app.say("\nDry run: nothing was changed.")
 		return nil

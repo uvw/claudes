@@ -15,10 +15,10 @@ func (app *App) sessionWhereCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "where TARGET...",
-		Short: "Print the folders of past and running sessions",
-		Long: `Print the folders of the sessions the targets match, past or running. With one
-match, prints the bare folder. With several, prints each session's name and
-folder, or fails with --one, which claudes cd uses. With --one, a target that
+		Short: "Print the directories of past and running sessions",
+		Long: `Print the directories of the sessions the targets match, past or running. With one
+match, prints the bare directory. With several, prints each session's name and
+directory, or fails with --one, which claudes cd uses. With --one, a target that
 is exactly a name picks the newest session with that name.`,
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: app.completePast(false),

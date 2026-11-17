@@ -26,7 +26,7 @@ current.
 | [15](#15-windows-kills-an-interactive-sessions-process-tree)                        | Windows kills an interactive session's process tree                        |
 | [16](#16-resume-commands-use-the-platforms-shell)                                   | Resume commands use the platform's shell                                   |
 | [17](#17-changes-reach-main-through-pull-requests)                                  | Changes reach `main` through pull requests                                 |
-| [18](#18-settings-live-in-one-yaml-file-in-the-platforms-folder)                    | Settings live in one YAML file, in the platform's folder                   |
+| [18](#18-settings-live-in-one-yaml-file-in-the-platforms-directory)                 | Settings live in one YAML file, in the platform's directory                |
 | [19](#19-unfamiliar-claude-code-output-stops-writes)                                | Unfamiliar Claude Code output stops writes                                 |
 | [20](#20-past-sessions-come-from-their-transcripts)                                 | Past sessions come from their transcripts                                  |
 | [21](#21-claudes-cd-is-a-shell-function)                                            | `claudes cd` is a shell function                                           |
@@ -135,8 +135,8 @@ terminal the user may be typing in.
 question or permission prompt, or idle with a background shell task running.
 Idle sessions restart with `claude respawn` and get no prompt. Before the stop,
 the session is parked; claudes then waits for its process to go, resumes it, and
-unparks it. A session whose folder is gone is not stopped. `--wait` waits only
-for busy sessions.
+unparks it. A session whose directory is gone is not stopped. `--wait` waits
+only for busy sessions.
 
 Why: `respawn` on a mid-turn session cuts its work short, and the session comes
 back idle, waiting for input. The prompt tells it to carry on. Resuming a
@@ -164,10 +164,10 @@ Code after a bulk restart.
 ## 10. Pause saves the park file before it stops anything
 
 `pause` writes the sessions it will stop to `parked.json` in claudes' state
-folder first, then stops them. A session whose stop failed is dropped only if it
-is seen still running, since a stop can take effect and still report an error.
-`resume` removes each session it brings back, and deletes the file when it's
-empty. Every change goes through a lock on the file.
+directory first, then stops them. A session whose stop failed is dropped only if
+it is seen still running, since a stop can take effect and still report an
+error. `resume` removes each session it brings back, and deletes the file when
+it's empty. Every change goes through a lock on the file.
 
 Why: a crash or a reboot halfway through a pause must not lose the list of
 sessions to bring back.
@@ -215,8 +215,8 @@ value until the session takes a turn, so a freshly restarted idle session looked
 outdated and `--outdated` would restart it again. An npm install runs as `node`,
 whose path names no version, so it still relies on `cliVersion`.
 
-Weighed: leaving out pins and versions. The Claude Code docs call the folder not
-a stable interface, so a Claude Code update may need claudes to follow it.
+Weighed: leaving out pins and versions. The Claude Code docs call the directory
+not a stable interface, so a Claude Code update may need claudes to follow it.
 
 ## 13. Releases are automated, attested, and immutable
 
@@ -278,9 +278,9 @@ The printed resume commands are POSIX shell commands on macOS and Linux, and
 PowerShell commands on Windows. Each session's name prints on its own line,
 without control characters.
 
-Why: Windows PowerShell 5.1 rejects `&&`, and cmd cannot change folders and
+Why: Windows PowerShell 5.1 rejects `&&`, and cmd cannot change directories and
 quote safely in one line. PowerShell reads curly single quotes as quotes, so a
-folder name could otherwise end the string and add a command.
+directory name could otherwise end the string and add a command.
 
 Weighed: printing both forms, which doubles the output for every session.
 
@@ -297,14 +297,15 @@ Weighed: committing to `main` with CI afterwards, which finds a break only once
 it has landed; and merge commits, which put every branch commit into the
 changelog.
 
-## 18. Settings live in one YAML file, in the platform's folder
+## 18. Settings live in one YAML file, in the platform's directory
 
 `config.yaml` holds defaults for flags: the ping prompt, the `--wait` timeout,
-and the `-o` format. Its folder follows XDG on Linux and macOS and the Windows
-known folders on Windows, and an absolute `XDG_` variable wins everywhere.
-`internal/paths` names the folders, and `internal/config` reads and writes the
-file. An unknown key or a bad value stops every command but those that help fix
-it: `config`, `doctor`, `init`, `completion`, `skill`, `--version`, and help.
+and the `-o` format. Its directory follows XDG on Linux and macOS and the
+Windows known directories on Windows, and an absolute `XDG_` variable wins
+everywhere. `internal/paths` names the directories, and `internal/config` reads
+and writes the file. An unknown key or a bad value stops every command but those
+that help fix it: `config`, `doctor`, `init`, `completion`, `skill`,
+`--version`, and help.
 
 Why: YAML is short to write by hand and reads the same on every platform. A typo
 that claudes ignored would leave a setting silently off, which is worse for an
@@ -340,7 +341,7 @@ nobody runs before a bulk restart.
 `claude agents --json` knows only running and finished background sessions. It
 reads the first 64 KB and the last 256 KB of each file, because Claude Code
 writes the title and the last prompt again every few turns. It reads the whole
-file only when neither end names the session's folder, or to count what a
+file only when neither end names the session's directory, or to count what a
 session did: `session show` reads its one transcript, and `session gc --trivial`
 reads every transcript up to 2 MB. It never changes a transcript. `session mv`
 copies one, keeps the original, and prints the command that removes it. A name
@@ -350,13 +351,13 @@ Why: reading both ends lists 50 sessions in about 12 ms, so no index is needed
 to list them. Counting needs every line, and a session with more than 2 MB in it
 is not trivial anyway: reading the 170 transcripts under 2 MB here adds about a
 second, so that needs no index either. Copying instead of moving keeps the
-session resumable from its old folder if the copy goes wrong, and a running
+session resumable from its old directory if the copy goes wrong, and a running
 session keeps writing to its old transcript anyway.
 
 Weighed: reading each transcript in full, which reads hundreds of megabytes to
-list sessions; moving the transcript, which loses the session if the new folder
-is wrong; and rewriting the folder recorded inside the transcript, which
-`claude --resume` does not need.
+list sessions; moving the transcript, which loses the session if the new
+directory is wrong; and rewriting the directory recorded inside the transcript,
+which `claude --resume` does not need.
 
 ## 21. `claudes cd` is a shell function
 
@@ -364,18 +365,19 @@ is wrong; and rewriting the folder recorded inside the transcript, which
 `claudes cd NAME` in the shell and passes every other command to the program.
 Without it, `claudes cd` explains how to load it.
 
-Why: a program cannot change its parent shell's folder. zoxide and similar tools
-work the same way, and one line in a profile is the usual cost.
+Why: a program cannot change its parent shell's directory. zoxide and similar
+tools work the same way, and one line in a profile is the usual cost.
 
-Weighed: a subshell opened in the folder, which leaves the user one shell deeper
-each time; and printing the folder only, which `claudes where` already does.
+Weighed: a subshell opened in the directory, which leaves the user one shell
+deeper each time; and printing the directory only, which `claudes where` already
+does.
 
 ## 22. Few dependencies, and our own plumbing
 
 claudes depends on cobra, `go.yaml.in/yaml/v4`, `golang.org/x/sys`, and Charm's
 lipgloss, `colorprofile`, and `x/term` for colors (decision 24), with
 `google/go-cmp` in tests only. Atomic writes, the lock directory, platform
-folders, shell quoting, and process checks stay in `internal/`.
+directories, shell quoting, and process checks stay in `internal/`.
 
 Why: each of those must match what Claude Code does byte for byte, such as the
 `pins.json.lock` directory proper-lockfile makes, or is a few dozen lines. The
@@ -384,19 +386,19 @@ of a lock directory, or are archived. yaml v4 runs with v3's layout and no line
 folding, so `-o yaml` output did not change with it.
 
 Weighed: `google/renameio` and `natefinch/atomic` for writes, `gofrs/flock` for
-locks, `adrg/xdg` for folders, `kballard/go-shellquote` for quoting, and
+locks, `adrg/xdg` for directories, `kballard/go-shellquote` for quoting, and
 `hashicorp/go-version`, whose MPL license is outside the allowed ones.
 `modernc.org/sqlite` and `sahilm/fuzzy` wait for session search.
 
 ## 23. One claudes changes sessions at a time, and exit codes say why one stopped
 
 Commands that stop, start, remove, or pin sessions take a lock directory in
-claudes' state folder for the whole run. A second run fails at once with exit 5.
-`--dry-run` and the commands that only look take no lock. The lock refreshes
-while it is held and goes stale 30 seconds after a claudes that died, and
-claudes releases it before it stops its own session. Exit codes tell a script
-what happened: 2 for a target that matched no session or several, 3 for some
-sessions failed, 4 for a refused check, and 5 for the lock.
+claudes' state directory for the whole run. A second run fails at once with
+exit 5. `--dry-run` and the commands that only look take no lock. The lock
+refreshes while it is held and goes stale 30 seconds after a claudes that died,
+and claudes releases it before it stops its own session. Exit codes tell a
+script what happened: 2 for a target that matched no session or several, 3 for
+some sessions failed, 4 for a refused check, and 5 for the lock.
 
 Why: two restarts at once could stop the same session twice, and a resume racing
 a pause could start a copy. claudes is an emergency tool, so failing at once
@@ -440,29 +442,29 @@ both documented, and finds a teammate's transcript beside its lead's, under
 `subagents/`. A lead's team has teammates at work while its config lists members
 besides the lead. Bulk `restart` and `pause` skip such a lead, named ones go
 ahead with a warning that names the teammates, and `restart --ping` prompts the
-lead, so it can start them again. `gc --teams` removes team folders and task
+lead, so it can start them again. `gc --teams` removes team directories and task
 lists of sessions that no longer run and have not changed for `--older-than`.
 
 Why: stopping a lead stops its in-process teammates, which Claude Code cannot
 resume, and `claude agents` lists only the lead, so nothing else shows the loss
 coming. A live test showed it: a restarted lead's two teammates died mid-task,
 and the pinged lead started new ones from scratch. Claude Code keeps a team
-folder for every session once teams are on, and leaves them behind.
+directory for every session once teams are on, and leaves them behind.
 
 Weighed: refusing to restart a lead at all, which blocks the emergency use;
 reading the undocumented `inFlight` field of a job's `state.json`, which the
-team config makes unnecessary; and leaving team folders to Claude Code, which
-kept them for weeks here.
+team config makes unnecessary; and leaving team directories to Claude Code,
+which kept them for weeks here.
 
 ## 26. Every session listing measures disk use
 
 `claudes session` measures each session's disk use whenever it lists sessions:
-the transcript, its sidecar folder of subagent transcripts and tool results, the
-older copies `session mv` left, and Claude Code's backups of the files it edited
-under `~/.claude/file-history`. Sizes are bytes of file content, links are never
-followed, and `session du` (or `df`) adds them up by project folder. Leftovers,
-the sidecar and file-history folders whose transcript is gone, count only when
-nothing narrows the sessions.
+the transcript, its sidecar directory of subagent transcripts and tool results,
+the older copies `session mv` left, and Claude Code's backups of the files it
+edited under `~/.claude/file-history`. Sizes are bytes of file content, links
+are never followed, and `session du` (or `df`) adds them up by project
+directory. Leftovers, the sidecar and file-history directories whose transcript
+is gone, count only when nothing narrows the sessions.
 
 Why: `session ls` already reads every transcript, and measuring the rest adds
 about 50 ms to 0.5 s for 436 sessions here, so a SIZE column costs little and is
@@ -470,35 +472,36 @@ always there when the disk fills. File content is the same on every platform,
 where allocated blocks are not.
 
 Weighed: a `session ls --size` flag, which hides the column until someone thinks
-to ask; and only `session du`, which totals folders but cannot say which session
-is big. The command is `du`, since it measures files, not free space; `df` is
-there for those who reach for it.
+to ask; and only `session du`, which totals directories but cannot say which
+session is big. The command is `du`, since it measures files, not free space;
+`df` is there for those who reach for it.
 
 ## 27. session gc moves to the trash, and never touches a session in use
 
 `claudes session gc` removes a past session with everything Claude Code keeps
 for it, and moves it to the system trash: the macOS Trash, the Windows Recycle
 Bin, or the freedesktop.org trash. `--purge` deletes for good. Without flags it
-removes empty sessions, older copies `session mv` left, and leftover folders;
-`--trivial`, `--gone`, and `--older-than` are opt-in. A trivial session changed
-no file, made no tool call, was not named with `/rename` or started by an agent
-team, and either only ran slash commands or got one prompt. `--sidecars` keeps
-each session and trims its sidecar folder: the command outputs saved under
-`tool-results`, and with `--older-than` the subagent transcripts of sessions
-idle that long, removing no whole session. It never removes a running session,
-one agent view still lists, a parked one, or the session running claudes, and
-without targets nothing that changed in the last day. It lists what runs again
-just before removing, skips a transcript that changed since the plan, and
-removes only paths under `~/.claude` whose names carry the session's id.
+removes empty sessions, older copies `session mv` left, and leftover
+directories; `--trivial`, `--gone`, and `--older-than` are opt-in. A trivial
+session changed no file, made no tool call, was not named with `/rename` or
+started by an agent team, and either only ran slash commands or got one prompt.
+`--sidecars` keeps each session and trims its sidecar directory: the command
+outputs saved under `tool-results`, and with `--older-than` the subagent
+transcripts of sessions idle that long, removing no whole session. It never
+removes a running session, one agent view still lists, a parked one, or the
+session running claudes, and without targets nothing that changed in the last
+day. It lists what runs again just before removing, skips a transcript that
+changed since the plan, and removes only paths under `~/.claude` whose names
+carry the session's id.
 
 Why: a transcript is the only record of a session's work, so a mistaken removal
 must be recoverable, unlike `claudes gc`, which only drops a job from agent
-view's list. Empty sessions, superseded copies, and orphaned folders hold
-nothing anyone can resume, so they are safe to pick by default. A missing folder
-can be a disk that is not attached, and age says nothing about value, so those
-wait for a flag. So does `--trivial`: a one-prompt answer can still be worth
-keeping, though one with no tool call holds only what the model already knew.
-Which of the one-prompt sessions with tool calls to keep takes reading the
+view's list. Empty sessions, superseded copies, and orphaned directories hold
+nothing anyone can resume, so they are safe to pick by default. A missing
+directory can be a disk that is not attached, and age says nothing about value,
+so those wait for a flag. So does `--trivial`: a one-prompt answer can still be
+worth keeping, though one with no tool call holds only what the model already
+knew. Which of the one-prompt sessions with tool calls to keep takes reading the
 prompt, so claudes leaves that to the user or their agent. A test resumed
 sessions with each part of the sidecar moved away: both resumed with their
 context, since the transcript keeps a preview of each saved output and each
@@ -510,7 +513,7 @@ day may be starting, before its transcript says what it is.
 
 Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
 cannot undo a mistake; previewing by default with `--yes` to act, which goes
-against safeguards being opt-in (decision 6); and claudes' own trash folder,
+against safeguards being opt-in (decision 6); and claudes' own trash directory,
 which the system's tools cannot list or restore from.
 
 ## 28. session triage sorts, and the agent judges

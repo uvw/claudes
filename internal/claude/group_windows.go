@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// platformEnv stops cmd.exe from looking for programs in the current folder,
+// platformEnv stops cmd.exe from looking for programs in the current directory,
 // the session's. npm's claude.cmd runs a bare node, so a node.exe or
 // node.cmd in a cloned repository would otherwise run in its place.
 var platformEnv = []string{"NoDefaultCurrentDirectoryInExePath=1"}

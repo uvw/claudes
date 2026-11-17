@@ -15,7 +15,7 @@ func newStore(t *testing.T) Store {
 	return Store{Dir: filepath.Join(t.TempDir(), "jobs"), LockAttempts: 3, LockDelay: time.Millisecond}
 }
 
-// writeJobFile writes name in job id's folder, or in the jobs folder when id
+// writeJobFile writes name in job id's directory, or in the jobs directory when id
 // is empty, and returns its path.
 func writeJobFile(t *testing.T, s Store, id, name, data string) string {
 	t.Helper()
@@ -184,7 +184,7 @@ func TestDefaultStoreFallsBackToTheHomeFolder(t *testing.T) {
 	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", "")
 	if s, err := DefaultStore(); err == nil {
-		t.Fatalf("guessed %q with no home folder", s.Dir)
+		t.Fatalf("guessed %q with no home directory", s.Dir)
 	}
 }
 
@@ -229,7 +229,7 @@ func TestUnpinningWhatIsNotPinnedWritesNothing(t *testing.T) {
 func TestUnpinReportsAnOrderFileItCannotRemove(t *testing.T) {
 	s := newStore(t)
 	mustPin(t, s, "aaaaaaaa")
-	// A folder with something in it cannot be removed like the order file.
+	// A directory with something in it cannot be removed like the order file.
 	mkdir(t, filepath.Join(s.Dir, "aaaaaaaa", "order", "x"))
 	if _, err := s.SetPinned([]string{"aaaaaaaa"}, false); err == nil {
 		t.Fatal("no error for an order file that is still there")
@@ -254,9 +254,9 @@ func TestFolderBelongsToItsSession(t *testing.T) {
 	s := newStore(t)
 	writeJobFile(t, s, "aaaaaaaa", "state.json", `{"sessionId":"aaaaaaaa-1","cwd":"/work"}`)
 	if got := s.Folder("aaaaaaaa", "aaaaaaaa-1"); got != "/work" {
-		t.Fatalf("folder %q", got)
+		t.Fatalf("directory %q", got)
 	}
 	if got := s.Folder("aaaaaaaa", "other"); got != "" {
-		t.Fatalf("another session's folder %q", got)
+		t.Fatalf("another session's directory %q", got)
 	}
 }

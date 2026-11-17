@@ -1,4 +1,4 @@
-// Package trash moves files and folders to the system trash: the macOS Trash,
+// Package trash moves files and directories to the system trash: the macOS Trash,
 // the freedesktop.org trash on Linux and other Unix systems, and the Windows
 // Recycle Bin, so a removal can be undone.
 package trash

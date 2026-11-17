@@ -171,7 +171,7 @@ func firstLine(s string) string {
 }
 
 // Teammate returns the transcript of the named teammate of the team a
-// session leads, from the folder beside the lead's transcript.
+// session leads, from the directory beside the lead's transcript.
 func (st Store) Teammate(sessionID, cwd, name string) (string, error) {
 	lead, err := st.Find(sessionID, cwd)
 	if err != nil {
@@ -219,7 +219,7 @@ func isTeammate(meta string) bool {
 }
 
 // Find returns the transcript of the session with this id: in the project
-// folder for cwd when it is there, or else wherever it lives.
+// directory for cwd when it is there, or else wherever it lives.
 func (st Store) Find(sessionID, cwd string) (string, error) {
 	name := sessionID + ".jsonl"
 	if cwd != "" {

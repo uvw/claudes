@@ -176,7 +176,7 @@ func (app *App) checkTranscripts() check {
 	case err != nil:
 		return checkFail(name, err.Error())
 	case !transcripts.FolderNamesMatch(list):
-		return checkFail(name, "recent sessions live in project folders claudes would not name that way, so claudes session mv would copy to the wrong one")
+		return checkFail(name, "recent sessions live in project directories claudes would not name that way, so claudes session mv would copy to the wrong one")
 	}
 	return checkOK(name, fmt.Sprintf("%d session(s) in %s", len(list), app.Transcripts.Dir))
 }

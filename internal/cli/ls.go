@@ -210,10 +210,10 @@ func (app *App) whereCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "where TARGET...",
-		Short: `Print the folders of the sessions the targets match, as in cd "$(claudes where NAME)"`,
-		Long: `Print the folders of the sessions the targets match. With one match, prints the
-bare folder, so cd "$(claudes where NAME)" works. With several, prints each
-session's name and folder. With -o json or yaml, prints the same session
+		Short: `Print the directories of the sessions the targets match, as in cd "$(claudes where NAME)"`,
+		Long: `Print the directories of the sessions the targets match. With one match, prints the
+bare directory, so cd "$(claudes where NAME)" works. With several, prints each
+session's name and directory. With -o json or yaml, prints the same session
 objects as claudes ls. A target with *, ?, or [ is a pattern over names and
 ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 		Args:              cobra.MinimumNArgs(1),
@@ -242,8 +242,8 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 	return cmd
 }
 
-// printFolders prints one folder bare, so cd "$(claudes where NAME)" works, or
-// several as name, id, and folder, so sessions that share a name stay apart.
+// printFolders prints one directory bare, so cd "$(claudes where NAME)" works, or
+// several as name, id, and directory, so sessions that share a name stay apart.
 func (app *App) printFolders(folders [][3]string) error {
 	if len(folders) == 1 {
 		_, err := fmt.Fprintln(app.Out, shell.Printable(folders[0][2]))

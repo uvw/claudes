@@ -27,7 +27,7 @@ or [.
 
 SIZE is everything the session keeps on disk: its transcript, its subagent
 transcripts and tool results, older copies session mv left, and Claude Code's
-backups of the files it edited. claudes session du adds them up by folder.`,
+backups of the files it edited. claudes session du adds them up by directory.`,
 		ValidArgsFunction: app.completePast(false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			list, err := app.pastSessions(cmd.Context())
@@ -63,7 +63,7 @@ backups of the files it edited. claudes session du adds them up by folder.`,
 			return style.Table(app.Out, table)
 		},
 	}
-	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this folder or below it")
+	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this directory or below it")
 	cmd.Flags().StringVar(&sortBy, "sort", "active", "order by active, newest first, or by size, biggest first")
 	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions([]cobra.Completion{"active", "size"}, cobra.ShellCompDirectiveNoFileComp))
 	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
@@ -85,7 +85,7 @@ func (app *App) filterPast(list []pastSession, targets []string, in string, sinc
 		if root, err = filepath.Abs(in); err != nil {
 			return nil, err
 		}
-		// Sessions record the real folder, so a link in --in is followed.
+		// Sessions record the real directory, so a link in --in is followed.
 		if real, err := filepath.EvalSymlinks(root); err == nil {
 			root = real
 		}
@@ -111,7 +111,7 @@ func resolved(dir string) string {
 	return dir
 }
 
-// within reports whether dir is root or a folder below it.
+// within reports whether dir is root or a directory below it.
 func within(dir, root string) bool {
 	if dir == "" {
 		return false

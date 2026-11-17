@@ -19,12 +19,12 @@ import (
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
-// gcFloor is how recently a session or folder may have changed and still be
+// gcFloor is how recently a session or directory may have changed and still be
 // picked without being named: one that changed since may be starting.
 const gcFloor = 24 * time.Hour
 
 // gcItem is what session gc removes in one go: a whole session, an older copy
-// of one, or a leftover folder.
+// of one, or a leftover directory.
 type gcItem struct {
 	sessionID, name string
 	// why is empty, trivial, gone, old, copy, sidecar, leftover, or named.
@@ -55,24 +55,24 @@ func (app *App) sessionGcCommand() *cobra.Command {
 		Short: "Remove past sessions that are empty, gone, old, or left over",
 		Long: `Remove past sessions from ~/.claude, with everything Claude Code keeps for each:
 its transcript, subagent transcripts and tool results, older copies, file
-history, session-env folder, and debug log. They go to the system trash, so a
+history, session-env directory, and debug log. They go to the system trash, so a
 mistake can be undone; --purge deletes them for good.
 
 Without flags or targets, removes:
 
   empty      sessions that never got a prompt
   copies     older copies session mv left, keeping the newest
-  leftovers  subagent and file-history folders whose transcript is gone
+  leftovers  subagent and file-history directories whose transcript is gone
 
 --empty, --trivial, --gone, --copies, --leftovers, and --older-than pick
 exactly the kinds they name instead. --trivial takes sessions that changed no
 file and made no tool call, and either only ran slash commands or got one
 prompt, such as a quick health check; a session renamed with /rename or started
-by an agent team is never trivial. --gone takes sessions whose folder no longer
-exists, which includes a folder on a disk that is not attached, so read the
+by an agent team is never trivial. --gone takes sessions whose directory no longer
+exists, which includes a directory on a disk that is not attached, so read the
 plan first. --older-than takes sessions last active longer ago than that.
 
---sidecars keeps each session and trims its sidecar folder instead: the big
+--sidecars keeps each session and trims its sidecar directory instead: the big
 command outputs Claude Code saved to tool-results, which the transcript keeps a
 preview of. With --older-than, it also takes the subagent transcripts of
 sessions last active longer ago than that, and removes no whole session. A
@@ -90,10 +90,10 @@ Targets remove exactly those sessions, whatever kind they are.`,
 	}
 	cmd.Flags().BoolVar(&f.empty, "empty", false, "sessions that never got a prompt")
 	cmd.Flags().BoolVar(&f.trivial, "trivial", false, "sessions that only ran slash commands, or got one prompt and made no tool call")
-	cmd.Flags().BoolVar(&f.gone, "gone", false, "sessions whose folder no longer exists")
+	cmd.Flags().BoolVar(&f.gone, "gone", false, "sessions whose directory no longer exists")
 	cmd.Flags().BoolVar(&f.copies, "copies", false, "older copies session mv left")
 	cmd.Flags().BoolVar(&f.sidecars, "sidecars", false, "saved command outputs, and with --older-than subagent transcripts, keeping the sessions")
-	cmd.Flags().BoolVar(&f.leftovers, "leftovers", false, "subagent and file-history folders whose transcript is gone")
+	cmd.Flags().BoolVar(&f.leftovers, "leftovers", false, "subagent and file-history directories whose transcript is gone")
 	cmd.Flags().Var(&f.olderThan, "older-than", "sessions last active longer ago than this, such as 90d")
 	cmd.Flags().Lookup("older-than").DefValue = ""
 	cmd.Flags().BoolVar(&f.purge, "purge", false, "delete for good instead of moving to the trash")
@@ -148,7 +148,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		rows = append(rows, planRow{id: it.ID(), name: it.name, label: it.why, cwd: it.folder, size: style.Size(it.size)})
 		total += it.size
 	}
-	app.printPlanOf("Removing", "session(s) and folder(s)", "WHY", rows)
+	app.printPlanOf("Removing", "session(s) and dir(s)", "WHY", rows)
 	where := "Moves them to the trash; --purge deletes them for good."
 	if f.purge {
 		where = "Deletes them for good."
@@ -257,7 +257,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 	return items, nil
 }
 
-// sidecarItem is the part of p's sidecar folder --sidecars trims: its saved
+// sidecarItem is the part of p's sidecar directory --sidecars trims: its saved
 // command outputs, and its subagent transcripts too when withSubagents.
 func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
 	sidecar := transcripts.Sidecar(p.Session)
@@ -297,7 +297,7 @@ func (app *App) wholeSession(p pastSession, why string) gcItem {
 }
 
 // extraSize is what SessionFiles takes beyond the session's Disk: its
-// session-env folder and debug log.
+// session-env directory and debug log.
 func (app *App) extraSize(s transcripts.Session) int64 {
 	if app.Transcripts.Home == "" {
 		return 0
@@ -361,7 +361,7 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 }
 
 // gcRemoveItem removes each of an item's paths. It refuses a path outside
-// root, or one whose name, or whose folder's name, does not carry the session
+// root, or one whose name, or whose directory's name, does not carry the session
 // id, so nothing else is ever touched.
 func (app *App) gcRemoveItem(it gcItem, root string, purge bool) error {
 	for _, p := range it.paths {
@@ -385,7 +385,7 @@ func (app *App) gcRemoveItem(it gcItem, root string, purge bool) error {
 	return nil
 }
 
-// folderGone reports whether dir is known and no longer exists. A folder that
+// folderGone reports whether dir is known and no longer exists. A directory that
 // cannot be checked, such as one behind a permission error, does not count.
 func folderGone(dir string) bool {
 	if dir == "" {

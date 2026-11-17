@@ -133,7 +133,7 @@ func TestLockGivesUp(t *testing.T) {
 func TestWriteFileIntoAMissingFolderFails(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "missing", "pins.json")
 	if err := WriteFile(path, []byte("[]"), 0o644); err == nil {
-		t.Fatal("wrote into a folder that does not exist")
+		t.Fatal("wrote into a directory that does not exist")
 	}
 }
 
@@ -144,7 +144,7 @@ func TestWriteFileOverAFolderFailsAndCleansUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := WriteFile(path, []byte("[]"), 0o644); err == nil {
-		t.Fatal("replaced a folder")
+		t.Fatal("replaced a directory")
 	}
 	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
 		t.Fatalf("temp file left behind: %v", entries)

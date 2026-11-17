@@ -38,8 +38,8 @@ Restarting 2 session(s):
 `api-refactor` was mid-turn, so claudes stopped it, resumed it on the new Claude
 Code, and sent it a prompt to pick up where it left off. The pinned session
 stayed as it was. claudes also finds every past session, running or not, and
-resumes or moves it from any folder. Anything it doesn't handle goes straight to
-`claude agents`.
+resumes or moves it from any directory. Anything it doesn't handle goes straight
+to `claude agents`.
 
 ```console
 $ claudes ls
@@ -61,8 +61,8 @@ claudes ping api "run the tests" # send one session a message
 claudes logs -f api              # follow a session's prompts, replies, and tools
 claudes stop api                 # stop one session
 claudes session ls --since 2d    # every session from the last two days, past too
-claudes session resume api       # resume a past session in its own folder
-claudes cd api                   # jump to a session's folder (see Shell setup)
+claudes session resume api       # resume a past session in its own directory
+claudes cd api                   # jump to a session's directory (see Shell setup)
 claudes doctor                   # check claudes against the installed Claude Code
 ```
 
@@ -117,8 +117,8 @@ go install github.com/uvw/claudes/cmd/claudes@latest
 ```
 
 [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)
-covers picking a version or a folder, installing by hand, checking a download,
-and uninstalling. Then run `claudes doctor`.
+covers picking a version or a directory, installing by hand, checking a
+download, and uninstalling. Then run `claudes doctor`.
 
 ### Shell setup
 
@@ -162,7 +162,7 @@ Running sessions, as agent view lists them, plus finished background ones with
 | Command               | What it does                                                   |
 | --------------------- | -------------------------------------------------------------- |
 | `ls [TARGET...]`      | List them: pinned first, then busy, then newest                |
-| `where TARGET...`     | Print the folders of the sessions that match                   |
+| `where TARGET...`     | Print the directories of the sessions that match               |
 | `pin`, `unpin`        | Pin or unpin background sessions, as Ctrl+T does in agent view |
 | `restart [TARGET...]` | Restart named sessions, or all but pinned ones                 |
 | `pause [TARGET...]`   | Stop sessions and park them for `resume`                       |
@@ -177,17 +177,17 @@ Running sessions, as agent view lists them, plus finished background ones with
 Every session with a transcript, past or running (`claudes s` and
 `claudes sessions` are short for `claudes session`):
 
-| Command                          | What it does                                           |
-| -------------------------------- | ------------------------------------------------------ |
-| `session ls [TARGET...]`         | List them, newest activity first, with their size      |
-| `session show TARGET`            | Folder, branch, version, times, size, and last prompt  |
-| `session where TARGET...`        | Print their folders                                    |
-| `session resume TARGET [PROMPT]` | Resume one in its own folder, from anywhere            |
-| `session mv TARGET FOLDER`       | Copy one to another folder, so it resumes there        |
-| `session du`                     | Disk space by folder; `--top N` for the biggest        |
-| `session triage`                 | Sort them into remove, review, and keep                |
-| `session gc [TARGET...]`         | Move empty, copied, and leftover sessions to the trash |
-| `cd TARGET`                      | Change to a session's folder (needs `init`)            |
+| Command                          | What it does                                             |
+| -------------------------------- | -------------------------------------------------------- |
+| `session ls [TARGET...]`         | List them, newest activity first, with their size        |
+| `session show TARGET`            | Directory, branch, version, times, size, and last prompt |
+| `session where TARGET...`        | Print their directories                                  |
+| `session resume TARGET [PROMPT]` | Resume one in its own directory, from anywhere           |
+| `session mv TARGET DIR`          | Copy one to another directory, so it resumes there       |
+| `session du`                     | Disk space by directory; `--top N` for the biggest       |
+| `session triage`                 | Sort them into remove, review, and keep                  |
+| `session gc [TARGET...]`         | Move empty, copied, and leftover sessions to the trash   |
+| `cd TARGET`                      | Change to a session's directory (needs `init`)           |
 
 Setup and diagnostics:
 

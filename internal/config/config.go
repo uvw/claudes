@@ -80,7 +80,7 @@ var Keys = []Key{
 	{"output.format", "the default -o of commands that print sessions: text, json, or yaml", func(c Config) string { return c.Output.Format }},
 }
 
-// Path is $CLAUDES_CONFIG, or config.yaml in the folder paths.Config names.
+// Path is $CLAUDES_CONFIG, or config.yaml in the directory paths.Config names.
 func Path() (string, error) {
 	if p := os.Getenv("CLAUDES_CONFIG"); p != "" {
 		if !filepath.IsAbs(p) {

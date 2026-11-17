@@ -29,7 +29,7 @@ the archive's build provenance. It installs `claudes` into `~/.local/bin`, or
 `PATH`. Then it prints the optional next steps: [shell setup](#shell-setup), the
 [agent skill](#agent-skill), and `claudes doctor`. Run it again to upgrade.
 
-To pick a version or a folder:
+To pick a version or a directory:
 
 ```bash
 curl -fsSL https://github.com/uvw/claudes/releases/latest/download/install.sh |
@@ -47,7 +47,7 @@ irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
 
 By hand: download the archive for your platform from the latest release, check
 it against `checksums.txt`, and put `claudes` (`claudes.exe` on Windows) in a
-folder on `PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on
+directory on `PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on
 `amd64` and `arm64`. The binaries are not signed, so one downloaded with a
 browser is blocked by Gatekeeper on macOS until you run
 `xattr -d com.apple.quarantine claudes`; the install script and `gh` are not.
@@ -89,18 +89,18 @@ Then run `claudes doctor`.
 
 ## Uninstalling
 
-Delete the binary, and the folders in [Files](reference.md#files) if you want
-its settings and park list gone too.
+Delete the binary, and the directories in [Files](reference.md#files) if you
+want its settings and park list gone too.
 
 ## Shell setup
 
 Tab completion offers commands, flags, and the session names each command can
 act on: `unpin` offers pinned sessions, `resume` parked and stopped ones, and
 `gc` finished ones. `claudes init` adds a shell function so `claudes cd NAME`
-changes your shell's folder, which no program can do on its own.
+changes your shell's directory, which no program can do on its own.
 
-zsh: write the completion script once, to a folder on `fpath` you own, then add
-the rest to `~/.zshrc`, before `compinit` runs:
+zsh: write the completion script once, to a directory on `fpath` you own, then
+add the rest to `~/.zshrc`, before `compinit` runs:
 
 ```zsh
 mkdir -p ~/.zfunc && claudes completion zsh > ~/.zfunc/_claudes  # once
@@ -114,7 +114,7 @@ alias claudes='noglob claudes'
 ```
 
 Keep the alias after the `init` line. It stops zsh from expanding a pattern such
-as `plan*` against the files in the current folder before claudes sees it.
+as `plan*` against the files in the current directory before claudes sees it.
 
 bash, in `~/.bashrc`. Completion needs the bash-completion package; on macOS's
 bash 3.2, use `eval "$(claudes completion bash)"` instead of `source`:
@@ -154,4 +154,4 @@ claudes skill                     # print it
 
 `--install` writes `~/.claude/skills/claudes/SKILL.md`, under
 `CLAUDE_CONFIG_DIR` when that is set. `--dir PATH` writes
-`PATH/claudes/SKILL.md`, for another agent's skills folder.
+`PATH/claudes/SKILL.md`, for another agent's skills directory.

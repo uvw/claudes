@@ -16,18 +16,18 @@ import (
 func (app *App) sessionMvCommand() *cobra.Command {
 	var resume, rm bool
 	cmd := &cobra.Command{
-		Use:     "mv TARGET FOLDER",
+		Use:     "mv TARGET DIR",
 		Aliases: []string{"move"},
-		Short:   "Copy a session to another folder, so it resumes from there",
-		Long: `Copy a session's transcript into FOLDER's project folder, so claude --resume
+		Short:   "Copy a session to another directory, so it resumes from there",
+		Long: `Copy a session's transcript into DIR's project directory, so claude --resume
 finds it when started there. The original stays, so the session still resumes
-from its old folder too; claudes prints the command that removes it. The old
-folder's project memory and the folder recorded inside the transcript are left
+from its old directory too; claudes prints the command that removes it. The old
+directory's project memory and the directory recorded inside the transcript are left
 alone. --rm deletes the original once the copy matches it byte for byte.
 
 A running session is refused, since what it says after the copy stays in the
 old transcript. The session running claudes is the exception: copy it, then
-exit it and resume it from FOLDER. --resume resumes the copy in this terminal.`,
+exit it and resume it from DIR. --resume resumes the copy in this terminal.`,
 		Args: cobra.ExactArgs(2),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
 			if len(args) == 1 {
@@ -39,9 +39,9 @@ exit it and resume it from FOLDER. --resume resumes the copy in this terminal.`,
 			return app.moveSession(cmd.Context(), args[0], args[1], resume, rm)
 		},
 	}
-	cmd.Flags().BoolVar(&resume, "resume", false, "resume the session from FOLDER once it is copied")
+	cmd.Flags().BoolVar(&resume, "resume", false, "resume the session from DIR once it is copied")
 	cmd.Flags().BoolVar(&rm, "rm", false, "delete the original once the copy matches it")
-	app.addForce(cmd, "copy although claudes cannot tell whether the session runs, or Claude Code may name project folders differently now")
+	app.addForce(cmd, "copy although claudes cannot tell whether the session runs, or Claude Code may name project directories differently now")
 	return cmd
 }
 
@@ -74,7 +74,7 @@ func (app *App) moveSession(ctx context.Context, token, folder string, resume, r
 		sessions[i] = s.Session
 	}
 	if !transcripts.FolderNamesMatch(sessions) {
-		if err := app.refuse(app.Transcripts.Dir, []string{"recent sessions live in folders claudes would not name that way"}); err != nil {
+		if err := app.refuse(app.Transcripts.Dir, []string{"recent sessions live in directories claudes would not name that way"}); err != nil {
 			return err
 		}
 	}
@@ -106,7 +106,7 @@ func (app *App) moveSession(ctx context.Context, token, folder string, resume, r
 	return nil
 }
 
-// realFolder is folder as an absolute path with links resolved, as the
+// realFolder is directory as an absolute path with links resolved, as the
 // working directory Claude Code records for a session started there.
 func realFolder(folder string) (string, error) {
 	abs, err := filepath.Abs(folder)
@@ -121,7 +121,7 @@ func realFolder(folder string) (string, error) {
 		return "", err
 	}
 	if info, err := os.Stat(resolved); err != nil || !info.IsDir() {
-		return "", fmt.Errorf("%s is not a folder", abs)
+		return "", fmt.Errorf("%s is not a directory", abs)
 	}
 	return resolved, nil
 }

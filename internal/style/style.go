@@ -113,7 +113,7 @@ func (p Palette) Magenta(text string) string { return p.render(magenta, text) }
 // Cyan is for a session at a shell prompt.
 func (p Palette) Cyan(text string) string { return p.render(cyan, text) }
 
-// Faint is for detail the eye can skip, such as a folder.
+// Faint is for detail the eye can skip, such as a directory.
 func (p Palette) Faint(text string) string { return p.render(faint, text) }
 
 // Width is how many columns text takes in a terminal, without its colors.

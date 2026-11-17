@@ -84,7 +84,7 @@ func TestLsAndWhereMatchWordsAndPatterns(t *testing.T) {
 	}
 
 	if r := w.ok("where", "plan-one"); r.stdout != one.Cwd+"\n" {
-		t.Fatalf("where plan-one printed %q, want the bare folder %q", r.stdout, one.Cwd)
+		t.Fatalf("where plan-one printed %q, want the bare directory %q", r.stdout, one.Cwd)
 	}
 	if r := w.ok("where", one.ID[:5]); r.stdout != one.Cwd+"\n" {
 		t.Fatalf("where by id prefix printed %q", r.stdout)
@@ -619,7 +619,7 @@ func TestSessionResumeHandsOffInTheSessionsFolder(t *testing.T) {
 	assertIn(t, got[0], dir)
 }
 
-// folderName is how Claude Code names a working directory's project folder.
+// folderName is how Claude Code names a working directory's project directory.
 func folderName(dir string) string {
 	return strings.Map(func(r rune) rune {
 		if r < 128 && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9') {

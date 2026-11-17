@@ -165,7 +165,7 @@ func TestCopyCopiesTheTranscriptAndItsSidecar(t *testing.T) {
 		t.Fatalf("the original is gone: %v", err)
 	}
 	if _, err := st.Copy(s, "/a"); err == nil || !strings.Contains(err.Error(), "already lives under") {
-		t.Fatalf("copy into its own folder: %v", err)
+		t.Fatalf("copy into its own directory: %v", err)
 	}
 }
 
@@ -230,7 +230,7 @@ func TestCopyRefusesToOverwriteAnotherCopyOrALongFolder(t *testing.T) {
 		t.Fatalf("the other copy changed: %q", data)
 	}
 	if _, err := st.Copy(s, "/"+strings.Repeat("x", 220)); err == nil || !strings.Contains(err.Error(), "too long") {
-		t.Fatalf("long folder: %v", err)
+		t.Fatalf("long directory: %v", err)
 	}
 }
 
@@ -268,7 +268,7 @@ func TestRemoveOriginalKeepsItWhenTheSubagentCopyDiffers(t *testing.T) {
 	write(t, filepath.Join(dest, sid, "subagents", "a.jsonl"), time.Now(), "part")
 
 	err := (Store{Dir: dir}).RemoveOriginal(Session{SessionID: sid, Path: src}, dest)
-	if err == nil || !strings.Contains(err.Error(), "subagent folder does not match") {
+	if err == nil || !strings.Contains(err.Error(), "subagent directory does not match") {
 		t.Fatalf("err %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(strings.TrimSuffix(src, ".jsonl"), "subagents", "a.jsonl")); err != nil {

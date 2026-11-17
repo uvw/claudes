@@ -291,13 +291,13 @@ var start = time.Date(2026, 11, 13, 17, 0, 0, 0, time.UTC)
 
 func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 	t.Helper()
-	// Resolved as Claude Code records a folder: macOS reaches the temporary
-	// folder through the /var link, and Windows may name it in 8.3 form.
+	// Resolved as Claude Code records a directory: macOS reaches the temporary
+	// directory through the /var link, and Windows may name it in 8.3 form.
 	root, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Claude Code creates the jobs folder; a missing one means the wrong folder.
+	// Claude Code creates the jobs directory; a missing one means the wrong directory.
 	if err := os.MkdirAll(filepath.Join(root, "jobs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -815,7 +815,7 @@ func TestResumeKeepsFailuresAndSkipsRunningSessions(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{a, b, c}}
 	h.ok(t, "pause")
 	h.world([]claude.Session{c})
-	h.agents.failures = map[string]string{"resume " + b.SessionID + " in bravo prompt=": "folder is gone"}
+	h.agents.failures = map[string]string{"resume " + b.SessionID + " in bravo prompt=": "directory is gone"}
 
 	h.fails(t, "resume")
 
@@ -1419,9 +1419,9 @@ func TestGCTeamsRemovesOnlyOldFoldersOfSessionsThatAreGone(t *testing.T) {
 	}
 
 	h.ok(t, "gc", "--teams", "--dry-run")
-	assertContains(t, h.out.String(), "Removing 2 team folder(s) and task list(s)")
+	assertContains(t, h.out.String(), "Removing 2 team dir(s) and task list(s)")
 	if _, err := os.Stat(filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa")); err != nil {
-		t.Fatalf("a dry run removed a folder: %v", err)
+		t.Fatalf("a dry run removed a directory: %v", err)
 	}
 
 	h.ok(t, "gc", "--teams")

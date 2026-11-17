@@ -1,4 +1,4 @@
-// Package skills carries the agent skills in this folder, so the claudes
+// Package skills carries the agent skills in this directory, so the claudes
 // binary can print and install them. The same files serve `npx skills add`,
 // which reads skills/<name>/SKILL.md from the repository.
 package skills

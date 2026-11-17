@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// A junction inside a leftover folder must be removed as a link, never
-// followed into the folder it points to.
+// A junction inside a leftover directory must be removed as a link, never
+// followed into the directory it points to.
 func TestRemoveDoesNotFollowAJunction(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("junctions are Windows only")
@@ -46,11 +46,11 @@ func TestRemoveDoesNotFollowAJunction(t *testing.T) {
 		t.Fatalf("Remove followed the junction: %v", err)
 	}
 	if _, err := os.Stat(team); err == nil {
-		t.Fatal("team folder left")
+		t.Fatal("team directory left")
 	}
 }
 
-// A team folder that is itself a junction is skipped, not walked or removed.
+// A team directory that is itself a junction is skipped, not walked or removed.
 func TestLeftoversSkipAJunctionedFolder(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("junctions are Windows only")

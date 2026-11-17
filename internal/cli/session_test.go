@@ -193,7 +193,7 @@ func TestSessionMvCopiesAndPrintsTheWayBack(t *testing.T) {
 		t.Fatalf("execs %q", h.execs)
 	}
 
-	// The copy's records still name the old folder; claudes' own record of
+	// The copy's records still name the old directory; claudes' own record of
 	// the move points at the new one.
 	h.out.Reset()
 	h.ok(t, "session", "where", "--one", "plan")
@@ -404,8 +404,8 @@ func TestSessionShowWritesTimesInUTCAndAnEmptyCopyList(t *testing.T) {
 	}
 }
 
-// A transcript can record its folder through a link, as macOS does for the
-// temporary folder under /var.
+// A transcript can record its directory through a link, as macOS does for the
+// temporary directory under /var.
 func TestSessionCommandsSeeAFolderRecordedThroughALink(t *testing.T) {
 	h := newHarness(t)
 	real := h.folder("real")
@@ -479,7 +479,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 	}
 	if len(report.Folders) != 2 || report.Folders[0].Folder != work || report.Folders[0].Sessions != 2 ||
 		report.Folders[0].Disk.Sidecar != 2048 || report.Folders[1].Sessions != 1 {
-		t.Fatalf("folders %+v", report.Folders)
+		t.Fatalf("directories %+v", report.Folders)
 	}
 	if len(report.Leftovers) != 1 || report.Leftovers[0].SessionID != orphan || report.Leftovers[0].Size != 300 {
 		t.Fatalf("leftovers %+v", report.Leftovers)
@@ -491,7 +491,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 	h.out.Reset()
 	h.ok(t, "session", "df")
 	text := h.out.String()
-	if !strings.Contains(text, "1 leftover folder(s)") || !strings.Contains(text, "all") {
+	if !strings.Contains(text, "1 leftover dir(s)") || !strings.Contains(text, "all") {
 		t.Fatalf("df:\n%s", text)
 	}
 
@@ -502,7 +502,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(report.Folders) != 1 || len(report.Leftovers) != 0 {
-		t.Fatalf("--in counted other folders or leftovers: %+v", report)
+		t.Fatalf("--in counted other directories or leftovers: %+v", report)
 	}
 }
 
@@ -548,6 +548,9 @@ func TestSessionDuTopListsTheBiggestSessionsWithTheirSidecarShare(t *testing.T) 
 
 	h.out.Reset()
 	h.ok(t, "session", "du", "-o", "json")
+	if !strings.Contains(h.out.String(), `"dirs": [`) || !strings.Contains(h.out.String(), `"dir": "`) {
+		t.Fatalf("du JSON does not use dirs and dir:\n%s", h.out)
+	}
 	if !strings.Contains(h.out.String(), `"top": []`) {
 		t.Fatalf("top is not an empty list without --top:\n%s", h.out)
 	}

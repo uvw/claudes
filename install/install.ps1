@@ -5,8 +5,8 @@
 # It downloads the archive for this computer and checks it against the
 # release's checksums.txt. When the GitHub CLI is installed and signed in, it
 # also checks the archive's build provenance. It installs into
-# %LOCALAPPDATA%\Programs\claudes and adds that folder to the user's PATH.
-# CLAUDES_VERSION and CLAUDES_INSTALL_DIR choose another version or folder;
+# %LOCALAPPDATA%\Programs\claudes and adds that directory to the user's PATH.
+# CLAUDES_VERSION and CLAUDES_INSTALL_DIR choose another version or directory;
 # so do -Version and -Dir, when the script runs as a file.
 #
 # The script runs in its own scope, so iex leaves the caller's variables and
@@ -37,7 +37,7 @@
         default { Fail "$_ Windows is not supported: releases cover amd64 and arm64" }
     }
 
-    # CLAUDES_DOWNLOAD_URL, a URL or a folder, replaces the release, so the
+    # CLAUDES_DOWNLOAD_URL, a URL or a directory, replaces the release, so the
     # release workflow can try this script on the archives it just built.
     if ($env:CLAUDES_DOWNLOAD_URL) {
         $base = $env:CLAUDES_DOWNLOAD_URL

@@ -21,7 +21,7 @@ import (
 // enough work to keep.
 const reviewToolCalls = 20
 
-// triageItem is one session or folder in the triage plan.
+// triageItem is one session or directory in the triage plan.
 type triageItem struct {
 	ID         string    `json:"id"`
 	SessionID  string    `json:"sessionId"`
@@ -162,7 +162,7 @@ func triageOf(p pastSession, why string) triageItem {
 
 func (app *App) printTriage(r triageReport) error {
 	if len(r.Remove) > 0 {
-		app.say("Remove %d session(s) and folder(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
+		app.say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
 		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
 			table = append(table, []string{t.ID, t.Why, style.Size(t.Size), app.colors.Faint(homeShort(t.Cwd)), nameCell(cmp.Or(t.Name, t.ID))})

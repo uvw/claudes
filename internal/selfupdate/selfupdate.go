@@ -35,11 +35,11 @@ type Release struct {
 	Version string
 	Archive string
 	SHA256  string
-	// URL is the folder the archive and checksums.txt download from.
+	// URL is the directory the archive and checksums.txt download from.
 	URL string
 }
 
-// Base is the folder of the latest release under releases, or of the release
+// Base is the directory of the latest release under releases, or of the release
 // tagged tag.
 func Base(releases, tag string) string {
 	if tag == "" {

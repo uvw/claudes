@@ -62,8 +62,8 @@ or `session gc` against them, and never edit `~/.claude/jobs/` or
 command with `--dry-run`.
 
 Tests drive the commands through the fake `claude.Agents` in
-`internal/cli/cli_test.go` and a temporary jobs folder, never the real `claude`
-binary. To try a command against real sessions, ask the owner first.
+`internal/cli/cli_test.go` and a temporary jobs directory, never the real
+`claude` binary. To try a command against real sessions, ask the owner first.
 
 ## Sharing the working tree
 

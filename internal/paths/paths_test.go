@@ -60,6 +60,6 @@ func TestClaudeHome(t *testing.T) {
 	t.Setenv("HOME", "")
 	t.Setenv("USERPROFILE", "")
 	if got, err := ClaudeHome(); err == nil {
-		t.Fatalf("guessed %q with no home folder", got)
+		t.Fatalf("guessed %q with no home directory", got)
 	}
 }

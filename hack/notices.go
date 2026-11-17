@@ -69,7 +69,7 @@ func run(check bool) error {
 	return nil
 }
 
-// moduleRoot is the folder above the working directory that holds go.mod.
+// moduleRoot is the directory above the working directory that holds go.mod.
 func moduleRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {

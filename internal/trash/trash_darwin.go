@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-// Move moves path to the Trash in the home folder. Finder lists it there, but
+// Move moves path to the Trash in the home directory. Finder lists it there, but
 // cannot put it back, since only Finder records where a file came from.
 func Move(path string) error {
 	home, err := os.UserHomeDir()

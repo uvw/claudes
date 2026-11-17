@@ -101,8 +101,8 @@ claudes is built to restart and stop sessions without losing work:
 3. **Nothing is stopped that can't come back.** Before stopping a session it
    will resume, claudes parks it, waits for its process to end, then resumes it.
    If the resume fails, the session stays parked for `claudes resume`. `pause`,
-   `ping`, and a restart that resumes a session leave it running when its folder
-   is gone, since it could not come back. `stop` stops it anyway.
+   `ping`, and a restart that resumes a session leave it running when its
+   directory is gone, since it could not come back. `stop` stops it anyway.
 4. **A resumed session keeps its settings.** Claude Code wakes a background
    session with the options it started with, such as `--model` and
    `--permission-mode`, so a ping, a restart, or `resume` keeps them.
@@ -121,8 +121,8 @@ claudes is built to restart and stop sessions without losing work:
 9. **Unfamiliar data stops it.** See
    [Compatibility](reference.md#compatibility).
 10. **One claudes changes sessions at a time.** Commands that stop, start,
-    remove, or pin sessions take a lock, `run.lock` in claudes' state folder, so
-    two runs cannot stop the same session twice. A second one stops before it
+    remove, or pin sessions take a lock, `run.lock` in claudes' state directory,
+    so two runs cannot stop the same session twice. A second one stops before it
     changes anything; `--dry-run` and the commands that only look never wait. A
     claudes that crashed frees the lock within 30 seconds.
 
@@ -146,7 +146,7 @@ prints its command until then; `claudes resume --forget NAME` drops it.
 `claudes session` reads the transcripts Claude Code keeps under
 `~/.claude/projects`, so it finds every session, not only those agent view
 lists. `claudes s` and `claudes sessions` are short for it. `session ls` takes
-`--in PATH` for sessions run in a folder and below it, and `--since 7d` for
+`--in PATH` for sessions run in a directory and below it, and `--since 7d` for
 recent ones. `session where --one` fails unless exactly one session matches, for
 scripts. `session resume` refuses a session that is still running, since
 resuming it would start a copy; `--bg` resumes in the background.
@@ -158,23 +158,24 @@ Claude Code's backups of the files it edited, under `~/.claude/file-history`.
 size down. `session show` also reads the whole transcript to count the prompts,
 slash commands, tool calls, and file edits, and says where the name came from:
 `/rename`, agent view, or Claude Code's own title. `session du` (or `df`) adds
-it all up by project folder, biggest first, and counts leftovers: subagent and
-file-history folders whose transcript is gone. `--top 10` also lists the 10
-sessions that take the most space, with the share their sidecar folder of tool
-results and subagent transcripts takes.
+it all up by project directory, biggest first, and counts leftovers: subagent
+and file-history directories whose transcript is gone. `--top 10` also lists the
+10 sessions that take the most space, with the share their sidecar directory of
+tool results and subagent transcripts takes.
 
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,
-session-env folder, and debug log. They go to the system trash (the macOS Trash,
-the Windows Recycle Bin, or the freedesktop.org trash on Linux), so a mistake
-can be undone; `--purge` deletes them for good. Without flags it removes:
+session-env directory, and debug log. They go to the system trash (the macOS
+Trash, the Windows Recycle Bin, or the freedesktop.org trash on Linux), so a
+mistake can be undone; `--purge` deletes them for good. Without flags it
+removes:
 
 1. Empty sessions, which never got a prompt.
 2. Older copies `session mv` left, keeping the newest.
-3. Leftovers: subagent and file-history folders whose transcript is gone.
+3. Leftovers: subagent and file-history directories whose transcript is gone.
 
 `--empty`, `--copies`, `--leftovers`, `--trivial`, `--gone` (the session's
-folder no longer exists), and `--older-than 90d` pick exactly those kinds
+directory no longer exists), and `--older-than 90d` pick exactly those kinds
 instead. A trivial session changed no file and made no tool call, and either
 only ran slash commands, such as `/login`, or got one prompt, such as a quick
 health check. A session named with `/rename`, one an agent team's lead started,
@@ -182,11 +183,11 @@ and one with file history are never trivial. To tell, claudes reads each
 transcript up to 2 MB in full; a bigger one is never trivial. Targets remove
 exactly the sessions named. `--dry-run` shows the plan and what it frees.
 
-`--sidecars` keeps every session and trims its sidecar folder instead, which is
-often most of a big session (`session du --top 10` shows how much). It takes the
-big command outputs Claude Code saved under `tool-results`. The transcript keeps
-a preview of each, so the session resumes with everything the model saw, but
-cannot read a saved output again. With `--older-than 30d`, it also takes the
+`--sidecars` keeps every session and trims its sidecar directory instead, which
+is often most of a big session (`session du --top 10` shows how much). It takes
+the big command outputs Claude Code saved under `tool-results`. The transcript
+keeps a preview of each, so the session resumes with everything the model saw,
+but cannot read a saved output again. With `--older-than 30d`, it also takes the
 subagent transcripts of sessions idle that long. Such a session still resumes,
 but cannot continue a subagent it ran, and `claudes logs X/TEAMMATE` has nothing
 to show. With `--sidecars`, `--older-than` removes no whole session.
@@ -212,32 +213,32 @@ removes paths under `~/.claude` named by the session's id.
    changed files, or running.
 
 `session mv` (or `move`) copies a session's transcript, with its subagent
-transcripts and tool results, into the project folder Claude Code uses for
-`FOLDER`, which must already exist. Use it after cloning a repository
-mid-session, or when the work outgrew its folder. It keeps the original and
-prints the command that removes it, then the command that resumes the copy.
+transcripts and tool results, into the project directory Claude Code uses for
+`DIR`, which must already exist. Use it after cloning a repository mid-session,
+or when the work outgrew its directory. It keeps the original and prints the
+command that removes it, then the command that resumes the copy.
 
 It refuses:
 
 1. A running session, except the one running claudes: copy that one, then exit
    it and run the printed command.
 2. When it cannot tell which sessions run, unless you pass `--force`.
-3. When `FOLDER` already holds a copy, which may have newer work.
-4. When recent sessions live in project folders claudes would not name that way,
-   so it would copy to the wrong one. `--force` goes ahead.
+3. When `DIR` already holds a copy, which may have newer work.
+4. When recent sessions live in project directories claudes would not name that
+   way, so it would copy to the wrong one. `--force` goes ahead.
 
 `--resume` resumes the copy at once, and `--rm` deletes the original once every
 file of the copy matches it byte for byte. `--rm` refuses the session running
 claudes, which writes to its transcript until it exits.
 
-A copy's transcript still names the old folder until it is first resumed from
+A copy's transcript still names the old directory until it is first resumed from
 the new one, so claudes records each move in `moves.json`. `session where`,
-`cd`, and `session resume` then use the new folder right away.
+`cd`, and `session resume` then use the new directory right away.
 
 `mv` copies rather than moving because a copy cannot lose the original if
 anything goes wrong, and because Claude Code's own record of a moved session, a
 `relocated` entry in the transcript, is not documented. claudes reads those
-entries, so a session Claude Code moved resumes from its new folder.
+entries, so a session Claude Code moved resumes from its new directory.
 
 ## Agent teams
 
@@ -261,7 +262,7 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
   prints as one line, such as `team  tester: idle: Task #2 is complete`.
 - Bulk `restart` and `pause` leave a lead with teammates at work alone, since
   its teammates would stop with it and cannot be resumed (see Safety).
-- `claudes gc --teams` removes the team folders and task lists Claude Code
+- `claudes gc --teams` removes the team directories and task lists Claude Code
   leaves behind: those of sessions that no longer run, are not parked or pinned,
   and have not changed for longer than `--older-than`, 7 days by default.
   `--dry-run` shows them first.

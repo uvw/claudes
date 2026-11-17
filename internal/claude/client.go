@@ -22,7 +22,7 @@ type Agents interface {
 	Respawn(ctx context.Context, jobID string) error
 	Stop(ctx context.Context, jobID string) error
 	Remove(ctx context.Context, jobID string) error
-	// Resume continues a session in the background from its folder, with an
+	// Resume continues a session in the background from its directory, with an
 	// optional prompt, and returns what the command printed.
 	// name, when set, names a session that has no background job yet. It is
 	// left out otherwise: an existing job wakes with its own saved options,
@@ -244,7 +244,7 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt, name string
 		return "", err
 	}
 	if !FolderExists(cwd) {
-		return "", fmt.Errorf("folder %s is gone", cwd)
+		return "", fmt.Errorf("directory %s is gone", cwd)
 	}
 	args := []string{"--bg"}
 	if name != "" {
@@ -266,7 +266,7 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt, name string
 	return stdout, nil
 }
 
-// FolderExists reports whether dir is an existing folder.
+// FolderExists reports whether dir is an existing directory.
 func FolderExists(dir string) bool {
 	info, err := os.Stat(dir)
 	return err == nil && info.IsDir()

@@ -9,7 +9,7 @@ import (
 )
 
 // ResumeCommand is the command that resumes a session by hand from its
-// folder: claude --resume for an interactive session, claude --bg --resume
+// directory: claude --resume for an interactive session, claude --bg --resume
 // for a background one.
 func ResumeCommand(sessionID, cwd string, interactive bool) string {
 	flags := "--bg --resume"

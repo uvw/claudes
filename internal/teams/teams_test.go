@@ -103,7 +103,7 @@ func TestLeftoversSkipRunningAndRecentSessions(t *testing.T) {
 		}
 	}
 	if err := st.Remove(Folder{Path: t.TempDir()}); err == nil {
-		t.Fatal("removed a folder outside teams and tasks")
+		t.Fatal("removed a directory outside teams and tasks")
 	}
 }
 
@@ -121,7 +121,7 @@ func TestAnUnreadableTeamConfigCountsAsTeammates(t *testing.T) {
 		t.Fatalf("teammates %q", got)
 	}
 	if got := st.Teammates("99999999-2222-3333-4444-555555555555"); len(got) != 0 {
-		t.Fatalf("a session with no team folder has teammates %q", got)
+		t.Fatalf("a session with no team directory has teammates %q", got)
 	}
 	bad, err := st.Unreadable()
 	if err != nil || len(bad) != 1 || bad[0] != Name(id) {

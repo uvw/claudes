@@ -23,15 +23,15 @@ import (
 // leadType is the agent type of a team's lead in its member list.
 const leadType = "team-lead"
 
-// Store is the two folders Claude Code keeps teams in.
+// Store is the two directories Claude Code keeps teams in.
 type Store struct {
-	// Teams holds one folder per team, with its config.json.
+	// Teams holds one directory per team, with its config.json.
 	Teams string
-	// Tasks holds one folder per session's task list, team or not.
+	// Tasks holds one directory per session's task list, team or not.
 	Tasks string
 }
 
-// DefaultStore is the teams and tasks folders in Claude Code's folder.
+// DefaultStore is the teams and tasks directories in Claude Code's directory.
 func DefaultStore() (Store, error) {
 	home, err := paths.ClaudeHome()
 	if err != nil {
@@ -99,7 +99,7 @@ func (st Store) Teammates(sessionID string) []string {
 	return t.Teammates()
 }
 
-// Unreadable lists the team folders whose config.json exists but does not
+// Unreadable lists the team directories whose config.json exists but does not
 // parse, or lacks the team's name or lead.
 func (st Store) Unreadable() ([]string, error) {
 	entries, err := os.ReadDir(st.Teams)
@@ -203,15 +203,15 @@ func compareIDs(a, b string) int {
 	return strings.Compare(a, b)
 }
 
-// Folder is a team or task-list folder that gc can remove.
+// Folder is a team or task-list directory that gc can remove.
 type Folder struct {
 	Path string
-	// Name is the folder's name, session-<short id>.
+	// Name is the directory's name, session-<short id>.
 	Name     string
 	Modified time.Time
 }
 
-// Leftovers lists the team and task-list folders whose session is not in
+// Leftovers lists the team and task-list directories whose session is not in
 // keep and that last changed before cutoff. keep holds short session ids.
 func (st Store) Leftovers(keep map[string]bool, cutoff time.Time) ([]Folder, error) {
 	var out []Folder
@@ -239,7 +239,7 @@ func (st Store) Leftovers(keep map[string]bool, cutoff time.Time) ([]Folder, err
 	return out, nil
 }
 
-// newest is when a file in the folder last changed, or the folder itself when
+// newest is when a file in the directory last changed, or the directory itself when
 // it holds no files.
 func newest(dir string) (time.Time, error) {
 	var t time.Time
@@ -265,10 +265,10 @@ func newest(dir string) (time.Time, error) {
 	return t, err
 }
 
-// Remove deletes a folder Leftovers returned.
+// Remove deletes a directory Leftovers returned.
 func (st Store) Remove(f Folder) error {
 	if filepath.Dir(f.Path) != st.Teams && filepath.Dir(f.Path) != st.Tasks {
-		return fmt.Errorf("%s is not a team or task folder", f.Path)
+		return fmt.Errorf("%s is not a team or task directory", f.Path)
 	}
 	return os.RemoveAll(f.Path)
 }

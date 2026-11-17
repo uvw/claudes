@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tries install/install.sh on a release folder: one made from a built binary,
+# Tries install/install.sh on a release directory: one made from a built binary,
 # or the release workflow's dist/. It installs twice, as a fresh install and
 # an upgrade, then checks that a damaged archive is refused.
 #

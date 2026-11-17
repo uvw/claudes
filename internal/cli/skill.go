@@ -15,7 +15,7 @@ func (app *App) skillCommand() *cobra.Command {
 		Short: "Print the agent skill for claudes, or install it for Claude Code",
 		Long: `Print the agent skill that teaches a coding agent to use claudes. --install
 writes it to ~/.claude/skills/claudes/SKILL.md, or under $CLAUDE_CONFIG_DIR, so
-Claude Code loads it. --dir writes it under another skills folder instead.
+Claude Code loads it. --dir writes it under another skills directory instead.
 Running it again updates the skill to this version of claudes.`,
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -39,6 +39,6 @@ Running it again updates the skill to this version of claudes.`,
 		},
 	}
 	cmd.Flags().BoolVar(&doInstall, "install", false, "install the skill for Claude Code")
-	cmd.Flags().StringVar(&dir, "dir", "", "install the skill under this skills folder instead")
+	cmd.Flags().StringVar(&dir, "dir", "", "install the skill under this skills directory instead")
 	return cmd
 }

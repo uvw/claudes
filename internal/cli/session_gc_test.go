@@ -41,7 +41,7 @@ func (h *harness) emptyTranscript(t *testing.T, name, cwd string, ago time.Durat
 	return id
 }
 
-// aged sets every file and folder under path to have last changed ago before
+// aged sets every file and directory under path to have last changed ago before
 // now.
 func (h *harness) aged(t *testing.T, path string, ago time.Duration) {
 	t.Helper()
@@ -178,7 +178,7 @@ func (h *harness) emptyTranscriptAs(t *testing.T, id, cwd string, ago time.Durat
 func TestSessionGcKindsTargetsPurgeAndDryRun(t *testing.T) {
 	h := newHarness(t)
 	week := 7 * 24 * time.Hour
-	gone := filepath.Join(h.root, "deleted-folder")
+	gone := filepath.Join(h.root, "deleted-directory")
 	goneID := h.transcript(t, "gone", gone, week)
 	old := h.transcript(t, "old", h.folder("work"), 100*24*time.Hour)
 	recentOld := h.transcript(t, "recent", h.folder("work"), 2*time.Hour)
@@ -406,9 +406,9 @@ func TestSessionGcRemovesOnlyFoldersInsideTheSessionsSidecar(t *testing.T) {
 	writeFile(t, filepath.Join(theirs, "r.txt"), "keep me")
 
 	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{theirs}}, h.root, true); err == nil || !exists(theirs) {
-		t.Fatalf("removed another session's folder: %v", err)
+		t.Fatalf("removed another session's directory: %v", err)
 	}
 	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{mine}}, h.root, true); err != nil || exists(mine) {
-		t.Fatalf("kept the session's own folder: %v", err)
+		t.Fatalf("kept the session's own directory: %v", err)
 	}
 }

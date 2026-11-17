@@ -12,9 +12,9 @@ import (
 )
 
 // isClaudeExecutable reports whether file is the native claude binary: a file
-// named claude, or a version under a claude/versions folder, where the native
+// named claude, or a version under a claude/versions directory, where the native
 // installer keeps them. The Claude desktop app is also named Claude, so its
-// install folders are ruled out.
+// install directories are ruled out.
 func isClaudeExecutable(file string) bool {
 	file = strings.ToLower(strings.ReplaceAll(file, `\`, "/"))
 	if strings.Contains(file, "/anthropicclaude/") || strings.Contains(file, ".app/contents/macos/") {
@@ -75,7 +75,7 @@ func Running(pid int, started time.Time) bool {
 }
 
 // versionDir matches the native installer's layout, where each Claude Code
-// version is a file named for it under a versions folder, such as
+// version is a file named for it under a versions directory, such as
 // ~/.local/share/claude/versions/2.1.326.
 var versionDir = regexp.MustCompile(`(?i)[/\\]claude[/\\]versions[/\\](\d+\.\d+\.\d+)(\.exe)?$`)
 

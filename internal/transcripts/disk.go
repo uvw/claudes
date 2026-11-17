@@ -16,7 +16,7 @@ import (
 // Disk is the space one session takes, in bytes of file content.
 type Disk struct {
 	Transcript int64 `json:"transcript"`
-	// Sidecar is the folder of subagent transcripts and tool results.
+	// Sidecar is the directory of subagent transcripts and tool results.
 	Sidecar int64 `json:"sidecar"`
 	// Copies are the older copies session mv left, with their sidecars.
 	Copies int64 `json:"copies"`
@@ -34,8 +34,8 @@ func (d *Disk) Add(o Disk) {
 	d.Total += o.Total
 }
 
-// FileHistory is the folder of Claude Code's backups of the files a session
-// edited, or "" when the store does not know Claude Code's folder.
+// FileHistory is the directory of Claude Code's backups of the files a session
+// edited, or "" when the store does not know Claude Code's directory.
 func (st Store) FileHistory(sessionID string) string {
 	if st.Home == "" || !claude.ValidSessionID(sessionID) {
 		return ""
@@ -77,20 +77,20 @@ func (st Store) Measure(list []Session) []Disk {
 	return out
 }
 
-// Leftover is a session's folder whose transcript is gone.
+// Leftover is a session's directory whose transcript is gone.
 type Leftover struct {
 	Path      string `json:"path"`
 	SessionID string `json:"sessionId"`
 	// Kind is "sidecar" or "file-history".
 	Kind string `json:"kind"`
 	Size int64  `json:"size"`
-	// Modified is when anything in the folder last changed.
+	// Modified is when anything in the directory last changed.
 	Modified time.Time `json:"modified"`
 }
 
-// Leftovers finds the sidecar folders with no transcript beside them, and the
-// file-history folders of sessions list does not hold. Only folders named by
-// a valid session id count, so a project's memory folder, or anything else
+// Leftovers finds the sidecar directories with no transcript beside them, and the
+// file-history directories of sessions list does not hold. Only directories named by
+// a valid session id count, so a project's memory directory, or anything else
 // another tool keeps there, never does.
 func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 	known := map[string]bool{}
@@ -175,7 +175,7 @@ func treeStat(dir string) (int64, time.Time) {
 }
 
 // CopyFiles are an older copy's transcript and, when there is one, its
-// sidecar folder.
+// sidecar directory.
 func CopyFiles(copyPath string) []string {
 	out := []string{copyPath}
 	if sidecar := strings.TrimSuffix(copyPath, ".jsonl"); isDir(sidecar) {
@@ -185,8 +185,8 @@ func CopyFiles(copyPath string) []string {
 }
 
 // SessionFiles is everything Claude Code keeps for s that exists: the
-// transcript, its sidecar folder, every older copy with its sidecar, its file
-// history, its session-env folder, and its debug log.
+// transcript, its sidecar directory, every older copy with its sidecar, its file
+// history, its session-env directory, and its debug log.
 func (st Store) SessionFiles(s Session) []string {
 	out := Files(s)
 	for _, c := range s.Copies {

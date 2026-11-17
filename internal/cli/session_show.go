@@ -38,7 +38,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				{"name", nameWithSource(p.Name, p.NameSource)},
 				{"id", p.SessionID},
 				{"state", state},
-				{"folder", p.Cwd},
+				{"directory", p.Cwd},
 				{"branch", p.Branch},
 				{"started", stamp(p.Started)},
 				{"active", stamp(p.LastActive) + " (" + ago(app.Now(), p.LastActive) + ")"},

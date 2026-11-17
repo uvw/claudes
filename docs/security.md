@@ -21,10 +21,10 @@ Include:
 claudes stops and starts Claude Code sessions. It writes `pins.json`, its park
 file, `config.yaml`, a cached Claude Code version, the agent skill, and the
 transcript copies `session mv` makes, with its record of them. It deletes
-finished background sessions (`gc`), team folders and task lists (`gc --teams`),
-and the original transcript after `session mv --rm`. Reports about it acting on
-the wrong session or process, about injection through the commands and names it
-prints, or about those files are in scope.
+finished background sessions (`gc`), team directories and task lists
+(`gc --teams`), and the original transcript after `session mv --rm`. Reports
+about it acting on the wrong session or process, about injection through the
+commands and names it prints, or about those files are in scope.
 
 ## Checking a download
 

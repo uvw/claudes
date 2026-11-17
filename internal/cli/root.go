@@ -102,7 +102,7 @@ type App struct {
 	Exec  func(binary string, args ...string) error
 	// Transcripts is ~/.claude/projects, read by claudes session.
 	Transcripts transcripts.Store
-	// Trash moves a file or folder to the system trash.
+	// Trash moves a file or directory to the system trash.
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
@@ -140,7 +140,7 @@ type App struct {
 	// Edit opens a file in the user's editor and waits for it to close.
 	Edit func(path string) error
 	// setupErr stops every claudes command before it starts, such as when the
-	// home folder cannot be found. configErr is a config.yaml claudes cannot
+	// home directory cannot be found. configErr is a config.yaml claudes cannot
 	// use; it stops every command but claudes config, which can fix it.
 	setupErr, configErr error
 	// runningKnown is whether the last pastSessions call could tell which
@@ -208,10 +208,10 @@ func newApp() *App {
 	if parkErr == nil {
 		app.LockPath = filepath.Join(filepath.Dir(app.Park.Path), "run.lock")
 	}
-	// A missing Claude Code folder is setupErr's to report, through Jobs.
+	// A missing Claude Code directory is setupErr's to report, through Jobs.
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
-	// Without a cache folder, claudes asks claude for its version each time.
+	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
 		app.Config, app.configErr = config.Load(app.ConfigPath)
