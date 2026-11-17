@@ -36,6 +36,7 @@ current.
 | [25](#25-claudes-reads-agent-teams-from-their-files-and-guards-their-leads)         | claudes reads agent teams from their files, and guards their leads         |
 | [26](#26-every-session-listing-measures-disk-use)                                   | Every session listing measures disk use                                    |
 | [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)          | session gc moves to the trash, and never touches a session in use          |
+| [28](#28-session-triage-sorts-and-the-agent-judges)                                 | session triage sorts, and the agent judges                                 |
 
 ## 1. Go, in one static binary
 
@@ -502,3 +503,24 @@ Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
 cannot undo a mistake; previewing by default with `--yes` to act, which goes
 against safeguards being opt-in (decision 6); and claudes' own trash folder,
 which the system's tools cannot list or restore from.
+
+## 28. session triage sorts, and the agent judges
+
+`claudes session triage` sorts past sessions into remove, review, and keep, and
+changes nothing. claudes decides remove and keep from facts it can count:
+prompts, commands, tool calls, edits, file history, and where the name came
+from. The review group, one-prompt sessions that changed no file and made at
+most 20 tool calls, goes to whoever runs it: `-o json` gives each one's prompts,
+and the agent skill tells an agent how to judge them and to ask before removing
+any.
+
+Why: the same shape fits a commit message written once and a pull request review
+whose findings live nowhere else, and only reading the prompt tells them apart.
+An agent the user already runs can read it, so claudes stays offline and
+deterministic and sends no transcript text anywhere new. Above 20 tool calls, a
+one-prompt session did enough work to keep.
+
+Weighed: `session triage --agent`, which would run `claude -p` with a schema to
+fill in the verdicts, at the cost of a model call, a time limit (decision 14),
+and transcript text in a new process; and heuristics on the prompt's words,
+which would remove the review that looked like a lookup.

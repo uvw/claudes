@@ -28,7 +28,7 @@ adds what an agent needs on top of them.
 | `claudes doctor env`                      | `internal/cli/doctor_env.go`                       |
 | `claudes session`, `cd`, and `init`       | `internal/cli/session*.go`, `internal/cli/init.go` |
 | Reading and copying transcripts           | `internal/transcripts`                             |
-| Disk use and removing past sessions       | `internal/cli/session_du.go`, `session_gc.go`      |
+| Disk use and removing past sessions       | `internal/cli/session_{du,gc,triage}.go`           |
 | Moving files to the system trash          | `internal/trash`, one file per platform            |
 | Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`          |
 | Where claudes keeps its own files         | `internal/paths`, one file per platform            |
