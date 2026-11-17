@@ -63,3 +63,18 @@ func TestClaudeHome(t *testing.T) {
 		t.Fatalf("guessed %q with no home directory", got)
 	}
 }
+
+func TestClaudeConfigFile(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", dir)
+	if got, err := ClaudeConfigFile(); err != nil || got != filepath.Join(dir, ".claude.json") {
+		t.Fatalf("got %q, err %v", got, err)
+	}
+	home := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	if got, err := ClaudeConfigFile(); err != nil || got != filepath.Join(home, ".claude.json") {
+		t.Fatalf("got %q, err %v", got, err)
+	}
+}

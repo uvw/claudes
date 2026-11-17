@@ -56,6 +56,20 @@ func ClaudeHome() (string, error) {
 	return base, nil
 }
 
+// ClaudeConfigFile is Claude Code's own settings file:
+// $CLAUDE_CONFIG_DIR/.claude.json, or ~/.claude.json, beside ~/.claude rather
+// than inside it.
+func ClaudeConfigFile() (string, error) {
+	if os.Getenv("CLAUDE_CONFIG_DIR") == "" {
+		return home(".claude.json")
+	}
+	dir, err := ClaudeHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, ".claude.json"), nil
+}
+
 func home(parts ...string) (string, error) {
 	h, err := os.UserHomeDir()
 	if err != nil {

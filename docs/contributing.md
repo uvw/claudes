@@ -14,7 +14,8 @@
    `internal/paths`, the transcripts under `~/.claude/projects` by
    `internal/transcripts`, the agent teams under `~/.claude/teams` and their
    task lists under `~/.claude/tasks` by `internal/teams`, and installing the
-   agent skill by `internal/install`.
+   agent skill by `internal/install`. `internal/compat` reads Claude Code's
+   settings file, `~/.claude.json`, and nothing writes it.
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with

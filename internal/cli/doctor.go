@@ -83,7 +83,7 @@ func (app *App) diagnose(ctx context.Context, cliOnly bool) []check {
 	if cliOnly {
 		return checks
 	}
-	return append(checks, app.checkSessions(ctx), app.checkPins(), app.checkTranscripts(), app.checkConfig(), app.checkPark(), app.checkTeams())
+	return append(checks, app.checkSessions(ctx), app.checkPins(), app.checkPinsLock(), app.checkTranscripts(), app.checkConfig(), app.checkPark(), app.checkTeams())
 }
 
 // result colors a check's result: ok green, warn yellow, and fail red.
@@ -167,6 +167,27 @@ func (app *App) checkPins() check {
 		return checkFail(name, strings.Join(problems, "\n"))
 	}
 	return checkOK(name, fmt.Sprintf("%d pinned", len(ids)))
+}
+
+// checkPinsLock warns when Claude Code may write pins.json without the lock
+// claudes takes, so a pin from agent view and one from claudes at the same
+// moment could lose one of them.
+func (app *App) checkPinsLock() check {
+	const name = "pins lock"
+	if app.ClaudeConfig == "" {
+		return checkWarn(name, "cannot find Claude Code's settings file, so cannot tell how it writes pins.json")
+	}
+	on, found, err := compat.FlagOn(app.ClaudeConfig, compat.PinsFlag)
+	switch {
+	case err != nil:
+		return checkWarn(name, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.ClaudeConfig, err))
+	case on:
+		return checkWarn(name, compat.PinsFlag+" is on, so Claude Code may write pins.json without pins.json.lock: "+
+			"pinning from agent view and from claudes at the same moment could lose one of the pins")
+	case found:
+		return checkOK(name, "Claude Code takes pins.json.lock, as claudes does ("+compat.PinsFlag+" is off)")
+	}
+	return checkOK(name, "Claude Code takes pins.json.lock, as claudes does ("+compat.PinsFlag+" is not set)")
 }
 
 func (app *App) checkTranscripts() check {

@@ -106,6 +106,9 @@ type App struct {
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
+	// ClaudeConfig is Claude Code's settings file, ~/.claude.json, which
+	// claudes only reads, for the flags doctor reports.
+	ClaudeConfig string
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
@@ -211,6 +214,7 @@ func newApp() *App {
 	// A missing Claude Code directory is setupErr's to report, through Jobs.
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
+	app.ClaudeConfig, _ = paths.ClaudeConfigFile()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
