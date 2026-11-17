@@ -308,9 +308,10 @@ may hold work the original lacks. Pass `--rm` only when the user asked to delete
 the original; it never applies to your own session.
 
 `claudes session gc` removes past sessions. Run it with `--dry-run` first and
-show the user the plan; run it for real only when they say so. It moves what it
-removes to the system trash. Pass `--purge`, which deletes for good, only when
-the user asked for that.
+show the user the plan; run it for real only when they say so. `--trivial` adds
+sessions that only ran slash commands, or got one prompt and made no tool call.
+It moves what it removes to the system trash. Pass `--purge`, which deletes for
+good, only when the user asked for that.
 
 ## Never
 

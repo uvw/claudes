@@ -338,15 +338,18 @@ nobody runs before a bulk restart.
 `claude agents --json` knows only running and finished background sessions. It
 reads the first 64 KB and the last 256 KB of each file, because Claude Code
 writes the title and the last prompt again every few turns. It reads the whole
-file only when neither end names the session's folder. It never changes a
-transcript. `session mv` copies one, keeps the original, and prints the command
-that removes it. A name picks the newest session with it, since sessions reuse
-names over time.
+file only when neither end names the session's folder, or to count what a
+session did: `session show` reads its one transcript, and `session gc --trivial`
+reads every transcript up to 2 MB. It never changes a transcript. `session mv`
+copies one, keeps the original, and prints the command that removes it. A name
+picks the newest session with it, since sessions reuse names over time.
 
 Why: reading both ends lists 50 sessions in about 12 ms, so no index is needed
-to list them. Copying instead of moving keeps the session resumable from its old
-folder if the copy goes wrong, and a running session keeps writing to its old
-transcript anyway.
+to list them. Counting needs every line, and a session with more than 2 MB in it
+is not trivial anyway: reading the 170 transcripts under 2 MB here adds about a
+second, so that needs no index either. Copying instead of moving keeps the
+session resumable from its old folder if the copy goes wrong, and a running
+session keeps writing to its old transcript anyway.
 
 Weighed: reading each transcript in full, which reads hundreds of megabytes to
 list sessions; moving the transcript, which loses the session if the new folder
@@ -475,19 +478,25 @@ there for those who reach for it.
 for it, and moves it to the system trash: the macOS Trash, the Windows Recycle
 Bin, or the freedesktop.org trash. `--purge` deletes for good. Without flags it
 removes empty sessions, older copies `session mv` left, and leftover folders;
-`--gone` and `--older-than` are opt-in. It never removes a running session, one
-agent view still lists, a parked one, or the session running claudes, and
-without targets nothing that changed in the last day. It lists what runs again
-just before removing, skips a transcript that changed since the plan, and
-removes only paths under `~/.claude` whose names carry the session's id.
+`--trivial`, `--gone`, and `--older-than` are opt-in. A trivial session changed
+no file, made no tool call, was not named with `/rename` or started by an agent
+team, and either only ran slash commands or got one prompt. It never removes a
+running session, one agent view still lists, a parked one, or the session
+running claudes, and without targets nothing that changed in the last day. It
+lists what runs again just before removing, skips a transcript that changed
+since the plan, and removes only paths under `~/.claude` whose names carry the
+session's id.
 
 Why: a transcript is the only record of a session's work, so a mistaken removal
 must be recoverable, unlike `claudes gc`, which only drops a job from agent
 view's list. Empty sessions, superseded copies, and orphaned folders hold
 nothing anyone can resume, so they are safe to pick by default. A missing folder
 can be a disk that is not attached, and age says nothing about value, so those
-wait for a flag. A session that changed in the last day may be starting, before
-its transcript says what it is.
+wait for a flag. So does `--trivial`: a one-prompt answer can still be worth
+keeping, though one with no tool call holds only what the model already knew.
+Which of the one-prompt sessions with tool calls to keep takes reading the
+prompt, so claudes leaves that to the user or their agent. A session that
+changed in the last day may be starting, before its transcript says what it is.
 
 Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
 cannot undo a mistake; previewing by default with `--yes` to act, which goes
