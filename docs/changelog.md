@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/uvw/claudes/compare/v0.3.0...v0.4.0) (2026-11-17)
+
+
+### Features
+
+* **cli:** list the biggest sessions with session du --top ([#57](https://github.com/uvw/claudes/issues/57)) ([c3f189c](https://github.com/uvw/claudes/commit/c3f189cf08e8e60b1058eca1e25984216f1850bc))
+* **cli:** remove sessions that did nothing with session gc --trivial ([#54](https://github.com/uvw/claudes/issues/54)) ([7197cdc](https://github.com/uvw/claudes/commit/7197cdc4a6003f1426e4793c57e07a6973e30aea))
+* **cli:** sort past sessions into remove, review, and keep with session triage ([#55](https://github.com/uvw/claudes/issues/55)) ([151ea59](https://github.com/uvw/claudes/commit/151ea590bf759ae68ec6bddebd57eee53a6dae26))
+* **cli:** trim saved outputs and old subagents with session gc --sidecars ([#58](https://github.com/uvw/claudes/issues/58)) ([232f18f](https://github.com/uvw/claudes/commit/232f18f2bac3328baf9ec98f2bca23958988c415))
+
 ## [0.3.0](https://github.com/uvw/claudes/compare/v0.2.1...v0.3.0) (2026-11-16)
 
 ### Features
