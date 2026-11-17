@@ -37,6 +37,7 @@ current.
 | [26](#26-every-session-listing-measures-disk-use)                                   | Every session listing measures disk use                                    |
 | [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)          | session gc moves to the trash, and never touches a session in use          |
 | [28](#28-session-triage-sorts-and-the-agent-judges)                                 | session triage sorts, and the agent judges                                 |
+| [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
 
 ## 1. Go, in one static binary
 
@@ -532,3 +533,22 @@ Weighed: `session triage --agent`, which would run `claude -p` with a schema to
 fill in the verdicts, at the cost of a model call, a time limit (decision 14),
 and transcript text in a new process; and heuristics on the prompt's words,
 which would remove the review that looked like a lookup.
+
+## 29. claudes is a tool for Claude Code, and nothing else
+
+claudes manages Claude Code's sessions from the command line, one job per
+command. It does not orchestrate agents: it never plans work, splits it across
+sessions, or decides what a session does next. It supports Claude Code only, not
+other coding agents such as Copilot, Codex, or Pi. A feature that needs either
+goes in another tool.
+
+Why: claudes reads interfaces Claude Code does not promise to keep (decision
+19), and every write depends on checks made for exactly that output. Each other
+agent would need its own readers, checks, and fakes in the tests, which would
+make claudes many tools in one. Orchestration is a product of its own, and
+Claude Code already has agent teams and agent view for it. Staying small keeps
+claudes safe to run against live work, which is the job it exists for.
+
+Weighed: an adapter layer that would let claudes drive other agents' sessions;
+and scheduling or chaining sessions, such as starting one when another finishes,
+which is orchestration under another name.
