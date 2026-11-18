@@ -76,7 +76,9 @@ jobs:
       - name: Coverage floor
         if: runner.os == 'Linux'
         run: bash .github/workflows/hack/coverage.sh "$COVERAGE_FLOOR" coverage.out
-      - run: go tool -modfile=tools/go.mod staticcheck ./...
+      # PowerShell splits -modfile=tools/go.mod at the dot.
+      - shell: bash
+        run: go tool -modfile=tools/go.mod staticcheck ./...
       - if: runner.os == 'Linux'
         run: go tool -modfile=tools/go.mod govulncheck ./...
       # macOS runners can take most of an hour to arrive, so the macOS release

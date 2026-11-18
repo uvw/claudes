@@ -87,8 +87,9 @@ checked each week (decision 31):
 1. staticcheck, govulncheck, and go-licenses are `tool` lines in `tools/go.mod`,
    a module of its own, so their dependencies stay out of the `go.mod` claudes
    ships, its notices, and the govulncheck scan. `go tool -modfile=tools/go.mod`
-   builds each from that module and runs it on this one. Dependabot updates
-   them.
+   builds each from that module and runs it on this one. PowerShell splits the
+   flag at the dot, so quote it there: `"-modfile=tools/go.mod"`. Dependabot
+   updates them.
 2. Prettier and markdownlint-cli2 are in `tools/package.json`, and `npm ci`
    installs the versions `tools/package-lock.json` locks. Dependabot updates
    them.
