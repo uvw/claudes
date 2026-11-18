@@ -9,14 +9,14 @@ import (
 	"strings"
 )
 
-// ActivityLimit is the largest transcript claudes counts the activity of when
+// TallyLimit is the largest transcript claudes counts the activity of when
 // it reads many at once. A session with more in it than that is not trivial,
 // and reading only the smaller ones keeps a full read of every transcript
 // down to about a second.
-const ActivityLimit = 2 << 20
+const TallyLimit = 2 << 20
 
-// Activity is what a session did, counted from a full read of its transcript.
-type Activity struct {
+// Tally is what a session did, counted from a full read of its transcript.
+type Tally struct {
 	// Prompts are the messages the user typed, images included. Slash
 	// commands, their output, interruptions, and the text Claude Code adds,
 	// such as reminders and compaction summaries, are not prompts.
@@ -38,7 +38,7 @@ type Activity struct {
 
 // Complete reports whether claudes read every line of the transcript and
 // knew the type of each record, so the counts cover all of it.
-func (a Activity) Complete() bool { return !a.unsure }
+func (a Tally) Complete() bool { return !a.unsure }
 
 // editTools are the tools that change files.
 var editTools = map[string]bool{"Edit": true, "MultiEdit": true, "Write": true, "NotebookEdit": true}
@@ -53,15 +53,15 @@ type activityRecord struct {
 	Message     json.RawMessage `json:"message"`
 }
 
-// ReadActivity reads the transcript at path in full and counts what happened
+// ReadTally reads the transcript at path in full and counts what happened
 // in it. Lines that do not parse are skipped, and make it not Complete.
-func ReadActivity(path string) (Activity, error) {
+func ReadTally(path string) (Tally, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return Activity{}, err
+		return Tally{}, err
 	}
 	defer f.Close()
-	var a Activity
+	var a Tally
 	spoke := false
 	rd := bufio.NewReader(f)
 	for {
@@ -73,14 +73,14 @@ func ReadActivity(path string) (Activity, error) {
 			return a, nil
 		}
 		if err != nil {
-			return Activity{}, err
+			return Tally{}, err
 		}
 	}
 }
 
 // take counts one transcript line. spoke is whether anyone has written to the
 // session yet, the user or a team's lead.
-func (a *Activity) take(line []byte, spoke *bool) {
+func (a *Tally) take(line []byte, spoke *bool) {
 	var r activityRecord
 	if json.Unmarshal(line, &r) != nil {
 		a.unsure = a.unsure || len(bytes.TrimSpace(line)) > 0

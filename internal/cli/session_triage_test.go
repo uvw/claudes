@@ -188,16 +188,16 @@ func TestSessionTriageKeepsRunningParkedAndHostSessions(t *testing.T) {
 // too big to read, and is read only once.
 func TestTriageSaysWhenItCannotReadATranscript(t *testing.T) {
 	p := pastSession{Session: transcripts.Session{Path: filepath.Join(t.TempDir(), "gone.jsonl"), Size: 10}}
-	readActivity(&p, false)
-	if p.Activity != nil || p.activityErr == nil {
-		t.Fatalf("activity %+v, err %v", p.Activity, p.activityErr)
+	readTally(&p, false)
+	if p.Activity != nil || p.tallyErr == nil {
+		t.Fatalf("activity %+v, err %v", p.Activity, p.tallyErr)
 	}
 	if why := keepWhy(p); why != "cannot read it" {
 		t.Fatalf("kept as %q", why)
 	}
-	first := p.activityErr
-	readActivity(&p, true)
-	if p.activityErr != first {
+	first := p.tallyErr
+	readTally(&p, true)
+	if p.tallyErr != first {
 		t.Fatal("read the transcript a second time")
 	}
 }

@@ -32,7 +32,7 @@ type triageItem struct {
 	// Why is the kind session gc removes it as, or why it is kept.
 	Why        string                `json:"why"`
 	LastPrompt string                `json:"lastPrompt"`
-	Activity   *transcripts.Activity `json:"activity"`
+	Activity   *transcripts.Tally `json:"activity"`
 }
 
 type triageReport struct {
@@ -116,7 +116,7 @@ func (app *App) triage(ctx context.Context, in string, since time.Duration) (tri
 		t := triageItem{sessionRef: sessionRef{ID: it.ID(), SessionID: it.sessionID, Name: it.name}, Cwd: it.dir, Size: it.size, Why: string(it.why)}
 		if p, ok := byID[it.sessionID]; ok && (it.why == kindEmpty || it.why == kindTrivial) {
 			removed[it.sessionID] = true
-			readActivity(&p, false)
+			readTally(&p, false)
 			t = triageOf(p, string(it.why))
 			t.Size = it.size
 		}
@@ -136,7 +136,7 @@ func (app *App) triage(ctx context.Context, in string, since time.Duration) (tri
 			report.Keep = append(report.Keep, triageOf(p, "changed in the last day"))
 			continue
 		}
-		readActivity(&p, false)
+		readTally(&p, false)
 		if why := keepWhy(p); why != "" {
 			report.Keep = append(report.Keep, triageOf(p, why))
 			continue
@@ -151,10 +151,10 @@ func (app *App) triage(ctx context.Context, in string, since time.Duration) (tri
 func keepWhy(p pastSession) string {
 	a := p.Activity
 	switch {
-	case a == nil && p.activityErr != nil:
+	case a == nil && p.tallyErr != nil:
 		return "cannot read it"
 	case a == nil:
-		return "bigger than " + style.Size(transcripts.ActivityLimit)
+		return "bigger than " + style.Size(transcripts.TallyLimit)
 	case p.NameSource == transcripts.NameCustom:
 		return "named with /rename"
 	case a.Teammate:

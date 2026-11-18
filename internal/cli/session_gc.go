@@ -235,7 +235,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			continue
 		}
 		if f.trivial && !p.Empty {
-			readActivity(p, false)
+			readTally(p, false)
 		}
 		whole := len(items)
 		switch {

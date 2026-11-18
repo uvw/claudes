@@ -34,20 +34,20 @@ type pastSession struct {
 	Disk transcripts.Disk `json:"disk"`
 	// Activity is what the session did, or nil when its transcript was not
 	// read in full.
-	Activity *transcripts.Activity `json:"activity"`
-	// activityErr is why reading the activity failed.
-	activityErr error
+	Activity *transcripts.Tally `json:"activity"`
+	// tallyErr is why reading the activity failed.
+	tallyErr error
 }
 
-// readActivity counts what p did, unless its transcript is bigger than
-// transcripts.ActivityLimit, or force reads it whatever its size.
-func readActivity(p *pastSession, force bool) {
-	if p.Activity != nil || p.activityErr != nil || !force && p.Size > transcripts.ActivityLimit {
+// readTally counts what p did, unless its transcript is bigger than
+// transcripts.TallyLimit, or force reads it whatever its size.
+func readTally(p *pastSession, force bool) {
+	if p.Activity != nil || p.tallyErr != nil || !force && p.Size > transcripts.TallyLimit {
 		return
 	}
-	a, err := transcripts.ReadActivity(p.Path)
+	a, err := transcripts.ReadTally(p.Path)
 	if err != nil {
-		p.activityErr = err
+		p.tallyErr = err
 		return
 	}
 	p.Activity = &a

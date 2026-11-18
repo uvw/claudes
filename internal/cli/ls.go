@@ -99,7 +99,7 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	for _, s := range sessions {
 		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
-		a := app.Jobs.Activity(s.JobID)
+		a := app.Jobs.Live(s.JobID)
 		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
 		if !s.Running() {
 			// state.json can still list what ran when the process ended.

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestReadActivityCountsWhatTheUserDid(t *testing.T) {
+func TestReadTallyCountsWhatTheUserDid(t *testing.T) {
 	lines := []string{
 		`{"type":"user","message":{"role":"user","content":"<command-message>login</command-message>\n<command-name>/login</command-name>"}}`,
 		`{"type":"user","message":{"role":"user","content":"<local-command-stdout>Login successful</local-command-stdout>"}}`,
@@ -24,24 +24,24 @@ func TestReadActivityCountsWhatTheUserDid(t *testing.T) {
 		`not json`,
 	}
 	got := activityOf(t, lines)
-	want := Activity{Prompts: 2, Commands: 2, ToolCalls: 3, Edits: 2, FirstPrompt: "fix the flaky test", unsure: true}
+	want := Tally{Prompts: 2, Commands: 2, ToolCalls: 3, Edits: 2, FirstPrompt: "fix the flaky test", unsure: true}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
 
-func TestReadActivityLeavesOutSubagentRecords(t *testing.T) {
+func TestReadTallyLeavesOutSubagentRecords(t *testing.T) {
 	got := activityOf(t, []string{
 		`{"type":"user","message":{"role":"user","content":"ping"}}`,
 		`{"type":"user","isSidechain":true,"message":{"role":"user","content":"look through the repository"}}`,
 		`{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{}}]}}`,
 	})
-	if want := (Activity{Prompts: 1, FirstPrompt: "ping"}); got != want {
+	if want := (Tally{Prompts: 1, FirstPrompt: "ping"}); got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 }
 
-func TestReadActivityIsCompleteOnlyWhenItKnowsEveryLine(t *testing.T) {
+func TestReadTallyIsCompleteOnlyWhenItKnowsEveryLine(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		lines    []string
@@ -58,7 +58,7 @@ func TestReadActivityIsCompleteOnlyWhenItKnowsEveryLine(t *testing.T) {
 	}
 }
 
-func TestReadActivityTellsATeammateFromALeadThatGetsMessages(t *testing.T) {
+func TestReadTallyTellsATeammateFromALeadThatGetsMessages(t *testing.T) {
 	teammate := activityOf(t, []string{
 		`{"type":"user","message":{"role":"user","content":"<teammate-message teammate_id=\"team-lead\">Take task 1</teammate-message>"}}`,
 	})
@@ -74,20 +74,20 @@ func TestReadActivityTellsATeammateFromALeadThatGetsMessages(t *testing.T) {
 	}
 }
 
-func TestReadActivityCutsTheFirstPrompt(t *testing.T) {
+func TestReadTallyCutsTheFirstPrompt(t *testing.T) {
 	got := activityOf(t, []string{`{"type":"user","message":{"content":"` + strings.Repeat("é", 300) + `"}}`})
 	if r := []rune(got.FirstPrompt); len(r) != 200 || r[199] != '…' {
 		t.Errorf("first prompt is %d characters: %q", len(r), got.FirstPrompt)
 	}
 }
 
-func activityOf(t *testing.T, lines []string) Activity {
+func activityOf(t *testing.T, lines []string) Tally {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "s.jsonl")
 	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	a, err := ReadActivity(path)
+	a, err := ReadTally(path)
 	if err != nil {
 		t.Fatal(err)
 	}
