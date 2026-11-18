@@ -145,14 +145,18 @@ claudes is built to restart and stop sessions without losing work:
    teammates that stop with it, and a pinged lead can start them again. Check
    the `AGENTS` column of `claudes ls` before you `stop` or `ping` one.
 8. **Ctrl-C is graceful.** The first one finishes the session in hand, leaves
-   the rest untouched, and lists them. A second one ends claudes at once.
+   the rest untouched, and lists them. A second one ends claudes at once. On
+   macOS and Linux, SIGTERM and SIGHUP do the same, so a tool's timeout or a
+   closed terminal still gets the report.
 9. **Unfamiliar data stops it.** See
    [Compatibility](reference.md#compatibility).
 10. **One claudes changes sessions at a time.** Commands that stop, start,
     remove, or pin sessions take a lock, `run.lock` in claudes' state directory,
     so two runs cannot stop the same session twice. A second one stops before it
-    changes anything; `--dry-run` and the commands that only look never wait. A
-    claudes that crashed frees the lock within 30 seconds.
+    changes anything; `--dry-run` and the commands that only look never wait.
+    The lock names the claudes that holds it, so one that was suspended, such as
+    on a closed laptop lid, keeps it. A claudes that crashed frees it within 30
+    seconds.
 
 ### Interactive sessions
 
@@ -239,7 +243,8 @@ removes paths under `~/.claude` named by the session's id.
 `session triage` sorts past sessions into three groups and changes nothing:
 
 1. **Remove:** what `session gc` takes without flags, and trivial sessions. It
-   prints the `session gc` command that removes them.
+   prints the `session gc` command that removes them, which names each session
+   when `-i` or `-l` narrows the sort.
 2. **Review:** sessions with one prompt, or only slash commands, that changed no
    file and made at most 20 tool calls, and that were not named with `/rename`.
    Whether to keep one takes reading its prompt: a commit message or a quick
@@ -249,6 +254,9 @@ removes paths under `~/.claude` named by the session's id.
    `session gc ID...`.
 3. **Keep:** everything else, counted by reason, such as more than one prompt,
    changed files, or running.
+
+`-i DIR` and `-l 7d` sort only the sessions run in `DIR` or below it, or active
+in the last 7 days, and leave out leftover directories, as `session du` does.
 
 `session mv` (or `move`) copies a session's transcript, with its subagent
 transcripts and tool results, into the project directory Claude Code uses for
@@ -273,9 +281,10 @@ It copies into a temporary directory first and renames the copy into place, so a
 copy that fails partway leaves nothing behind, and running `mv` again starts
 over.
 
-`--resume` (`-r`) resumes the copy at once, and `--rm` deletes the original once
-every file of the copy matches it byte for byte. `--rm` refuses the session
-running claudes, which writes to its transcript until it exits.
+`--resume` (`-r`) resumes the copy at once, and `--rm` moves the original to the
+system trash once every file of the copy matches it byte for byte.
+`--rm --purge` deletes it for good. `--rm` refuses the session running claudes,
+which writes to its transcript until it exits.
 
 For a stopped background session, `mv` also removes its job with `claude rm`, as
 `gc` does, and keeps the options Claude Code saved for the job, such as
@@ -393,8 +402,9 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
   its teammates would stop with it and cannot be resumed (see Safety).
 - `claudes gc --teams` removes the team directories and task lists Claude Code
   leaves behind: those of sessions that no longer run, are not parked or pinned,
-  and have not changed for longer than `--older-than`, 7 days by default.
-  `--dry-run` shows them first.
+  and have not changed for longer than `--older-than`, 7 days by default. They
+  go to the system trash, and `--purge` deletes them for good. `--dry-run` shows
+  them first.
 
 ## MCP servers
 

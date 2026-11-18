@@ -252,9 +252,10 @@ not already make.
 
 Listing, `--version`, and `rm` get one minute. `stop`, `respawn`, and resume get
 three minutes. claudes also stops waiting for output five seconds after `claude`
-exits, and a second Ctrl-C ends claudes at once. The handoffs that give `claude`
-the terminal, such as `attach`, have no limit: they last as long as the user
-keeps them open.
+exits, and a second Ctrl-C ends claudes at once. On Unix, SIGTERM and SIGHUP
+count as Ctrl-C, so a tool's timeout or a closed terminal still gets the report.
+The handoffs that give `claude` the terminal, such as `attach`, have no limit:
+they last as long as the user keeps them open.
 
 Why: a hung call would otherwise hang claudes for good, between a stop and its
 resume. A background session that `claude` starts can inherit its output and
@@ -440,20 +441,26 @@ locks, `adrg/xdg` for directories, `kballard/go-shellquote` for quoting, and
 
 Commands that stop, start, remove, or pin sessions take a lock directory in
 claudes' state directory for the whole run. A second run fails at once with
-exit 5. `--dry-run` and the commands that only look take no lock. The lock
-refreshes while it is held and goes stale 30 seconds after a claudes that died,
-and claudes releases it before it stops its own session. Exit codes tell a
-script what happened: 2 for a target that matched no session or several, 3 for
-some sessions failed, 4 for a refused check, and 5 for the lock.
+exit 5. `--dry-run` and the commands that only look take no lock. The lock names
+the PID and start time of the claudes that holds it, and refreshes while it is
+held. It goes stale 30 seconds after its last refresh, and a stale lock is
+broken only once its claudes has ended, or when it names none. claudes releases
+it before it stops its own session. Exit codes tell a script what happened: 2
+for a target that matched no session or several, 3 for some sessions failed, 4
+for a refused check, and 5 for the lock.
 
 Why: two restarts at once could stop the same session twice, and a resume racing
 a pause could start a copy. claudes is an emergency tool, so failing at once
-beats waiting quietly behind another run. An agent that runs claudes needs to
-tell "try another name" from "nothing changed" without parsing English.
+beats waiting quietly behind another run. A claudes that is suspended, such as
+on a closed laptop lid, stops refreshing its lock, so a lock that only went
+stale would let a second run start while the first wakes to finish. An agent
+that runs claudes needs to tell "try another name" from "nothing changed"
+without parsing English.
 
 Weighed: a lock per session, which still lets two runs plan against each other's
-half-done work; waiting for the lock, which hides a stuck run; and one failure
-code, which is what claudes had.
+half-done work; a lock judged by its age alone, which a suspend breaks; waiting
+for the lock, which hides a stuck run; and one failure code, which is what
+claudes had.
 
 ## 24. Colors come from lipgloss, and only reach a terminal
 
@@ -546,7 +553,8 @@ removes a running session, one agent view still lists, a parked one, or the
 session running claudes, and without targets nothing that changed in the last
 day. It lists what runs again just before removing, skips a transcript that
 changed since the plan, and removes only paths under `~/.claude` whose names
-carry the session's id.
+carry the session's id. `gc --teams` and `session mv --rm` move what they remove
+to the trash too, and take `--purge`.
 
 Why: a transcript is the only record of a session's work, so a mistaken removal
 must be recoverable, unlike `claudes gc`, which only drops a job from agent

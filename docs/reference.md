@@ -22,7 +22,8 @@ A few cases differ:
 1. `ls --json` is short for `ls -o json`.
 2. When `where` matches one session, text prints only its directory, so
    `cd "$(claudes where NAME)"` works. Add `-o text` when `output.format` sets
-   another format; `claudes init` does that itself.
+   another format; `claudes init` does that itself. With several, it prints a
+   table of id, directory, and name, as every table does.
 3. `logs -o json` prints the transcript records themselves, one per line.
 
 Every text table, and every plan a command prints before it acts, starts with
@@ -286,7 +287,7 @@ counts as unset.
 | 3    | Some sessions failed; the rest were handled, and the output says which         |
 | 4    | Refused before any change: the wrong kind of session, or a failed safety check |
 | 5    | Another claudes was changing sessions, so this one changed nothing             |
-| 130  | Ctrl-C; some sessions may already be stopped                                   |
+| 130  | Ctrl-C, or SIGTERM or SIGHUP on Unix; some sessions may already be stopped     |
 
 [When something goes wrong](#when-something-goes-wrong) says what to do next.
 
@@ -303,8 +304,9 @@ The exit code says what happened, and the output names each session:
    `claudes doctor`, and pass `--force` only once you know why.
 3. **Exit 5, another claudes is running.** Wait for it, then run the command
    again.
-4. **Exit 130, Ctrl-C.** The sessions already handled are listed. Run
-   `claudes ls -a` and `claudes resume --dry-run` to see where the rest are.
+4. **Exit 130, Ctrl-C, SIGTERM, or SIGHUP.** The sessions already handled are
+   listed. Run `claudes ls -a` and `claudes resume --dry-run` to see where the
+   rest are.
 5. **A session didn't come back.** When claudes says Claude Code accepted the
    resume but the session isn't running yet, check `claudes ls` before resuming
    it again: resuming a running session starts a copy.
@@ -394,6 +396,9 @@ as usual. `--version` prints the version.
   an object, `{"dir": DIR, "options": [...]}`, with the options Claude Code had
   saved for the job. `session resume --bg` passes them to the new job.
 - `run.lock` is a directory that exists only while a command changes sessions.
+  Its `owner` file holds the PID and start time of the claudes that holds it. A
+  lock that has not been refreshed for 30 seconds is broken only once that
+  process has ended, or when it has no `owner` file.
 - An `XDG_` variable that holds an absolute path moves its directory on every
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and
   must be an absolute path.
@@ -403,6 +408,6 @@ as usual. `--version` prints the version.
   wrong place.
 - claudes itself writes under `~/.claude` only to pin and unpin, as agent view
   does, for `session mv`, which adds a copy, for `skill --install`, and for
-  `gc --teams`, which removes leftover team and task directories. Unpinning also
-  deletes the job's `order` file, as agent view does. Everything else it changes
-  goes through the `claude` command.
+  `gc --teams`, which moves leftover team and task directories to the system
+  trash. Unpinning also deletes the job's `order` file, as agent view does.
+  Everything else it changes goes through the `claude` command.

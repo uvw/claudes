@@ -8,16 +8,33 @@
    interface, and the terminal handoffs (`logs`, `attach`, passthrough, and
    `session resume`) only through `cli.App.Exec`, so every command can be tested
    with a fake.
-3. Files under `~/.claude/jobs/` are read and written only in `internal/jobs`.
-   The park file is owned by `internal/park`, `config.yaml` by
-   `internal/config`, the directories claudes keeps its own files in by
-   `internal/paths`, the transcripts under `~/.claude/projects` by
-   `internal/transcripts`, the agent teams under `~/.claude/teams` and their
-   task lists under `~/.claude/tasks` by `internal/teams`, and installing the
-   agent skill by `internal/install`. `internal/mcp` reads MCP configuration:
-   the MCP keys of `~/.claude.json` and the settings files, `.mcp.json` files,
-   plugins' MCP files, and `managed-mcp.json`. `internal/compat` reads the
-   feature flags in `~/.claude.json`, and nothing writes it.
+3. Each file and directory claudes reads or writes belongs to one package, and
+   only that package opens it; the others call it. `~/.claude.json` is the
+   exception: `internal/mcp` reads its MCP keys, and `internal/compat` its
+   feature flags.
+
+   | File or directory                                                                                                      | Owner                                       |
+   | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+   | `~/.claude/jobs/`, `pins.json` and each job's `state.json` among them                                                  | `internal/jobs`                             |
+   | `~/.claude/projects/`, and each session's `file-history`, `session-env`, and `debug` log                               | `internal/transcripts`                      |
+   | `~/.claude/teams/` and `~/.claude/tasks/`                                                                              | `internal/teams`                            |
+   | `~/.claude.json`, for its MCP keys                                                                                     | `internal/mcp`                              |
+   | `~/.claude.json`, for its feature flags                                                                                | `internal/compat`                           |
+   | `~/.claude/settings.json`, and a directory's `.claude/settings.json` and `.claude/settings.local.json`                 | `internal/mcp`                              |
+   | `.mcp.json` files                                                                                                      | `internal/mcp`                              |
+   | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`                              |
+   | `managed-mcp.json`                                                                                                     | `internal/mcp`                              |
+   | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts`                      |
+   | `run.lock`, in claudes' state directory                                                                                | `internal/cli`, through `internal/safefile` |
+   | The park file                                                                                                          | `internal/park`                             |
+   | `config.yaml`                                                                                                          | `internal/config`                           |
+   | The directories claudes keeps its own files in                                                                         | `internal/paths`                            |
+   | The cached `claude --version`                                                                                          | `internal/compat`                           |
+   | The installed agent skill                                                                                              | `internal/install`                          |
+
+   Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
+   files, plugin files, or `managed-mcp.json`.
+
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
