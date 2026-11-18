@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 )
 
 // A Bash tool's timeout sends SIGTERM, and a closed terminal SIGHUP. Either
@@ -43,8 +44,8 @@ func TestASIGTERMDuringRestartReportsTheRest(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if code := h.run("restart"); code != exitInterrupted {
-		t.Fatalf("exit %d, want %d:\n%s\n%s", code, exitInterrupted, h.out, h.err)
+	if code := h.run("restart"); code != exit.Interrupted {
+		t.Fatalf("exit %d, want %d:\n%s\n%s", code, exit.Interrupted, h.out, h.err)
 	}
 	assertCalls(t, h, "respawn "+a.JobID)
 	assertContains(t, h.out.String(), "restarted  alpha")

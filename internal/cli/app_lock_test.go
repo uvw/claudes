@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/files"
 )
 
@@ -22,7 +23,7 @@ func TestOneClaudesChangesSessionsAtATime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h.exits(t, exitBusy, "stop", "api")
+	h.exits(t, exit.Busy, "stop", "api")
 	assertContains(t, h.err.String(), "another claudes is changing sessions")
 	h.ok(t, "restart", "--dry-run", "api")
 	h.ok(t, "ls")
@@ -88,7 +89,7 @@ func TestTheRunLockOutlivesASuspendButNotItsOwner(t *testing.T) {
 	}
 	h.app.Alive = func(pid int, started time.Time) bool { return pid == 4242 && started.Equal(start) }
 
-	h.exits(t, exitBusy, "stop", "api")
+	h.exits(t, exit.Busy, "stop", "api")
 	assertCalls(t, h)
 
 	h.app.Alive = func(int, time.Time) bool { return false }

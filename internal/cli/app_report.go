@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
@@ -67,7 +68,7 @@ func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 
 // gate ends a dry run once its plan is printed, and asks before going ahead
 // with --confirm. proceed is false when the command should stop; err is
-// errReported when the user said no.
+// exit.ErrReported when the user said no.
 func (app *App) gate(f planFlags, question string) (proceed bool, err error) {
 	if f.dryRun {
 		app.dryRunDone()
@@ -75,7 +76,7 @@ func (app *App) gate(f planFlags, question string) (proceed bool, err error) {
 	}
 	if f.confirm && !app.confirmed("\n"+question) {
 		app.say("Canceled.")
-		return false, errReported
+		return false, exit.ErrReported
 	}
 	return true, nil
 }
@@ -208,7 +209,7 @@ func (app *App) reportFailures(failures []failure) error {
 			rep.Failures = append(rep.Failures, e)
 		})
 	}
-	return errSomeFailed
+	return exit.ErrSomeFailed
 }
 
 func (app *App) confirmed(question string) bool {

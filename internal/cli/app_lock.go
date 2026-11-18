@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/files"
 )
 
@@ -35,7 +36,7 @@ func (app *App) lock(cmd *cobra.Command) error {
 	release, err := files.Lock{Path: app.LockPath, Stale: lockStale, Attempts: 1, Owner: app.lockOwner(), Gone: app.lockOwnerGone}.Acquire()
 	if errors.Is(err, files.ErrHeld) {
 		return fmt.Errorf("%w, so this one changed nothing. Try again once it ends; "+
-			"a claudes that crashed frees %s within %s", errBusy, app.LockPath, lockStale)
+			"a claudes that crashed frees %s within %s", exit.ErrBusy, app.LockPath, lockStale)
 	}
 	if err != nil {
 		return fmt.Errorf("cannot take the run lock %s: %w", app.LockPath, err)

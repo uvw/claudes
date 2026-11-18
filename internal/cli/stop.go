@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -63,7 +64,7 @@ seconds, and on Windows they are killed at once. claude --resume brings it back.
 			if host != nil && ctx.Err() == nil {
 				if err := app.stopHost(ctx, *host, "Stopping", false); err != nil {
 					app.warn("claudes: this session (%s): %v", host.Label(), err)
-					return errSomeFailed
+					return exit.ErrSomeFailed
 				}
 			}
 			return result

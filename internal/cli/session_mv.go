@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -76,9 +77,9 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 	host := app.isHostID(p.SessionID)
 	switch {
 	case p.Running && !host:
-		return refused(fmt.Errorf("%s is running, and what it says after the copy would stay behind. Stop it first", p.Label()))
+		return exit.Refusal(fmt.Errorf("%s is running, and what it says after the copy would stay behind. Stop it first", p.Label()))
 	case !app.runningKnown && !host && !app.force:
-		return refused(fmt.Errorf("cannot tell whether %s is running, and what a running session says after the copy stays behind. Try again, or pass --force", p.Label()))
+		return exit.Refusal(fmt.Errorf("cannot tell whether %s is running, and what a running session says after the copy stays behind. Try again, or pass --force", p.Label()))
 	case host && resume:
 		return fmt.Errorf("%s is the session running claudes, so it cannot resume here. Drop --resume, then exit it and run the printed command", p.Label())
 	case host && rm:

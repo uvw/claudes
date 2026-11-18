@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 )
@@ -44,7 +45,7 @@ session's id, directory, and name.
 				for i, p := range picked {
 					names[i] = shell.Printable(p.Label()) + " (" + p.ShortID + ")"
 				}
-				return noMatch{fmt.Errorf("%d sessions match: %s. Name one", len(picked), strings.Join(names, ", "))}
+				return exit.Unmatched(fmt.Errorf("%d sessions match: %s. Name one", len(picked), strings.Join(names, ", ")))
 			}
 			if out.format != "text" {
 				return out.encode(app.Out, picked)

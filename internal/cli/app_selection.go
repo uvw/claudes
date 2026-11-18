@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/version"
@@ -90,7 +91,7 @@ func named(targets []string, sessions []claude.Session, skip map[string]bool, wi
 	}
 	for _, s := range picked {
 		if s.Interactive() && !withInteractive {
-			return sel, refused(fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label()))
+			return sel, exit.Refusal(fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label()))
 		}
 		if skip[s.SessionID] {
 			sel.skipped = append(sel.skipped, s)
@@ -160,7 +161,7 @@ func (app *App) keepOutdated(ctx context.Context, sel *selection) error {
 }
 
 // acquire selects sessions and, with --wait, waits until none is busy. A wait
-// that times out is reported and returns errReported. A session waiting on a
+// that times out is reported and returns exit.ErrReported. A session waiting on a
 // question or running a shell task is not waited for: the first needs a
 // person, and the second may never finish. Both are pinged instead.
 func (app *App) acquire(ctx context.Context, targets []string, f *lifecycleFlags) (selection, error) {
@@ -182,7 +183,7 @@ func (app *App) acquire(ctx context.Context, targets []string, f *lifecycleFlags
 		names := strings.Join(busy, ", ")
 		if !app.Now().Before(deadline) {
 			app.warn("claudes: still busy after %s (%s). Nothing was changed.", f.timeout, names)
-			return sel, errReported
+			return sel, exit.ErrReported
 		}
 		app.say("Waiting for busy sessions: %s", names)
 		if err := app.Sleep(ctx, pollInterval); err != nil {
@@ -213,7 +214,7 @@ func skipSet[T target.Ref](skip []string, candidates []T, id func(T) string) (ma
 func requireRunning(sessions []claude.Session) error {
 	for _, s := range sessions {
 		if !s.Running() {
-			return refused(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
+			return exit.Refusal(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
 				s.Label(), dash(s.State)))
 		}
 	}

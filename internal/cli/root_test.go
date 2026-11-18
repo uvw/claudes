@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 )
 
 // inParentsFile are the commands whose code lives in another command's file,
@@ -76,7 +77,7 @@ func TestSafetyRefusalsExitFour(t *testing.T) {
 	} {
 		os.MkdirAll(h.folder("other"), 0o755)
 		h.err.Reset()
-		if code := h.run(args...); code != exitRefused {
+		if code := h.run(args...); code != exit.Refused {
 			t.Errorf("%v exits %d: %s", args, code, strings.TrimSpace(h.err.String()))
 		}
 	}
@@ -129,7 +130,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // command's.
 var notYetMoved = []string{
 	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
-	"dirs.go", "errors.go", "signals_unix.go", "signals_unix_test.go",
+	"dirs.go", "signals_unix.go", "signals_unix_test.go",
 	"signals_windows.go", "version.go",
 }
 
@@ -270,12 +271,12 @@ var notYetHelpers = []string{
 	"activity", "age", "ago", "branchCell", "buildVersion", "checkFail",
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
 	"dash", "describeForCompletion", "dirCell", "dirGone", "doing", "duRow",
-	"duTally", "duTop", "editFile", "entryOf", "exitCode", "firstLine",
+	"duTally", "duTop", "editFile", "entryOf", "firstLine",
 	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "interruptContext",
 	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
 	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
 	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
-	"realDir", "refOf", "refused", "relWithin", "removeCommand",
+	"realDir", "refOf", "relWithin", "removeCommand",
 	"requireFinished", "requireRunning", "resolved", "runningIn", "sameDir",
 	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
 	"sleep", "stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
@@ -449,16 +450,16 @@ func TestExitCodesSayWhatHappened(t *testing.T) {
 	bad := h.bg("bad", "idle")
 	h.agents.snapshots = [][]claude.Session{{one, two, bad}}
 
-	h.exits(t, exitNoMatch, "stop", "nothing-like-it")
-	h.exits(t, exitNoMatch, "stop", "review")
+	h.exits(t, exit.NoMatch, "stop", "nothing-like-it")
+	h.exits(t, exit.NoMatch, "stop", "review")
 
 	h.agents.failures = map[string]string{"stop " + bad.JobID: "boom"}
-	h.exits(t, exitSomeFailed, "stop", "bad")
+	h.exits(t, exit.SomeFailed, "stop", "bad")
 
 	odd := h.bg("odd", "idle")
 	odd.Kind = "daemon"
 	h.agents.snapshots = [][]claude.Session{{odd}}
-	h.exits(t, exitRefused, "stop", "odd")
+	h.exits(t, exit.Refused, "stop", "odd")
 }
 
 func TestVerboseFirstStillRunsClaudesCommands(t *testing.T) {

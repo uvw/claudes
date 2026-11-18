@@ -9,6 +9,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 )
 
 func readReport(t *testing.T, h *harness) report {
@@ -35,7 +36,7 @@ func TestRestartPrintsOneJSONReport(t *testing.T) {
 	h.pin(t, pinned)
 	h.agents.failures = map[string]string{"respawn " + bad.JobID: "boom"}
 
-	h.exits(t, exitSomeFailed, "restart", "--ping", "-o", "json")
+	h.exits(t, exit.SomeFailed, "restart", "--ping", "-o", "json")
 	r := readReport(t, h)
 	if r.Command != "restart" || r.DryRun || len(r.Plan) != 2 {
 		t.Fatalf("report %+v", r)
@@ -172,7 +173,7 @@ func TestTheReportListsLeftAloneTerminalsWarningsAndTheError(t *testing.T) {
 	}
 
 	h.out.Reset()
-	h.exits(t, exitNoMatch, "stop", "nobody", "-o", "json")
+	h.exits(t, exit.NoMatch, "stop", "nobody", "-o", "json")
 	if r = readReport(t, h); !strings.Contains(r.Error, "nobody") {
 		t.Fatalf("error %q", r.Error)
 	}
@@ -206,7 +207,7 @@ func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
 	assertContains(t, h.err.String(), h.app.errColors.Red("  bad: worktree has changes"))
 
 	h.err.Reset()
-	h.exits(t, exitNoMatch, "where", "nobody")
+	h.exits(t, exit.NoMatch, "where", "nobody")
 	if !strings.HasPrefix(h.err.String(), "\x1b[31mclaudes: ") {
 		t.Fatalf("the error is not red:\n%q", h.err)
 	}

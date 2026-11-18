@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/teams"
@@ -31,11 +32,11 @@ func requireFinished(sessions []claude.Session) error {
 	for _, s := range sessions {
 		switch {
 		case s.Interactive():
-			return refused(fmt.Errorf("%s is an interactive session: gc removes only finished background sessions", s.Label()))
+			return exit.Refusal(fmt.Errorf("%s is an interactive session: gc removes only finished background sessions", s.Label()))
 		case s.Running():
-			return refused(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
+			return exit.Refusal(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
 		case !isFinished(s):
-			return refused(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), dash(s.State)))
+			return exit.Refusal(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), dash(s.State)))
 		}
 	}
 	return nil
