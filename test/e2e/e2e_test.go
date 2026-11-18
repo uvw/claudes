@@ -105,7 +105,7 @@ func TestLsAndWhereMatchWordsAndPatterns(t *testing.T) {
 	}
 }
 
-func TestLsIsColoredOnlyWithCLICOLORWhenStdoutIsAPipe(t *testing.T) {
+func TestLsIsColoredOnlyWithCLICOLORFORCEWhenStdoutIsAPipe(t *testing.T) {
 	w := newWorld(t)
 	w.bg("alpha", "busy")
 
@@ -113,8 +113,12 @@ func TestLsIsColoredOnlyWithCLICOLORWhenStdoutIsAPipe(t *testing.T) {
 		t.Fatalf("ls to a pipe has colors:\n%q", r.stdout)
 	}
 	w.env = append(w.env, "CLICOLOR=1")
+	if r := w.ok("ls"); strings.Contains(r.stdout, "\x1b") {
+		t.Fatalf("ls to a pipe with CLICOLOR=1 has colors:\n%q", r.stdout)
+	}
+	w.env = append(w.env, "CLICOLOR_FORCE=1")
 	if r := w.ok("ls"); !strings.Contains(r.stdout, "\x1b[32mbusy\x1b[m") {
-		t.Fatalf("ls with CLICOLOR=1 has no colors:\n%q", r.stdout)
+		t.Fatalf("ls with CLICOLOR_FORCE=1 has no colors:\n%q", r.stdout)
 	}
 	w.env = append(w.env, "NO_COLOR=1")
 	if r := w.ok("ls"); strings.Contains(r.stdout, "\x1b") {

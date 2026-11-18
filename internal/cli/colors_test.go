@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"regexp"
 	"strings"
 	"testing"
@@ -30,15 +31,15 @@ func lsWorld(t *testing.T, h *harness) {
 	writeState(t, h, old.JobID, "2.1.322")
 }
 
-func TestLsTextIsColoredWithCLICOLORAndLinesUpAsWithout(t *testing.T) {
+func TestLsTextIsColoredWithCLICOLORFORCEAndLinesUpAsWithout(t *testing.T) {
 	h := newHarness(t)
 	lsWorld(t, h)
 	h.ok(t, "ls", "-o", "text")
 	plain := h.out.String()
-	assertPlain(t, "ls without CLICOLOR", plain)
+	assertPlain(t, "ls without CLICOLOR_FORCE", plain)
 
 	h.out.Reset()
-	h.env("CLICOLOR=1")
+	h.env("CLICOLOR_FORCE=1")
 	h.ok(t, "ls", "-o", "text")
 
 	out := h.out.String()
@@ -59,12 +60,39 @@ func TestLsTextIsColoredWithCLICOLORAndLinesUpAsWithout(t *testing.T) {
 	}
 }
 
-func TestNoColorWinsOverCLICOLOR(t *testing.T) {
-	h := newHarness(t)
-	lsWorld(t, h)
-	h.env("CLICOLOR=1", "NO_COLOR=1")
-	h.ok(t, "ls")
-	assertPlain(t, "ls with NO_COLOR", h.out.String())
+// The harness writes to buffers, so each case is a pipe.
+func TestColorVariablesOnAPipe(t *testing.T) {
+	for _, tc := range []struct {
+		env     []string
+		colored bool
+	}{
+		{[]string{"CLICOLOR=1"}, false},
+		{[]string{"CLICOLOR_FORCE=1"}, true},
+		{[]string{"CLICOLOR_FORCE=0"}, false},
+		{[]string{"CLICOLOR_FORCE="}, false},
+		{[]string{"CLICOLOR=0", "CLICOLOR_FORCE=1"}, true},
+		{[]string{"CLICOLOR_FORCE=1", "NO_COLOR=1"}, false},
+		{[]string{"CLICOLOR=1", "NO_COLOR=1"}, false},
+	} {
+		t.Run(strings.Join(tc.env, " "), func(t *testing.T) {
+			h := newHarness(t)
+			lsWorld(t, h)
+			h.env(tc.env...)
+			h.ok(t, "ls")
+			out := h.out.String()
+			h.exits(t, exitNoMatch, "where", "nobody")
+			errOut := h.err.String()
+			if !tc.colored {
+				assertPlain(t, "stdout", out)
+				assertPlain(t, "stderr", errOut)
+				return
+			}
+			assertContains(t, out, h.app.colors.Green("busy"))
+			if !strings.HasPrefix(errOut, "\x1b[31mclaudes: ") {
+				t.Fatalf("the error is not red:\n%q", errOut)
+			}
+		})
+	}
 }
 
 func TestJSONYAMLCompletionInitAndSkillAreNeverColored(t *testing.T) {
@@ -76,7 +104,7 @@ func TestJSONYAMLCompletionInitAndSkillAreNeverColored(t *testing.T) {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			h := newHarness(t)
 			lsWorld(t, h)
-			h.env("CLICOLOR=1")
+			h.env("CLICOLOR_FORCE=1")
 			h.run(args...)
 			assertPlain(t, "stdout", h.out.String())
 		})
@@ -88,7 +116,7 @@ func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
 	bad, good := stopped(h.bg("bad", "")), stopped(h.bg("good", ""))
 	h.agents.finished = []claude.Session{bad, good}
 	h.agents.failures = map[string]string{"rm " + bad.JobID: "worktree has changes"}
-	h.env("CLICOLOR=1")
+	h.env("CLICOLOR_FORCE=1")
 
 	h.fails(t, "gc", "bad", "good")
 
@@ -108,7 +136,7 @@ func TestDoctorColorsEachResult(t *testing.T) {
 	h := newHarness(t)
 	h.agents.snapshots = [][]claude.Session{{h.bg("odd", "thinking")}}
 	h.agents.version = "2.9.0"
-	h.env("CLICOLOR=1")
+	h.env("CLICOLOR_FORCE=1")
 
 	h.fails(t, "doctor")
 
@@ -117,4 +145,20 @@ func TestDoctorColorsEachResult(t *testing.T) {
 		assertContains(t, out, want)
 	}
 	assertContains(t, h.err.String(), h.app.errColors.Red("1 check(s) failed."))
+}
+
+func TestDoctorEnvShowsEachColorVariable(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("CLICOLOR_FORCE", "1")
+	t.Setenv("CLICOLOR", "0")
+	h := newHarness(t)
+	h.ok(t, "doctor", "env", "-o", "json")
+	var report map[string]map[string]string
+	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+		t.Fatalf("%v:\n%s", err, h.out)
+	}
+	env := report["environment"]
+	if env["NO_COLOR"] != `""` || env["CLICOLOR_FORCE"] != "1" || env["CLICOLOR"] != "0" {
+		t.Fatalf("environment %v", env)
+	}
 }

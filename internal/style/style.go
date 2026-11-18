@@ -20,21 +20,25 @@ type Palette struct{ on bool }
 var On = Palette{on: true}
 
 // Detect decides whether text written to w gets colors. env is the
-// environment, as os.Environ returns it. NO_COLOR, set to anything, and
-// CLICOLOR=0 turn colors off. CLICOLOR=1 turns them on, even when w is not a
-// terminal. Otherwise w gets colors when it is a terminal that shows them.
+// environment, as os.Environ returns it. It follows the clicolors convention
+// (https://bixense.com/clicolors/), where an empty variable counts as unset.
+// In that order, NO_COLOR turns colors off, CLICOLOR_FORCE but 0 turns them on
+// even when w is not a terminal, and CLICOLOR=0 turns them off. Otherwise w
+// gets colors when it is a terminal that shows them.
 func Detect(w io.Writer, env []string) Palette {
-	switch {
-	case lookup(env, "NO_COLOR") != "", lookup(env, "CLICOLOR") == "0":
+	if lookup(env, "NO_COLOR") != "" {
 		return Palette{}
-	case lookup(env, "CLICOLOR") == "1", isTerminal(w) && shows(w, env):
-		if f, ok := w.(*os.File); ok {
-			// The console in Windows 10 and later shows colors only once asked to.
-			lipgloss.EnableLegacyWindowsANSI(f)
-		}
-		return On
 	}
-	return Palette{}
+	if force := lookup(env, "CLICOLOR_FORCE"); force == "" || force == "0" {
+		if lookup(env, "CLICOLOR") == "0" || !isTerminal(w) || !shows(w, env) {
+			return Palette{}
+		}
+	}
+	if f, ok := w.(*os.File); ok {
+		// The console in Windows 10 and later shows colors only once asked to.
+		lipgloss.EnableLegacyWindowsANSI(f)
+	}
+	return On
 }
 
 // isTerminal reports whether w is a terminal. Tests replace it.
@@ -44,8 +48,8 @@ var isTerminal = func(w io.Writer) bool {
 }
 
 // shows reports whether the terminal w shows colors, such as one with
-// TERM=dumb does not. colorprofile's own ways to force colors on a pipe,
-// CLICOLOR_FORCE and TTY_FORCE, are left out, so only CLICOLOR=1 does.
+// TERM=dumb does not. Detect settles CLICOLOR_FORCE before it asks, and
+// colorprofile's other way to force colors on a pipe, TTY_FORCE, is left out.
 func shows(w io.Writer, env []string) bool {
 	kept := []string{"TTY_FORCE=1"}
 	for _, kv := range env {

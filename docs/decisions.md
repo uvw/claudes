@@ -448,10 +448,13 @@ claudes styles text with Charm's lipgloss v2 (`charm.land/lipgloss/v2`) and
 detects what a terminal shows with its `colorprofile`, and whether a stream is a
 terminal with `x/term`. `internal/style` owns both: it decides per stream,
 stdout and stderr apart, and lines tables up by what the terminal shows rather
-than by bytes. `NO_COLOR`, set to any value but empty, and `CLICOLOR=0` turn
-colors off, and `CLICOLOR=1` turns them on for a pipe. `CLICOLOR_FORCE` and
-`TTY_FORCE`, which `colorprofile` honors on its own, do not. JSON, YAML,
-completions, `init`, and `skill` stay plain. Colors use the 16 basic ANSI
+than by bytes. The variables follow the
+[clicolors convention](https://bixense.com/clicolors/): `NO_COLOR` turns colors
+off, `CLICOLOR_FORCE` turns them on for a pipe, and `CLICOLOR=0` turns them off,
+in that order. An empty variable counts as unset, and `CLICOLOR_FORCE=0` forces
+nothing. `CLICOLOR=1`, which many macOS users export for `ls`, leaves a pipe
+plain, and so does `TTY_FORCE`, which `colorprofile` honors on its own. JSON,
+YAML, completions, `init`, and `skill` stay plain. Colors use the 16 basic ANSI
 colors, so they follow the terminal's theme.
 
 Why: a terminal UI is planned (uvw/claudes#18), and Bubble Tea builds on
