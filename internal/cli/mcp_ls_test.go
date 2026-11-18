@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 )
 
 // secrets are what a server entry can carry that claudes must never print.
@@ -145,7 +144,7 @@ func TestMCPLsTakesASessionOrADirectory(t *testing.T) {
 
 	h.fails(t, "mcp", "ls", "api-work", "--in", docs)
 	assertContains(t, h.err.String(), "not both")
-	h.exits(t, exit.NoMatch, "mcp", "ls", "nobody")
+	h.exits(t, exitNoMatch, "mcp", "ls", "nobody")
 	h.fails(t, "mcp", "ls", "--in", filepath.Join(docs, "missing"))
 }
 

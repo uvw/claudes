@@ -1,6 +1,6 @@
 // Package files writes files atomically and locks them the way the
 // proper-lockfile package that Claude Code uses does: with a directory next to
-// the file.
+// the file. The run lock is one such lock.
 package files
 
 import (

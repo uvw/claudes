@@ -1,4 +1,4 @@
-package listing
+package cli
 
 import (
 	"encoding/json"
@@ -9,8 +9,8 @@ import (
 )
 
 // Scripts read claudes ls -o json, so a key never changes its name.
-func TestRowJSONKeepsItsKeys(t *testing.T) {
-	data, err := json.Marshal(Row{})
+func TestSessionRowJSONKeepsItsKeys(t *testing.T) {
+	data, err := json.Marshal(sessionRow{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,17 +33,17 @@ func TestRowJSONKeepsItsKeys(t *testing.T) {
 	}
 }
 
-func TestSortPutsPinnedThenBusyThenNewestFirst(t *testing.T) {
-	row := func(name string, pinned bool, status string, started int64) Row {
-		return Row{Session: claude.Session{Name: name, Status: status, PID: 1, StartedAt: started}, Pinned: pinned}
+func TestSortRowsPutsPinnedThenBusyThenNewestFirst(t *testing.T) {
+	row := func(name string, pinned bool, status string, started int64) sessionRow {
+		return sessionRow{Session: claude.Session{Name: name, Status: status, PID: 1, StartedAt: started}, Pinned: pinned}
 	}
-	rows := []Row{
+	rows := []sessionRow{
 		row("old", false, "idle", 1),
 		row("new", false, "idle", 3),
 		row("busy", false, "busy", 2),
 		row("pinned", true, "idle", 0),
 	}
-	Sort(rows)
+	sortRows(rows)
 	var got []string
 	for _, r := range rows {
 		got = append(got, r.Name)
@@ -53,13 +53,13 @@ func TestSortPutsPinnedThenBusyThenNewestFirst(t *testing.T) {
 	}
 }
 
-func TestDoingAndZeroIfKnown(t *testing.T) {
+func TestDoingCellAndZeroIfKnown(t *testing.T) {
 	text := "fix\x1b[31m it"
-	if Doing(Row{}) != "-" || Doing(Row{Doing: &text}) != "fix[31m it" {
-		t.Errorf("doing %q", Doing(Row{Doing: &text}))
+	if doingCell(sessionRow{}) != "-" || doingCell(sessionRow{Doing: &text}) != "fix[31m it" {
+		t.Errorf("doing %q", doingCell(sessionRow{Doing: &text}))
 	}
 	n := 3
-	if ZeroIfKnown(nil) != nil || *ZeroIfKnown(&n) != 0 {
-		t.Error("ZeroIfKnown")
+	if zeroIfKnown(nil) != nil || *zeroIfKnown(&n) != 0 {
+		t.Error("zeroIfKnown")
 	}
 }

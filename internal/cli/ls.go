@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/listing"
 	"github.com/uvw/claudes/internal/render"
 )
 
@@ -59,7 +58,7 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 	return cmd
 }
 
-func (app *App) printTable(w io.Writer, rows []listing.Row, wide bool) error {
+func (app *App) printTable(w io.Writer, rows []sessionRow, wide bool) error {
 	if len(rows) == 0 {
 		_, err := fmt.Fprintln(w, "No sessions.")
 		return err
@@ -90,7 +89,7 @@ func (app *App) printTable(w io.Writer, rows []listing.Row, wide bool) error {
 		}
 		cells = append(cells, render.Age(app.Now(), r.Started()), ver, render.DirCell(r.Cwd), render.NameCell(r.Label()))
 		if wide {
-			cells = append(cells, listing.Doing(r))
+			cells = append(cells, doingCell(r))
 		}
 		table = append(table, cells)
 	}
@@ -103,7 +102,7 @@ func (app *App) printTable(w io.Writer, rows []listing.Row, wide bool) error {
 
 // agents is the AGENTS cell: lead+N for the agent team a session leads, and
 // how many subagents it runs now.
-func (app *App) agents(r listing.Row) string {
+func (app *App) agents(r sessionRow) string {
 	var parts []string
 	if n := len(r.Teammates); n > 0 {
 		parts = append(parts, app.colors.Magenta(fmt.Sprintf("lead+%d", n)))

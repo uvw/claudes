@@ -1,6 +1,6 @@
 //go:build windows
 
-package interrupt
+package cli
 
 import "os"
 

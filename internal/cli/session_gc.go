@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
@@ -92,7 +91,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		return err
 	}
 	if !app.runningKnown {
-		return exit.Refusal(errors.New("cannot tell which sessions are running, so session gc removes nothing"))
+		return refusal(errors.New("cannot tell which sessions are running, so session gc removes nothing"))
 	}
 	keep, err := app.gcKeep(ctx, list)
 	if err != nil {
@@ -107,7 +106,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		}
 		for _, p := range picked {
 			if why, ok := keep[p.SessionID]; ok {
-				return exit.Refusal(fmt.Errorf("%s %s, so session gc leaves it alone", p.Label(), why))
+				return refusal(fmt.Errorf("%s %s, so session gc leaves it alone", p.Label(), why))
 			}
 			items = append(items, history.Whole(app.Transcripts, p, history.KindNamed))
 		}
@@ -148,7 +147,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 func (app *App) gcRemove(ctx context.Context, items []history.Item, purge bool) error {
 	running, err := app.Agents.Sessions(ctx, false)
 	if err != nil {
-		return exit.Refusal(fmt.Errorf("cannot tell which sessions are running, so session gc removes nothing: %w", err))
+		return refusal(fmt.Errorf("cannot tell which sessions are running, so session gc removes nothing: %w", err))
 	}
 	live := map[string]bool{}
 	for _, s := range running {

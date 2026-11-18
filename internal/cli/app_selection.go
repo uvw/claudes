@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
@@ -87,7 +86,7 @@ func (app *App) keepOutdated(ctx context.Context, sel *selection.Selection) erro
 }
 
 // acquire selects sessions and, with --wait, waits until none is busy. A wait
-// that times out is reported and returns exit.ErrReported. A session waiting on a
+// that times out is reported and returns errReported. A session waiting on a
 // question or running a shell task is not waited for: the first needs a
 // person, and the second may never finish. Both are pinged instead.
 func (app *App) acquire(ctx context.Context, targets []string, f *lifecycleFlags) (selection.Selection, error) {
@@ -109,7 +108,7 @@ func (app *App) acquire(ctx context.Context, targets []string, f *lifecycleFlags
 		names := strings.Join(busy, ", ")
 		if !app.Now().Before(deadline) {
 			app.warn("claudes: still busy after %s (%s). Nothing was changed.", f.timeout, names)
-			return sel, exit.ErrReported
+			return sel, errReported
 		}
 		app.say("Waiting for busy sessions: %s", names)
 		if err := app.Sleep(ctx, pollInterval); err != nil {

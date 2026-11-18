@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
-	"github.com/uvw/claudes/internal/interrupt"
 )
 
 func TestSkipThatMatchesNothingStopsTheCommand(t *testing.T) {
@@ -280,7 +278,7 @@ func TestASIGTERMDuringRestartReportsTheRest(t *testing.T) {
 	h := newHarness(t)
 	a, b := h.bg("alpha", "idle"), h.bg("beta", "idle")
 	h.agents.snapshots = [][]claude.Session{{a, b}}
-	h.app.Interrupt = interrupt.Context
+	h.app.Interrupt = signalContext
 	var once sync.Once
 	h.agents.beforeRespawn = func(string) {
 		once.Do(func() { _ = self.Signal(syscall.SIGTERM) })
@@ -288,8 +286,8 @@ func TestASIGTERMDuringRestartReportsTheRest(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	if code := h.run("restart"); code != exit.Interrupted {
-		t.Fatalf("exit %d, want %d:\n%s\n%s", code, exit.Interrupted, h.out, h.err)
+	if code := h.run("restart"); code != exitInterrupted {
+		t.Fatalf("exit %d, want %d:\n%s\n%s", code, exitInterrupted, h.out, h.err)
 	}
 	assertCalls(t, h, "respawn "+a.JobID)
 	assertContains(t, h.out.String(), "restarted  alpha")

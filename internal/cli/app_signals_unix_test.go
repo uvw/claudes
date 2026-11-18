@@ -1,6 +1,6 @@
 //go:build unix
 
-package interrupt
+package cli
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 // cancels the run's context as Ctrl-C does.
 func TestSIGTERMAndSIGHUPCancelARunAsCtrlCDoes(t *testing.T) {
 	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP} {
-		ctx, stop := Context(context.Background())
+		ctx, stop := signalContext(context.Background())
 		if err := syscall.Kill(syscall.Getpid(), sig); err != nil {
 			t.Fatal(err)
 		}

@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/uvw/claudes/internal/exit"
 )
 
 func (app *App) sessionResumeCommand() *cobra.Command {
@@ -33,10 +31,10 @@ job's options, such as --model.`,
 				return err
 			}
 			if p.Running {
-				return exit.Refusal(fmt.Errorf("%s is still running, and resuming it would start a copy. Use claudes attach, or stop it first", p.Label()))
+				return refusal(fmt.Errorf("%s is still running, and resuming it would start a copy. Use claudes attach, or stop it first", p.Label()))
 			}
 			if !app.runningKnown {
-				return exit.Refusal(fmt.Errorf("cannot tell whether %s is running, and resuming a running session starts a copy: try again", p.Label()))
+				return refusal(fmt.Errorf("cannot tell whether %s is running, and resuming a running session starts a copy: try again", p.Label()))
 			}
 			return app.resumePast(cmd.Context(), p, prompt, bg)
 		},

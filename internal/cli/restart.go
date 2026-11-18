@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
@@ -140,7 +139,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 	if host != nil && ctx.Err() == nil {
 		if err := app.restartHost(ctx, *host); err != nil {
 			app.warn("claudes: this session (%s): %v", host.Label(), err)
-			return exit.ErrSomeFailed
+			return errSomeFailed
 		}
 	}
 	return result

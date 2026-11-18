@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/history"
-	"github.com/uvw/claudes/internal/listing"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
@@ -116,7 +114,7 @@ func (app *App) filterPast(list []history.Session, targets []string, in string, 
 func (app *App) gcKeep(ctx context.Context, list []history.Session) (map[string]string, error) {
 	listed, err := app.Agents.Sessions(ctx, true)
 	if err != nil {
-		return nil, exit.Refusal(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
+		return nil, refusal(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
 	}
 	entries, err := app.Park.Load()
 	if err != nil {
@@ -155,7 +153,7 @@ func (app *App) warnTeams(sessions []claude.Session) {
 
 // rows lists sessions for ls and where. installed is the installed
 // Claude Code version, or "" when unknown, which marks no session outdated.
-func (app *App) rows(ctx context.Context, all bool, installed string) ([]listing.Row, error) {
+func (app *App) rows(ctx context.Context, all bool, installed string) ([]sessionRow, error) {
 	sessions, err := app.Agents.Sessions(ctx, all)
 	if err != nil {
 		return nil, err
@@ -164,18 +162,18 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]listing
 	if err != nil {
 		app.warn("claudes: cannot read pins: %v", err)
 	}
-	rows := make([]listing.Row, 0, len(sessions))
+	rows := make([]sessionRow, 0, len(sessions))
 	for _, s := range sessions {
-		r := listing.Row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
+		r := sessionRow{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
 		a := app.Jobs.Live(s.JobID)
 		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
 		if !s.Running() {
 			// state.json can still list what ran when the process ended.
-			r.Subagents, r.Shells = listing.ZeroIfKnown(r.Subagents), listing.ZeroIfKnown(r.Shells)
+			r.Subagents, r.Shells = zeroIfKnown(r.Subagents), zeroIfKnown(r.Shells)
 		}
 		rows = append(rows, r)
 	}
-	listing.Sort(rows)
+	sortRows(rows)
 	return rows, nil
 }
