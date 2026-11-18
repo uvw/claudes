@@ -9,7 +9,8 @@ on:
         description: The tag to release, such as v0.1.0.
         required: true
         type: string
-    # Both optional: without one, its package manager is skipped.
+    # Both optional: without one, its package manager is skipped. A secret of
+    # the release environment takes the place of the one passed here.
     secrets:
       HOMEBREW_TAP_TOKEN:
         required: false
@@ -27,6 +28,9 @@ permissions: {}
 concurrency:
   group: release-${{ inputs.tag }}
   cancel-in-progress: false
+
+env:
+  GORELEASER_VERSION: v2.20.2
 
 jobs:
   eligibility:
@@ -100,7 +104,7 @@ jobs:
         run: dirname "$SYFT" >> "$GITHUB_PATH"
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: v2.20.2
+          version: ${{ env.GORELEASER_VERSION }}
           args: release --clean --skip=publish
       # checksums.txt lists the install scripts (.goreleaser.yaml), so they are
       # attested and published with the archives.
@@ -186,9 +190,13 @@ jobs:
 
   # Runs last, so an immutable release is only ever published complete, with
   # every asset already attested.
+  # The release environment admits only main and v* tags (docs/releasing.md),
+  # so a dispatch from another branch cannot publish or read the package
+  # managers' tokens. It holds those tokens as its own secrets.
   publish:
     name: Publish
-    needs: attest
+    needs: [eligibility, attest]
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -203,17 +211,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
+          SHA: ${{ needs.eligibility.outputs.sha }}
+        # A release belongs to the tag's name, so the tag must still name the
+        # commit every job built and tested. Once published, an immutable
+        # release locks the tag.
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --draft --verify-tag --generate-notes
           fi
           gh release upload "$TAG" dist/* --clobber
+          tagged=$(gh api "repos/$GH_REPO/commits/refs/tags/$TAG" --jq .sha)
+          [[ $tagged == "$SHA" ]] ||
+            { echo "::error::$TAG moved to $tagged after the build of $SHA"; exit 1; }
           gh release edit "$TAG" --draft=false --latest
 
   # The package managers point at the published release, so they come after it.
   homebrew:
     name: Homebrew tap
     needs: [eligibility, publish]
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -236,6 +252,7 @@ jobs:
   winget:
     name: winget
     needs: [eligibility, publish]
+    environment: release
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

@@ -1,7 +1,8 @@
 //go:build ignore
 
 // Notices writes docs/third-party-notices.txt: the license of every module
-// claudes ships, with its repository.
+// claudes ships, with its repository. It reads what ./cmd/claudes builds, not
+// the module's other packages, such as test/e2e/fakeclaude.
 //
 // Usage: go run hack/notices.go [--check]
 //
@@ -109,9 +110,9 @@ func modules(root string) (map[string]string, error) {
 		return nil, err
 	}
 	found := map[string]string{}
-	var refused []string
+	var refused, noRepo []string
 	for _, goos := range platforms {
-		cmd := exec.Command(goLicenses, "report", "./...", "--template", tpl.Name())
+		cmd := exec.Command(goLicenses, "report", "./cmd/claudes", "--template", tpl.Name())
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "GOOS="+goos)
 		var stderr bytes.Buffer
@@ -132,21 +133,28 @@ func modules(root string) (map[string]string, error) {
 			if _, seen := found[name]; name == ownModule || seen {
 				continue
 			}
+			if !slices.Contains(allowed, license) {
+				refused = append(refused, fmt.Sprintf("%s (%s)", name, license))
+			}
 			repo, ok := repository(url)
 			if !ok {
-				return nil, fmt.Errorf("no repository in the license URL of %s: %s", name, url)
+				noRepo = append(noRepo, fmt.Sprintf("%s (%s)", name, url))
 			}
 			found[name] = fmt.Sprintf("%s\n%s, %s\n\n%s\n", name, license, repo, strings.TrimSpace(text))
 			if notice := noticeBeside(path); notice != "" {
 				found[name] += "\nNOTICE\n\n" + notice + "\n"
 			}
-			if !slices.Contains(allowed, license) {
-				refused = append(refused, fmt.Sprintf("%s (%s)", name, license))
-			}
 		}
 	}
+	var problems []error
 	if len(refused) > 0 {
-		return nil, fmt.Errorf("licenses outside %s: %s", strings.Join(allowed, ", "), strings.Join(refused, ", "))
+		problems = append(problems, fmt.Errorf("licenses outside %s: %s", strings.Join(allowed, ", "), strings.Join(refused, ", ")))
+	}
+	if len(noRepo) > 0 {
+		problems = append(problems, fmt.Errorf("no repository in the license URL of %s", strings.Join(noRepo, ", ")))
+	}
+	if err := errors.Join(problems...); err != nil {
+		return nil, err
 	}
 	return found, nil
 }

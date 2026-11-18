@@ -25,6 +25,18 @@
         "strict_required_status_checks_policy": false,
         "required_status_checks": [{ "context": "CI (all green)" }]
       }
+    },
+    {
+      "type": "code_scanning",
+      "parameters": {
+        "code_scanning_tools": [
+          {
+            "tool": "CodeQL",
+            "alerts_threshold": "errors",
+            "security_alerts_threshold": "high_or_higher"
+          }
+        ]
+      }
     }
   ]
 }

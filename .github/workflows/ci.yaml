@@ -19,14 +19,19 @@ on:
 permissions:
   contents: read
 
-# A new push to a pull request replaces its older run. Runs on main and
-# releases always finish, so every commit keeps its own result.
+# A new push to a pull request replaces its older run. Every other run gets a
+# group of its own: GitHub cancels a pending run when a newer one joins its
+# group, even without cancel-in-progress, so a shared group would drop the
+# result of a commit on main.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.ref || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   COVERAGE_FLOOR: "80"
+  GORELEASER_VERSION: v2.20.2
+  GITLEAKS_VERSION: 8.30.1
+  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
 
 jobs:
   go:
@@ -40,7 +45,7 @@ jobs:
         # macOS runs on Intel: GitHub's Apple silicon runners are short on
         # capacity and drop queued jobs, and no claudes code differs between
         # the two. Releases still test the arm64 archive on Apple silicon.
-        os: [ubuntu-24.04, macos-15-intel, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -61,25 +66,36 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
+      # The assignment fails the step when gofmt cannot parse a file, which it
+      # reports on stderr alone.
       - name: gofmt
         if: runner.os != 'Windows'
-        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+        run: |
+          unformatted=$(gofmt -l .)
+          [[ -z $unformatted ]] || { echo "::error::gofmt would change these files:"; echo "$unformatted"; exit 1; }
       - name: go.mod and go.sum are tidy
         run: go mod tidy -diff
       - name: tools/go.mod and tools/go.sum are tidy
         run: go -C tools mod tidy -diff
       - run: go mod verify
       - run: go vet ./...
+      # Go has no race detector for Windows on Arm.
       - name: Tests, with the race detector and coverage
         shell: bash
-        run: go test -race -coverprofile=coverage.out ./...
+        run: |
+          race=(-race)
+          [[ $RUNNER_OS != Windows || $RUNNER_ARCH != ARM64 ]] || race=()
+          go test "${race[@]}" -coverprofile=coverage.out ./...
       - name: Coverage floor
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && runner.arch == 'X64'
         run: bash .github/workflows/hack/coverage.sh "$COVERAGE_FLOOR" coverage.out
       # PowerShell splits -modfile=tools/go.mod at the dot.
+      # golangci-lint leaves staticcheck to this step (.golangci.yaml).
       - shell: bash
         run: go tool -modfile=tools/go.mod staticcheck ./...
-      - if: runner.os == 'Linux'
+      # The weekly Security workflow runs govulncheck too, for vulnerability
+      # reports that arrive between pushes.
+      - if: runner.os == 'Linux' && runner.arch == 'X64'
         run: go tool -modfile=tools/go.mod govulncheck ./...
       # macOS runners can take most of an hour to arrive, so the macOS release
       # build smoke runs here, in the one macOS job, instead of in the smoke
@@ -90,7 +106,7 @@ jobs:
         if: runner.os == 'macOS'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0 # zizmor: ignore[cache-poisoning]
         with:
-          version: v2.20.2
+          version: ${{ env.GORELEASER_VERSION }}
           args: build --snapshot --clean --single-target --output dist/claudes
       - name: Run the release binary (macOS)
         if: runner.os == 'macOS'
@@ -124,11 +140,11 @@ jobs:
         if: runner.os == 'Linux'
         uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: v2.20.2
+          version: ${{ env.GORELEASER_VERSION }}
           args: check
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: v2.20.2
+          version: ${{ env.GORELEASER_VERSION }}
           args: build --snapshot --clean --single-target --output dist/claudes${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Run the release binary
         shell: bash
@@ -191,9 +207,56 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: tools/.nvmrc
+          package-manager-cache: false
       - run: npm ci --prefix tools --ignore-scripts
       - run: tools/node_modules/.bin/prettier --check .
-      - run: tools/node_modules/.bin/markdownlint-cli2 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#tools/node_modules"
+      # .markdownlint-cli2.yaml lists the files.
+      - run: tools/node_modules/.bin/markdownlint-cli2
+
+  # zizmor and gitleaks fail this workflow on a finding, so a finding blocks
+  # the merge. The weekly Security workflow also sends zizmor's findings to
+  # code scanning.
+  zizmor:
+    name: Workflow audit (zizmor)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
+        with:
+          # Pinned, so a new zizmor release cannot turn this job red on its own.
+          version: 1.32.0
+          # Plain output, with a failing exit code on a finding. The SARIF
+          # mode exits 0 and needs a token that can write to code scanning.
+          advanced-security: false
+
+  gitleaks:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          # The whole history, not only the newest commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks, checked against its published hash
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "$archive" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "${GITLEAKS_SHA256}  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+      - name: Scan the history
+        run: gitleaks git --redact .
 
   # Pull requests squash-merge, so the title becomes the commit on main that
   # release-please reads for the version and the changelog.
@@ -223,7 +286,7 @@ jobs:
   all-green:
     name: CI (all green)
     if: always()
-    needs: [go, smoke, lint, licenses, docs, pr-title]
+    needs: [go, smoke, lint, licenses, docs, zizmor, gitleaks, pr-title]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

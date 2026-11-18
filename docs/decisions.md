@@ -616,8 +616,12 @@ The Go tools the checks run (staticcheck, govulncheck, and go-licenses) are
 versions in `tools/package.json`, with a committed lockfile. Dependabot updates
 both each week. The tools the workflows hand to an action or download themselves
 (goreleaser, golangci-lint, syft, zizmor, gitleaks, and komac) stay pinned in
-the workflows and their scripts. The weekly Tool pins workflow keeps one issue
-open that lists each one behind its latest release, and closes it when none are.
+the workflows and their scripts, each written once per workflow. The weekly Tool
+pins workflow keeps one issue open that lists each one behind its latest
+release, closes it when none are, and reports on it when the check itself fails.
+Node's LTS major in `tools/.nvmrc`, the Go toolchain in `go.mod`, and the demo's
+VHS image are raised by hand: Node's latest release is often not an LTS one, Go
+publishes no GitHub releases, and the demo is not a check.
 
 Why: a pin nobody updates goes stale without a word, and a stale scanner misses
 what a newer one finds. A module of their own keeps the tools' dependencies out
