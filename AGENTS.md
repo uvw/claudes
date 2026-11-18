@@ -54,6 +54,7 @@ adds what an agent needs on top of them.
 | Resume and remove commands, and quoting      | `internal/shell`, one file per platform                         |
 | Stopping an interactive session              | `internal/procs`, one file per platform                         |
 | The compiled binary against a fake claude    | `test/e2e`, with the fake in `fakeclaude/`                      |
+| The package layout and its tests             | `internal/layout`, `internal/cli/root_test.go`                  |
 
 Files in `internal/cli` take their command's path as a prefix, such as
 `session_mv.go` for `claudes session mv` and `doctor_env.go` for
