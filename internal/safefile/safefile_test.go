@@ -251,3 +251,50 @@ func TestLockStaysFreshWhileItsHolderIsSlow(t *testing.T) {
 		t.Fatalf("the refreshed lock was not released: %v", err)
 	}
 }
+
+// A holder that was suspended, such as on a closed laptop lid, stops
+// refreshing its lock without giving it up, so a stale lock whose owner still
+// runs stays. One whose owner has ended, or with no owner file, goes.
+func TestLockKeepsAStaleLockWhoseOwnerRuns(t *testing.T) {
+	stale := func(t *testing.T, l Lock, owner string) {
+		t.Helper()
+		if err := os.Mkdir(l.Path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if owner != "" {
+			if err := os.WriteFile(filepath.Join(l.Path, ownerFile), []byte(owner), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		old := time.Now().Add(-time.Minute)
+		if err := os.Chtimes(l.Path, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runs := map[string]bool{"live": true, "dead": false}
+	gone := func(owner []byte) bool { return !runs[string(owner)] }
+
+	l := newLock(t)
+	l.Attempts, l.Owner, l.Gone = 1, []byte("me"), gone
+	stale(t, l, "live")
+	if _, err := l.Acquire(); !errors.Is(err, ErrHeld) {
+		t.Fatalf("broke the lock of an owner that runs: %v", err)
+	}
+
+	for _, owner := range []string{"dead", ""} {
+		l := newLock(t)
+		l.Attempts, l.Owner, l.Gone = 1, []byte("me"), gone
+		stale(t, l, owner)
+		release, err := l.Acquire()
+		if err != nil {
+			t.Fatalf("owner %q: %v", owner, err)
+		}
+		if got, err := os.ReadFile(filepath.Join(l.Path, ownerFile)); err != nil || string(got) != "me" {
+			t.Fatalf("owner file %q, err %v", got, err)
+		}
+		release()
+		if _, err := os.Stat(l.Path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("release left the lock: %v", err)
+		}
+	}
+}

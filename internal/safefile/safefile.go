@@ -68,7 +68,17 @@ type Lock struct {
 	// Attempts and Delay bound the wait for the lock.
 	Attempts int
 	Delay    time.Duration
+	// Owner, when set, is written into the lock as its owner file, such as the
+	// holder's PID. Gone reports whether the holder an owner file names has
+	// ended. A stale lock whose holder has not ended stays, since a process
+	// that is suspended stops refreshing its lock without giving it up. A
+	// stale lock with no owner file is broken, as one is without Gone.
+	Owner []byte
+	Gone  func(owner []byte) bool
 }
+
+// ownerFile is the file in a lock directory that names its holder.
+const ownerFile = "owner"
 
 // ErrHeld means another process holds the lock.
 var ErrHeld = errors.New("held by another process")
@@ -95,6 +105,10 @@ func (l Lock) Acquire() (release func(), err error) {
 	for tries := 0; tries < attempts; {
 		err := os.Mkdir(l.Path, 0o755)
 		if err == nil {
+			if err := l.writeOwner(); err != nil {
+				os.Remove(l.Path)
+				return nil, err
+			}
 			return l.hold()
 		}
 		if !busy(err) {
@@ -121,13 +135,22 @@ func (l Lock) Acquire() (release func(), err error) {
 	return nil, fmt.Errorf("%s is %w: try again", l.Path, ErrHeld)
 }
 
+// writeOwner writes Owner into the lock this process just made, before hold
+// notes the lock's time.
+func (l Lock) writeOwner() error {
+	if l.Owner == nil {
+		return nil
+	}
+	return os.WriteFile(filepath.Join(l.Path, ownerFile), l.Owner, 0o644)
+}
+
 // hold keeps the lock this process just made until release is called.
 func (l Lock) hold() (release func(), err error) {
 	info, err := os.Stat(l.Path)
 	if err != nil {
 		// Without its time, release cannot tell this lock from a newer one,
 		// so give it up rather than hold it until it goes stale.
-		os.Remove(l.Path)
+		removeLock(l.Path)
 		return nil, err
 	}
 	h := &held{path: l.Path, made: info.ModTime()}
@@ -205,7 +228,26 @@ func (l Lock) breakStale() bool {
 		return false
 	}
 	defer os.Remove(breaker)
-	return l.isStale(l.Path) && os.Remove(l.Path) == nil
+	return l.isStale(l.Path) && l.ownerGone() && removeLock(l.Path) == nil
+}
+
+// ownerGone reports whether the holder the lock's owner file names has ended.
+// A lock with no owner file, or no Gone to ask, has no holder to wait for.
+func (l Lock) ownerGone() bool {
+	if l.Gone == nil {
+		return true
+	}
+	owner, err := os.ReadFile(filepath.Join(l.Path, ownerFile))
+	return err != nil || l.Gone(owner)
+}
+
+// removeLock removes a lock directory and its owner file. Anything else in it
+// keeps it, so a directory that is not a lock is never removed.
+func removeLock(path string) error {
+	if err := os.Remove(filepath.Join(path, ownerFile)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	return os.Remove(path)
 }
 
 func (l Lock) isStale(path string) bool {
@@ -217,6 +259,6 @@ func (l Lock) isStale(path string) bool {
 // process may have broken it as stale and made its own.
 func (h *held) release() {
 	if info, err := os.Stat(h.path); err == nil && info.ModTime().Equal(h.made) {
-		os.Remove(h.path)
+		removeLock(h.path)
 	}
 }
