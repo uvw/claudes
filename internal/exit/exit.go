@@ -15,7 +15,6 @@ var ErrReported = errors.New("failures were reported")
 // ErrSomeFailed means the command reported sessions it could not handle.
 var ErrSomeFailed = fmt.Errorf("%w: some sessions failed", ErrReported)
 
-// The exit codes.
 const (
 	Failed      = 1   // anything else that went wrong
 	NoMatch     = 2   // a target named no session, or several

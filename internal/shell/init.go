@@ -46,9 +46,9 @@ end
 
 var inits = map[string]string{"bash": posixInit, "zsh": posixInit, "fish": fishInit, "pwsh": pwshInit, "powershell": pwshInit}
 
-// Init is the integration for the shell name names: a function that makes
-// claudes cd change the shell's directory. ok is false for a shell it has
-// none for.
+// Init is the integration for a shell, such as bash: a function that makes
+// claudes cd change the shell's directory. ok is false for a shell without
+// one.
 func Init(name string) (script string, ok bool) {
 	script, ok = inits[name]
 	return script, ok

@@ -38,8 +38,8 @@ func TestManagedBy(t *testing.T) {
 	}
 }
 
-// fakeGH is a which that finds a stand-in gh, which prints its arguments and
-// exits with the code codes gives its first argument.
+// fakeGH is a which that finds a stand-in gh. It prints its arguments, and
+// exits with the code codes holds for its first one.
 func fakeGH(t *testing.T, codes map[string]int) func(string) (string, error) {
 	t.Helper()
 	if runtime.GOOS == "windows" {

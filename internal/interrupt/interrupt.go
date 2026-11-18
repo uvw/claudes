@@ -14,7 +14,7 @@ func Context(ctx context.Context) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(ctx, stopSignals...)
 }
 
-// Sleep waits for d, or until ctx ends, and then returns ctx's error.
+// Sleep waits for d, or returns ctx's error when ctx ends first.
 func Sleep(ctx context.Context, d time.Duration) error {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
