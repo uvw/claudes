@@ -117,7 +117,8 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
 var notYetMoved = []string{
-	"cells.go", "cells_test.go"}
+	"cells.go", "cells_test.go",
+}
 
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
@@ -253,17 +254,17 @@ var plumbingTypes = map[string]string{
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
 var notYetHelpers = []string{
-	"activity", "age", "ago", "branchCell", "checkFail",
-	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
-	"dash", "describeForCompletion", "dirCell", "doing", "duRow",
-	"duTally", "duTop", "entryOf", "firstLine",
-	"firstPrompt", "gcCommandFor", "homeShort", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
-	"leftovers", "nameCell", "nameWithSource", "named", "noProfile",
-	"noteOf", "orList", "pickPast", "readTally",
-	"refOf", "removeCommand",
-	"requireFinished", "requireRunning", "runningIn", "sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
-	"stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
-	"trivial", "trueFirst", "withOptions", "zeroIfKnown",
+	"activity", "age", "ago", "branchCell", "checkFail", "checkOK", "checkWarn",
+	"clearStyle", "completeKeys", "count", "countCell", "dash",
+	"describeForCompletion", "dirCell", "doing", "duRow", "duTally", "duTop",
+	"entryOf", "firstLine", "firstPrompt", "gcCommandFor", "homeShort",
+	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
+	"leftovers", "nameCell", "nameWithSource", "named", "noProfile", "noteOf",
+	"orList", "pickPast", "readTally", "refOf", "removeCommand",
+	"requireFinished", "requireRunning", "runningIn", "sameName",
+	"sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet", "stamp",
+	"taskSummary", "tokenCount", "triageOf", "triageSize", "trivial",
+	"trueFirst", "withOptions", "zeroIfKnown",
 }
 
 func TestCLIDeclaresNoHelpers(t *testing.T) {
@@ -317,7 +318,8 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.gcKeep", "App.gcPick"}
+	"App.gcKeep", "App.gcPick",
+}
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.
