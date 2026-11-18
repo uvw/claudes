@@ -248,9 +248,9 @@ the session was in the middle of something.
 - **Everything, pinned ones too.** With no target, bulk `restart`, `pause`, and
   `gc` skip pinned sessions; `--pinned` takes them too, as in
   `claudes restart --pinned --ping --dry-run`. Bulk commands still leave out a
-  session that leads an agent team at work. Naming sessions runs exactly those
-  and drops the bulk selection, so to include a lead, name every session you
-  want plus the lead. Interactive sessions need a flag, below.
+  session that leads an agent team at work. Named sessions replace the bulk
+  selection, so to include a lead, name it and every other session you want.
+  Interactive sessions need a flag, below.
 - **Interactive sessions.** Bulk commands leave them alone, and naming one in
   `restart` or `pause` without a flag is an error. `restart --interactive` and
   `pause --interactive` stop them and print resume commands for the user to run

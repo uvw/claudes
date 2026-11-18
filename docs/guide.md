@@ -119,9 +119,9 @@ claudes is built to restart and stop sessions without losing work:
 
 1. **Pins protect sessions.** Pins are agent view's own (Ctrl+T, stored in
    `~/.claude/jobs/pins.json`). Bulk `restart`, `pause`, and `gc` skip pinned
-   sessions; add `--pinned` to take them all. Naming sessions acts on exactly
-   those, so to include one pinned session, name it and every other session you
-   want.
+   sessions; add `--pinned` to take them all. Named sessions replace the bulk
+   selection, so to include one pinned session, name it and every other session
+   you want.
 2. **Mid-turn work isn't dropped silently.** A session that is busy, waiting on
    a question, or running a shell task comes back idle after a restart. `--ping`
    stops it and resumes it with a prompt instead, and `--wait` waits for busy

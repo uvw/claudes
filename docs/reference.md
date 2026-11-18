@@ -175,10 +175,10 @@ three best records at most.
 | `lastPrompt`, `activity`  | As for a past session                              |
 
 An older copy or a leftover in `remove` has only `id`, `sessionId`, `name`,
-`cwd`, `size`, and `why`, and its `id` is empty: `session gc ID` removes the
-whole session, so remove these with `session gc --copies` or `--leftovers`. The
-`session gc` plan shows them, and saved outputs `--sidecars` trims, with no id
-too.
+`cwd`, `size`, and `why`. Its `id` is empty, since `session gc ID` removes the
+whole session: remove it with `session gc --copies` or `--leftovers`. The
+`session gc` plan shows these, and the saved outputs `--sidecars` trims, with no
+id too.
 
 #### Teams
 
