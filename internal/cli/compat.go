@@ -69,6 +69,12 @@ func (r refusal) Unwrap() error { return r.error }
 
 func refused(err error) error { return refusal{err} }
 
+// noMatch is a target that names nothing, or several where one is needed,
+// which a check outside internal/target found.
+type noMatch struct{ error }
+
+func (n noMatch) Unwrap() error { return n.error }
+
 func (app *App) warnVersion(ctx context.Context) {
 	if app.versionChecked {
 		return

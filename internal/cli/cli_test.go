@@ -1445,7 +1445,7 @@ func TestLogsShowsATeammateByLeadAndName(t *testing.T) {
 	if len(h.execs) != 0 {
 		t.Fatalf("handed off to claude logs: %q", h.execs)
 	}
-	h.fails(t, "logs", "lead/nobody")
+	h.exits(t, 2, "logs", "lead/nobody")
 	assertContains(t, h.err.String(), "teammates: tester")
 }
 

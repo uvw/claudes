@@ -127,8 +127,11 @@ func TestSessionWhereOneRefusesSeveralSessions(t *testing.T) {
 	h.transcript(t, "alpha-one", h.folder("a"), time.Hour)
 	h.transcript(t, "alpha-two", h.folder("b"), time.Hour)
 
-	h.fails(t, "session", "where", "--one", "alpha")
+	h.exits(t, 2, "session", "where", "--one", "alpha")
 	assertContains(t, h.err.String(), "matches 2 sessions")
+	h.err.Reset()
+	h.exits(t, 2, "session", "where", "--one", "alpha-one", "alpha-two")
+	assertContains(t, h.err.String(), "2 sessions match")
 	h.err.Reset()
 	h.ok(t, "session", "where", "alpha")
 	assertContains(t, h.out.String(), "alpha-one")

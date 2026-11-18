@@ -334,6 +334,7 @@ func (app *App) Run(args []string) int {
 		}
 	})
 	var match *target.MatchError
+	var missed noMatch
 	var refusal refusal
 	switch {
 	case ctx.Err() != nil && app.endsOnInterrupt && err == nil:
@@ -355,7 +356,7 @@ func (app *App) Run(args []string) int {
 		return exitBusy
 	case errors.As(err, &refusal):
 		return exitRefused
-	case errors.As(err, &match):
+	case errors.As(err, &match), errors.As(err, &missed):
 		return exitNoMatch
 	}
 	return exitFailed

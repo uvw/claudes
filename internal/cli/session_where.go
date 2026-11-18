@@ -43,7 +43,7 @@ is exactly a name picks the newest session with that name.`,
 				for i, p := range picked {
 					names[i] = shell.Printable(p.Label()) + " (" + p.ShortID + ")"
 				}
-				return fmt.Errorf("%d sessions match: %s. Name one", len(picked), strings.Join(names, ", "))
+				return noMatch{fmt.Errorf("%d sessions match: %s. Name one", len(picked), strings.Join(names, ", "))}
 			}
 			if out.format != "text" {
 				return out.encode(app.Out, picked)
