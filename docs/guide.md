@@ -119,7 +119,9 @@ claudes is built to restart and stop sessions without losing work:
 
 1. **Pins protect sessions.** Pins are agent view's own (Ctrl+T, stored in
    `~/.claude/jobs/pins.json`). Bulk `restart`, `pause`, and `gc` skip pinned
-   sessions; name one to include it, or add `--pinned` to take them all.
+   sessions; add `--pinned` to take them all. Named sessions replace the bulk
+   selection, so to include one pinned session, name it and every other session
+   you want.
 2. **Mid-turn work isn't dropped silently.** A session that is busy, waiting on
    a question, or running a shell task comes back idle after a restart. `--ping`
    stops it and resumes it with a prompt instead, and `--wait` waits for busy
@@ -138,10 +140,10 @@ claudes is built to restart and stop sessions without losing work:
    everything else is printed, because stopping it ends the command.
 7. **Agent teams stay intact.** Stopping a session that leads an agent team also
    stops its teammates, and in-process teammates cannot be resumed. So bulk
-   `restart` and `pause` leave such a lead alone. Named, it goes ahead: the
-   plan, `stop`, and `ping` name the teammates that stop with it, and a pinged
-   lead can start them again. Check the `AGENTS` column of `claudes ls` before
-   you `stop` or `ping` one.
+   `restart` and `pause` leave such a lead alone. Named, with every other
+   session you want, it goes ahead: the plan, `stop`, and `ping` name the
+   teammates that stop with it, and a pinged lead can start them again. Check
+   the `AGENTS` column of `claudes ls` before you `stop` or `ping` one.
 8. **Ctrl-C is graceful.** The first one finishes the session in hand, leaves
    the rest untouched, and lists them. A second one ends claudes at once.
 9. **Unfamiliar data stops it.** See
@@ -254,6 +256,9 @@ It refuses:
 3. When `DIR` already holds a copy, which may have newer work.
 4. When recent sessions live in project directories claudes would not name that
    way, so it would copy to the wrong one. `--force` goes ahead.
+5. When `claude agents` lists something claudes does not recognize, before it
+   removes a job (see [Compatibility](reference.md#compatibility)). `--force`
+   goes ahead, and also lets `session resume --bg` start one.
 
 `--resume` (`-r`) resumes the copy at once, and `--rm` deletes the original once
 every file of the copy matches it byte for byte. `--rm` refuses the session
@@ -269,7 +274,8 @@ session in the old directory. The next `session resume --bg` starts a new job in
 1. The job is not stopped, such as one that started again after claudes listed
    it.
 2. The session is paused, since `claudes resume` wakes it where it was paused.
-3. claudes cannot read the job's saved options.
+3. claudes cannot read the job's saved options, such as a `state.json` without
+   its `respawnFlags`.
 
 Until such a job is gone, `session resume --bg` refuses the session and prints
 the `claudes gc` command that removes the job.

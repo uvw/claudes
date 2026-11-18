@@ -72,7 +72,7 @@ Exits 1 when a check fails.`,
 	}
 	cmd.Flags().BoolVar(&cliOnly, "cli-only", false, "check only claude's version and command line, without listing sessions")
 	cmd.Flags().BoolVar(&strict, "strict", false, "fail on warnings too")
-	out.add(cmd, "")
+	out.add(cmd, app.Config.Output.Format)
 	cmd.AddCommand(app.doctorEnvCommand())
 	return cmd
 }

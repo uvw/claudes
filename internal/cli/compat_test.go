@@ -247,6 +247,29 @@ func TestBulkCommandsRefuseAMissingJobsFolder(t *testing.T) {
 	h.ok(t, "restart", "--force")
 }
 
+// session mv removes a stopped job, and session resume --bg starts one, so
+// both check what claude agents listed first.
+func TestSessionMvAndResumeBgRefuseAListTheyDoNotRecognize(t *testing.T) {
+	h := newHarness(t)
+	s := h.stoppedJob(t, "plan", "--model", "m")
+	h.agents.snapshots = [][]claude.Session{{h.bg("odd", "thinking")}}
+
+	h.fails(t, "session", "mv", "plan", h.folder("to"))
+	assertContains(t, h.err.String(), `odd has status "thinking"`)
+	assertCalls(t, h)
+	h.err.Reset()
+	h.fails(t, "session", "resume", "--bg", "plan")
+	assertContains(t, h.err.String(), `odd has status "thinking"`)
+	assertCalls(t, h)
+
+	h.ok(t, "session", "mv", "--force", "plan", h.folder("to"))
+	assertCalls(t, h, "rm "+s.JobID)
+	h.agents.calls = nil
+	h.err.Reset()
+	h.ok(t, "session", "resume", "--bg", "--force", "plan")
+	assertContains(t, h.err.String(), "going ahead with --force")
+}
+
 func TestARunningSessionWithoutAStatusIsRefused(t *testing.T) {
 	h := newHarness(t)
 	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "")}}

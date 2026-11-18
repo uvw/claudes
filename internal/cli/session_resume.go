@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/spf13/cobra"
 
@@ -47,6 +48,7 @@ job's options, such as --model.`,
 		},
 	}
 	cmd.Flags().BoolVarP(&bg, "bg", "b", false, "resume in the background, as claude --bg does")
+	app.addForce(cmd, "with --bg, resume although claude agents lists something claudes does not recognize")
 	return cmd
 }
 
@@ -92,17 +94,27 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 // from claude agents and then a state.json under the session's short id.
 // Passing options to a job that exists starts a copy, so either one counts.
 func (app *App) findJob(ctx context.Context, sessionID string) (string, bool, error) {
-	sessions, err := app.Agents.Sessions(ctx, true)
-	if err != nil {
-		return "", false, err
-	}
-	for _, s := range sessions {
-		if s.SessionID == sessionID && s.JobID != "" {
-			return s.JobID, true, nil
-		}
+	s, found, err := app.listedJob(ctx, sessionID)
+	if err != nil || found {
+		return s.JobID, found, err
 	}
 	job := claude.ShortID(sessionID)
 	return job, app.Jobs.Has(job, sessionID), nil
+}
+
+// listedJob is the session claude agents lists with sessionID and a job id,
+// and whether there is one. It lists through app.listed, so a list claudes
+// does not recognize stops the command before it starts or removes a job.
+func (app *App) listedJob(ctx context.Context, sessionID string) (claude.Session, bool, error) {
+	sessions, err := app.listed(ctx, true)
+	if err != nil {
+		return claude.Session{}, false, err
+	}
+	i := slices.IndexFunc(sessions, func(s claude.Session) bool { return s.SessionID == sessionID && s.JobID != "" })
+	if i < 0 {
+		return claude.Session{}, false, nil
+	}
+	return sessions[i], true, nil
 }
 
 // sameFolder reports whether a and b name the same directory, which on Windows

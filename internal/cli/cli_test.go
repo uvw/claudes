@@ -611,7 +611,7 @@ func TestPinnedTakesPinnedSessionsInBulk(t *testing.T) {
 	h.pin(t, p)
 
 	h.ok(t, "restart")
-	assertContains(t, h.out.String(), "Name a session, or add --pinned, to include it.")
+	assertContains(t, h.out.String(), "Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.")
 
 	h.out.Reset()
 	h.agents.calls = nil
@@ -704,6 +704,22 @@ func TestRestartOutdatedOnlyTouchesOlderVersions(t *testing.T) {
 	h.ok(t, "restart", "--outdated")
 
 	assertCalls(t, h, "respawn "+old.JobID)
+}
+
+// --interactive cannot bring an interactive session into --outdated, so the
+// hint does not offer it.
+func TestRestartOutdatedDoesNotOfferInteractive(t *testing.T) {
+	h := newHarness(t)
+	old, term := h.bg("old", "idle"), h.tty("terminal", "idle")
+	h.agents.snapshots = [][]claude.Session{{old, term}}
+	writeState(t, h, old.JobID, "2.1.322")
+
+	h.ok(t, "restart", "--outdated", "--dry-run")
+	out := h.out.String()
+	assertContains(t, out, "Interactive sessions were left alone (--outdated never picks them).")
+	if strings.Contains(out, "--interactive stops them") {
+		t.Fatalf("--outdated offered --interactive:\n%s", out)
+	}
 }
 
 func TestRestartInteractiveStopsAndPrintsTheCommand(t *testing.T) {
@@ -1313,9 +1329,15 @@ func TestBulkCommandsLeaveALeadWithTeammatesAlone(t *testing.T) {
 	if strings.Contains(out, "  "+lead.JobID+"  ") {
 		t.Fatalf("the lead is in the plan:\n%s", out)
 	}
+	assertContains(t, out, "To include it anyway, name it with every other session you want.")
 	h.out.Reset()
 	h.ok(t, "pause", "--dry-run")
 	assertContains(t, h.out.String(), "Leading an agent team, not paused: lead")
+
+	// Naming the lead takes it alone, not the bulk selection plus the lead.
+	h.agents.calls = nil
+	h.ok(t, "restart", "lead")
+	assertCalls(t, h, "respawn "+lead.JobID)
 }
 
 func TestANamedLeadIsRestartedAndPingedWithAWarning(t *testing.T) {
@@ -1423,7 +1445,7 @@ func TestLogsShowsATeammateByLeadAndName(t *testing.T) {
 	if len(h.execs) != 0 {
 		t.Fatalf("handed off to claude logs: %q", h.execs)
 	}
-	h.fails(t, "logs", "lead/nobody")
+	h.exits(t, 2, "logs", "lead/nobody")
 	assertContains(t, h.err.String(), "teammates: tester")
 }
 

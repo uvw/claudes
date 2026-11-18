@@ -63,7 +63,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 	stamp := app.Now().UTC().Format(time.RFC3339)
 	added := make([]park.Entry, 0, len(sel.chosen))
 	for _, s := range sel.chosen {
-		added = append(added, park.FromSession(s, stamp))
+		added = append(added, park.FromSession(s, app.midTurn(s), stamp))
 	}
 	// The list goes to disk before anything stops, so a crash cannot lose it.
 	if err := app.Park.Update(func(existing []park.Entry) []park.Entry { return park.Merge(existing, added) }); err != nil {

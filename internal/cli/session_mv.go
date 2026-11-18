@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -147,15 +146,10 @@ type movingJob struct {
 // A paused one stays, since claudes resume wakes it where it was paused.
 func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movingJob, error) {
 	job := movingJob{options: p.JobOptions()}
-	sessions, err := app.Agents.Sessions(ctx, true)
-	if err != nil {
+	s, found, err := app.listedJob(ctx, p.SessionID)
+	if err != nil || !found {
 		return job, err
 	}
-	i := slices.IndexFunc(sessions, func(s claude.Session) bool { return s.SessionID == p.SessionID && s.JobID != "" })
-	if i < 0 {
-		return job, nil
-	}
-	s := sessions[i]
 	options, ok := app.Jobs.Options(s.JobID, s.SessionID)
 	if ok {
 		job.options = options

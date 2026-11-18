@@ -127,8 +127,11 @@ func TestSessionWhereOneRefusesSeveralSessions(t *testing.T) {
 	h.transcript(t, "alpha-one", h.folder("a"), time.Hour)
 	h.transcript(t, "alpha-two", h.folder("b"), time.Hour)
 
-	h.fails(t, "session", "where", "--one", "alpha")
+	h.exits(t, 2, "session", "where", "--one", "alpha")
 	assertContains(t, h.err.String(), "matches 2 sessions")
+	h.err.Reset()
+	h.exits(t, 2, "session", "where", "--one", "alpha-one", "alpha-two")
+	assertContains(t, h.err.String(), "2 sessions match")
 	h.err.Reset()
 	h.ok(t, "session", "where", "alpha")
 	assertContains(t, h.out.String(), "alpha-one")
@@ -433,12 +436,15 @@ func TestSessionMvLeavesAJobThatIsNotStoppedOrIsPaused(t *testing.T) {
 			s.PID, s.Status, s.State = 4242, "idle", "done"
 		}},
 		{"paused", "it is paused", func(h *harness, s *claude.Session) {
-			if err := h.app.Park.Save([]park.Entry{park.FromSession(*s, h.now.Format(time.RFC3339))}); err != nil {
+			if err := h.app.Park.Save([]park.Entry{park.FromSession(*s, false, h.now.Format(time.RFC3339))}); err != nil {
 				t.Fatal(err)
 			}
 		}},
 		{"unreadable", "claudes cannot read the options", func(h *harness, s *claude.Session) {
 			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), "{")
+		}},
+		{"no respawnFlags", "claudes cannot read the options", func(h *harness, s *claude.Session) {
+			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, s.SessionID, s.Cwd))
 		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {

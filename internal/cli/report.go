@@ -82,7 +82,7 @@ func (app *App) startReport(cmd *cobra.Command) {
 		return
 	}
 	app.rep = &report{
-		Command: cmd.Name(), Plan: []reportEntry{}, Results: []reportEntry{}, LeftOut: []reportEntry{},
+		Command: strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" "), Plan: []reportEntry{}, Results: []reportEntry{}, LeftOut: []reportEntry{},
 		Manual: []reportEntry{}, Failures: []reportEntry{}, NotReached: []reportEntry{}, Warnings: []string{},
 		format: outputFlag{format: f.Value.String()},
 	}

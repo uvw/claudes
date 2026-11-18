@@ -84,7 +84,7 @@ func TestGCTeamsKeepsAParkedSessionsTaskList(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{}}
 	h.agents.finished = []claude.Session{paused}
 	if err := h.app.Park.Update(func(e []park.Entry) []park.Entry {
-		return park.Merge(e, []park.Entry{park.FromSession(paused, h.now.Format(time.RFC3339))})
+		return park.Merge(e, []park.Entry{park.FromSession(paused, false, h.now.Format(time.RFC3339))})
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -257,4 +257,58 @@ func TestASlowStartIsNotReportedAsNotResumed(t *testing.T) {
 	if strings.Contains(msg, "not resumed") || strings.Contains(msg, "claude --resume") {
 		t.Fatalf("a resume that was issued is reported as not done:\n%s", msg)
 	}
+}
+
+// A pin protects a session's team and task list once the session has stopped,
+// whether or not claude agents still lists it, unless --pinned.
+func TestGCTeamsKeepsAStoppedPinnedSessionsTeam(t *testing.T) {
+	h := newHarness(t)
+	listed := stopped(h.bg("listed", ""))
+	unlisted := stopped(h.bg("unlisted", ""))
+	unlisted.JobID = unlisted.ShortID()
+	h.agents.snapshots = [][]claude.Session{{}}
+	h.agents.finished = []claude.Session{listed}
+	h.pin(t, listed, unlisted)
+	old := h.now.Add(-30 * 24 * time.Hour)
+	var paths []string
+	for _, s := range []claude.Session{listed, unlisted} {
+		paths = append(paths, filepath.Join(h.app.Teams.Teams, teams.Name(s.SessionID), "config.json"),
+			filepath.Join(h.app.Teams.Tasks, teams.Name(s.SessionID), "1.json"))
+	}
+	for _, p := range paths {
+		writeFile(t, p, "{}")
+		if err := os.Chtimes(p, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.ok(t, "gc", "--teams")
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("gc --teams removed a pinned session's %s: %v\n%s", p, err, h.out)
+		}
+	}
+	h.ok(t, "gc", "--teams", "--pinned")
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			t.Fatalf("gc --teams --pinned kept %s", p)
+		}
+	}
+}
+
+// A lead whose teammates are at work is mid-turn though its own status is
+// idle, so pausing it marks it for resume --ping, as restart --ping would.
+func TestAPausedLeadIsPingedOnResume(t *testing.T) {
+	h := newHarness(t)
+	lead := h.bg("lead", "idle")
+	h.agents.snapshots = [][]claude.Session{{lead}, {}}
+	h.team(t, lead, "writer")
+
+	h.ok(t, "pause", "lead")
+	entries, err := h.app.Park.Load()
+	if err != nil || len(entries) != 1 || !entries[0].WasBusy {
+		t.Fatalf("entries %+v, err %v", entries, err)
+	}
+	h.agents.calls = nil
+	h.ok(t, "resume", "--ping")
+	assertCalls(t, h, "resume "+lead.SessionID+" in lead prompt="+defaultPing)
 }

@@ -69,7 +69,9 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			}
 			path, err := app.Transcripts.Find(s.SessionID, s.Cwd)
 			if ofTeammate && err == nil {
-				path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate)
+				if path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate); err != nil {
+					err = noMatch{err}
+				}
 			}
 			if err != nil {
 				return err

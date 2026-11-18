@@ -101,6 +101,32 @@ func TestPinReportsEachSession(t *testing.T) {
 	}
 }
 
+// claudes gc and claudes session gc both have the name gc, so a report names
+// its command by the path under claudes.
+func TestEveryReportNamesItsCommand(t *testing.T) {
+	for _, c := range []struct {
+		want string
+		args []string
+	}{
+		{"restart", []string{"restart", "--dry-run"}},
+		{"pause", []string{"pause", "--dry-run"}},
+		{"resume", []string{"resume"}},
+		{"ping", []string{"ping", "api", "go"}},
+		{"stop", []string{"stop", "api"}},
+		{"gc", []string{"gc", "--dry-run"}},
+		{"pin", []string{"pin", "api"}},
+		{"unpin", []string{"unpin", "api"}},
+		{"session gc", []string{"session", "gc", "--dry-run"}},
+	} {
+		h := newHarness(t)
+		h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+		h.run(append(c.args, "-o", "json")...)
+		if got := readReport(t, h).Command; got != c.want {
+			t.Errorf("claudes %s: command %q, want %q", strings.Join(c.args, " "), got, c.want)
+		}
+	}
+}
+
 func TestResultsCarryTheFolder(t *testing.T) {
 	h := newHarness(t)
 	s := h.bg("api", "idle")

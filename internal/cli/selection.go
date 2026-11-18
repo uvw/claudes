@@ -26,6 +26,8 @@ type selection struct {
 	// leads are sessions skipped because their agent team has teammates at
 	// work, which would stop with them and could not be resumed.
 	leads []claude.Session
+	// outdated is set by --outdated, which never picks interactive sessions.
+	outdated bool
 }
 
 // selectOpts are the flags that decide what selectSessions picks.
@@ -66,6 +68,7 @@ func (app *App) selectSessions(ctx context.Context, targets []string, opts selec
 		return selection{}, err
 	}
 	if opts.outdated {
+		sel.outdated = true
 		if err := app.keepOutdated(ctx, &sel); err != nil {
 			return selection{}, err
 		}
