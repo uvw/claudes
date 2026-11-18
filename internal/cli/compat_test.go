@@ -107,7 +107,7 @@ func TestDoctorWarnsWhenClaudeCodeMayWritePinsWithoutTheLock(t *testing.T) {
 		{`{"tengu_hover_rest":false}`, "ok      pins lock      Claude Code takes pins.json.lock"},
 		{`{"tengu_hover_rest":true}`, "warn    pins lock      tengu_hover_rest is on"},
 	} {
-		writeFile(t, h.app.ClaudeConfig, `{"cachedGrowthBookFeatures":`+tc.features+`}`)
+		writeFile(t, h.app.MCP.ConfigFile, `{"cachedGrowthBookFeatures":`+tc.features+`}`)
 		h.out.Reset()
 		h.run("doctor")
 		assertContains(t, h.out.String(), tc.want)

@@ -322,16 +322,15 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 	}
 	h := &harness{agents: &fakeAgents{snapshots: snapshots, jobsDir: filepath.Join(root, "jobs")}, out: &cutWriter{}, err: &cutWriter{}, root: root, now: start}
 	h.app = &App{
-		Agents:       h.agents,
-		Jobs:         jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
-		Park:         park.File{Path: filepath.Join(h.root, "state", "parked.json")},
-		LockPath:     filepath.Join(h.root, "state", "run.lock"),
-		ClaudeConfig: filepath.Join(h.root, ".claude.json"),
-		MCP:          mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
-		Out:          h.out,
-		Err:          h.err,
-		In:           strings.NewReader(""),
-		Now:          func() time.Time { return h.now },
+		Agents:   h.agents,
+		Jobs:     jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
+		Park:     park.File{Path: filepath.Join(h.root, "state", "parked.json")},
+		LockPath: filepath.Join(h.root, "state", "run.lock"),
+		MCP:      mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
+		Out:      h.out,
+		Err:      h.err,
+		In:       strings.NewReader(""),
+		Now:      func() time.Time { return h.now },
 		Sleep: func(_ context.Context, d time.Duration) error {
 			h.sleeps = append(h.sleeps, d)
 			h.now = h.now.Add(d)

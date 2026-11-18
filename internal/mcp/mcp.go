@@ -1,6 +1,8 @@
 // Package mcp reads which MCP servers Claude Code gives a directory, and
 // whether each is on. It reads ~/.claude.json, the settings files, .mcp.json
-// files, installed plugins, and the managed file, and writes none of them.
+// files, installed plugins, and the managed file, and writes none of them. It
+// is the one reader of ~/.claude.json, so it also reads the feature flags
+// Claude Code caches there.
 //
 // A server's command, arguments, environment, headers, and URL can carry
 // tokens, so this package keeps only each server's name and kind.
@@ -196,6 +198,26 @@ func (r *reader) object(path string) map[string]json.RawMessage {
 		return nil
 	}
 	return m
+}
+
+// Feature reads a flag from the features Claude Code caches in ~/.claude.json.
+// found is false when the file or the flag is missing. Any value but false or
+// null counts as on.
+func (s Store) Feature(flag string) (on, found bool, err error) {
+	var r reader
+	features := objectOf(r.object(s.ConfigFile)["cachedGrowthBookFeatures"])
+	if len(r.problems) > 0 {
+		return false, false, r.problems[0]
+	}
+	value, found := features[flag]
+	if !found {
+		return false, false, nil
+	}
+	switch string(value) {
+	case "false", "null":
+		return false, true, nil
+	}
+	return true, true, nil
 }
 
 // claudeConfig is ~/.claude.json.

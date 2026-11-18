@@ -429,3 +429,41 @@ func TestDefaultStoreFollowsClaudeConfigDir(t *testing.T) {
 		t.Fatal("accepted a relative CLAUDE_CONFIG_DIR")
 	}
 }
+
+func TestFeatureReadsTheFlagsClaudeCodeCaches(t *testing.T) {
+	dir := t.TempDir()
+	st := Store{ConfigFile: filepath.Join(dir, ".claude.json")}
+	write := func(body string) {
+		if err := os.WriteFile(st.ConfigFile, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const flag = "tengu_hover_rest"
+	for _, tc := range []struct {
+		body      string
+		on, found bool
+	}{
+		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":false}}`, false, true},
+		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":true}}`, true, true},
+		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":{"variant":"a"}}}`, true, true},
+		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":null}}`, false, true},
+		{`{"cachedGrowthBookFeatures":{"other":true}}`, false, false},
+		{`{"numStartups":3}`, false, false},
+	} {
+		write(tc.body)
+		on, found, err := st.Feature(flag)
+		if err != nil || on != tc.on || found != tc.found {
+			t.Errorf("%s: on %v, found %v, err %v", tc.body, on, found, err)
+		}
+	}
+	if _, found, err := (Store{ConfigFile: filepath.Join(dir, "missing.json")}).Feature(flag); found || err != nil {
+		t.Errorf("a missing file: found %v, err %v", found, err)
+	}
+	if _, found, err := (Store{}).Feature(flag); found || err != nil {
+		t.Errorf("no file: found %v, err %v", found, err)
+	}
+	write("not json")
+	if _, _, err := st.Feature(flag); err == nil {
+		t.Error("a file that is not JSON gave no error")
+	}
+}

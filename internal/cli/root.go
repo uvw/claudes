@@ -89,10 +89,8 @@ type App struct {
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
-	// ClaudeConfig is Claude Code's settings file, ~/.claude.json, which
-	// claudes only reads, for the flags doctor reports.
-	ClaudeConfig string
-	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads.
+	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads, and
+	// the one reader of ~/.claude.json, whose feature flags doctor reports.
 	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
@@ -202,7 +200,6 @@ func newApp() *App {
 	// A missing Claude Code directory is setupErr's to report, through Jobs.
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
-	app.ClaudeConfig, _ = paths.ClaudeConfigFile()
 	app.MCP, _ = mcp.DefaultStore()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()

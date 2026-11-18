@@ -29,7 +29,7 @@ func (h *harness) mcpServers(t *testing.T, dir string, project map[string]any) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFile(t, h.app.ClaudeConfig, string(data))
+	writeFile(t, h.app.MCP.ConfigFile, string(data))
 }
 
 func noSecrets(t *testing.T, text string) {
@@ -107,7 +107,7 @@ func TestMCPLsPrintsNoSecretOnStderr(t *testing.T) {
 	for _, broken := range []struct{ path, body string }{
 		{filepath.Join(dir, ".mcp.json"), `{"mcpServers": {"repo-tool": {"command": "/bin/sk-command-secret", "env": {"KEY": "sk-env-secret"}`},
 		{filepath.Join(dir, ".mcp.json"), `{"mcpServers": {"repo-tool": {"args": ["sk-arg-secret"], "url": sk-url-secret}}}`},
-		{h.app.ClaudeConfig, `{"mcpServers": {"browser": {"headers": {"Authorization": "sk-header-secret"}}} sk-env-secret}`},
+		{h.app.MCP.ConfigFile, `{"mcpServers": {"browser": {"headers": {"Authorization": "sk-header-secret"}}} sk-env-secret}`},
 	} {
 		writeFile(t, broken.path, broken.body)
 		for _, format := range []string{"text", "json"} {
