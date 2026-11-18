@@ -15,6 +15,7 @@ func (app *App) sessionLsCommand() *cobra.Command {
 	sortBy := choiceFlag{value: "active", of: []string{"active", "size"}}
 	var since days
 	var out outputFlag
+	var wide bool
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
 		Aliases: []string{"list"},
@@ -45,14 +46,21 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 				fmt.Fprintln(app.Out, "No sessions.")
 				return nil
 			}
-			table := [][]string{{"ID", "RUNNING", "ACTIVE", "SIZE", "BRANCH", "DIR", "NAME"}}
+			header := []string{"ID", "RUNNING", "ACTIVE", "SIZE"}
+			if wide {
+				header = append(header, "BRANCH")
+			}
+			table := [][]string{append(header, "DIR", "NAME")}
 			for _, p := range list {
 				running := "-"
 				if p.Running {
 					running = app.colors.Green("yes")
 				}
-				table = append(table, []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total),
-					branchCell(p.Branch), dirCell(p.Cwd), nameCell(p.Label())})
+				cells := []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total)}
+				if wide {
+					cells = append(cells, branchCell(p.Branch))
+				}
+				table = append(table, append(cells, dirCell(p.Cwd), nameCell(p.Label())))
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -62,6 +70,7 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions(sortBy.of, cobra.ShellCompDirectiveNoFileComp))
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
+	cmd.Flags().BoolVar(&wide, "wide", false, "add the git branch each session ran in")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }

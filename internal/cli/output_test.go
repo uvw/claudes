@@ -267,7 +267,7 @@ func must[T any](v T, err error) T {
 var tableCommands = [][]string{
 	{"ls"}, {"ls", "--wide"}, {"where", "deep*"}, {"team", "ls"},
 	{"restart", "--dry-run", "deep-b"}, {"gc", "--teams", "--dry-run"},
-	{"session", "ls"}, {"session", "where", "deep*"}, {"session", "du"}, {"session", "du", "--top", "3"},
+	{"session", "ls"}, {"session", "ls", "--wide"}, {"session", "where", "deep*"}, {"session", "du"}, {"session", "du", "--top", "3"},
 	{"session", "search", "greenhouse"}, {"session", "triage"}, {"session", "gc", "--trivial", "--dry-run"},
 	{"mcp", "ls", "--in"},
 }
@@ -342,7 +342,7 @@ func TestDirectoriesFitTheTerminal(t *testing.T) {
 	}
 }
 
-func TestSessionLsFitsALongBranchAndNameToTheTerminal(t *testing.T) {
+func TestSessionLsShowsABranchOnlyWithWideAndFitsIt(t *testing.T) {
 	h, deep, _ := deepHarness(t)
 	branch, name := "feat/ledger-rounding-for-every-currency", "reconcile the ledger totals for each month"[:maxName]
 	h.said(t, name, deep, time.Hour, fmt.Sprintf(`{"type":"user","gitBranch":%q,"message":{"content":"go"}}`, branch))
@@ -357,12 +357,21 @@ func TestSessionLsFitsALongBranchAndNameToTheTerminal(t *testing.T) {
 	}
 
 	out := runTable(t, h, deep, []string{"session", "ls"})
+	if strings.Contains(out, branchHeader) || strings.Contains(out, "ledger-rounding") {
+		t.Errorf("without --wide: a BRANCH column:\n%s", out)
+	}
+	for _, format := range []string{"json", "yaml"} {
+		if out := runTable(t, h, deep, []string{"session", "ls", "-o", format}); !strings.Contains(out, branch) {
+			t.Errorf("-o %s: no whole branch:\n%s", format, out)
+		}
+	}
+	out = runTable(t, h, deep, []string{"session", "ls", "--wide"})
 	if b, n := cells(out); b != style.Branch(branch, maxBranch) || n != name {
 		t.Errorf("off a terminal: BRANCH %q and NAME %q, want %q and the whole name:\n%s", b, n, style.Branch(branch, maxBranch), out)
 	}
 	for _, width := range []int{90, 100, 120} {
 		h.app.Width = func() int { return width }
-		out := runTable(t, h, deep, []string{"session", "ls"})
+		out := runTable(t, h, deep, []string{"session", "ls", "--wide"})
 		for line := range strings.Lines(out) {
 			if w := style.Width(strings.TrimRight(line, "\n")); w > width {
 				t.Errorf("width %d: a line of %d columns:\n%s", width, w, out)
