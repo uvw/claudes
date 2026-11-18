@@ -520,7 +520,7 @@ and leftover directories; `--trivial`, `--gone`, and `--older-than` are opt-in.
 An empty session holds only record types claudes knows to be bookkeeping, with
 no message and no line that fails to parse. A trivial session changed no file,
 made no tool call, was not named with `/rename` or started by an agent team, and
-either only ran slash commands or got one prompt; a record type claudes does not
+either only ran slash commands or got one prompt. A record type claudes does not
 know, or a line that fails to parse, makes a session neither empty nor trivial.
 `--sidecars` keeps each session and trims its sidecar directory: the command
 outputs saved under `tool-results`, and with `--older-than` the subagent
