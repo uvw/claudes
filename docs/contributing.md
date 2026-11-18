@@ -86,7 +86,8 @@ Update a doc in the same change as the code it describes.
 
 The README opens with `docs/demo/demo.gif`. When a command it shows changes its
 output, run `hack/demo.sh`, which needs Docker, to render it again from
-`docs/demo/demo.tape`.
+`docs/demo/demo.tape`. It runs against the made-up sessions and transcripts
+`docs/demo/setup.sh` makes, so a new scene that needs more adds them there.
 
 Say "directory", "dir" in column headers and placeholders such as `DIR`, or
 "path" for a full path, in docs, help, messages, and code comments alike. Never

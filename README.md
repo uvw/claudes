@@ -7,9 +7,11 @@ Code updates, and every one of them stays on yesterday's version. You reboot,
 and they all die mid-thought. claudes restarts or parks them in one command,
 skips the pinned ones, and nudges any caught mid-turn to carry on.
 
-![claudes listing sessions, restarting and pinging the busy ones while the
-pinned one stays put, pausing and resuming them, then sizing and cleaning up
-past sessions](docs/demo/demo.gif)
+![claudes marking outdated sessions (old), restarting them and pinging the busy
+one while the pinned one stays put, pausing and resuming sessions, searching
+past sessions for a lock race, listing running sessions and those stopped today,
+sorting past sessions with triage, and previewing a session gc
+cleanup](docs/demo/demo.gif)
 
 ## Use cases
 
