@@ -112,7 +112,8 @@ flag.
 
 By default, `restart` and `pause` act at once on every running background
 session that isn't pinned. Waiting for busy sessions (`--wait`), asking first
-(`--confirm`), and showing the plan only (`--dry-run`) are flags.
+(`--confirm`), and showing the plan only (`--dry-run`) are flags. `gc` and
+`session gc` take `--confirm` and `--dry-run` too.
 
 Why: claudes is an emergency tool, used when Claude Code has to restart now.
 Default prompts and waits slow down the case it exists for.

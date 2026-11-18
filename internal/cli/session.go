@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -11,6 +13,16 @@ import (
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
 )
+
+// sessionRef is how the JSON of session du and session triage names a session.
+type sessionRef struct {
+	ID        string `json:"id"`
+	SessionID string `json:"sessionId"`
+	Name      string `json:"name"`
+}
+
+// Label is the session's name, or its short id when it has none.
+func (r sessionRef) Label() string { return cmp.Or(r.Name, r.ID) }
 
 // pastSession is a session as claudes session shows it: what its transcript
 // says, and whether it runs now.
@@ -34,6 +46,10 @@ func readActivity(p *pastSession, force bool) {
 	if a, err := transcripts.ReadActivity(p.Path); err == nil {
 		p.Activity = &a
 	}
+}
+
+func refOf(p pastSession) sessionRef {
+	return sessionRef{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name}
 }
 
 func (app *App) sessionCommand() *cobra.Command {
@@ -80,7 +96,7 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 			p.Running = true
 			// claude agents names an unnamed session by its job id.
 			if s.Name != s.JobID && s.Name != "" && s.Name != p.Name {
-				p.Name, p.NameSource = s.Name, "agent"
+				p.Name, p.NameSource = s.Name, transcripts.NameAgent
 			}
 		}
 		out = append(out, p)
@@ -152,14 +168,33 @@ func sameName(list []pastSession) bool {
 	return true
 }
 
-// ago is how long ago t was, such as "3d ago", or "now", or "unknown".
-func ago(now, t time.Time) string {
-	switch a := age(now, t); a {
-	case "now":
-		return a
-	case "-":
-		return "unknown"
-	default:
-		return a + " ago"
+func (app *App) filterPast(list []pastSession, targets []string, in string, since time.Duration) ([]pastSession, error) {
+	if len(targets) > 0 {
+		var err error
+		if list, err = listMatch(app, targets, list); err != nil {
+			return nil, err
+		}
 	}
+	var root string
+	if in != "" {
+		var err error
+		if root, err = filepath.Abs(in); err != nil {
+			return nil, err
+		}
+		// Sessions record the real directory, so a link in --in is followed.
+		if real, err := filepath.EvalSymlinks(root); err == nil {
+			root = real
+		}
+	}
+	out := list[:0]
+	for _, p := range list {
+		if root != "" && !within(p.Cwd, root) && !within(resolved(p.Cwd), root) {
+			continue
+		}
+		if since > 0 && app.Now().Sub(p.LastActive) > since {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out, nil
 }

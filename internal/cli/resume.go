@@ -64,7 +64,7 @@ func (app *App) forget(targets []string, dryRun bool) error {
 			app.say("Would drop from the park list: %s", e.Label())
 			app.record(func(r *report) { r.Plan = append(r.Plan, entryOf(e)) })
 		}
-		app.say("\nDry run: nothing was changed.")
+		app.dryRunDone()
 		return nil
 	}
 	var dropped []park.Entry
@@ -188,7 +188,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		app.say("Skipped, still parked: %s", labels(skippedHere))
 	}
 	if len(todo) > 0 || f.dryRun {
-		if proceed, err := app.gate(f, "Resume these sessions?"); !proceed {
+		if proceed, err := app.gate(f.planFlags, "Resume these sessions?"); !proceed {
 			return err
 		}
 	}

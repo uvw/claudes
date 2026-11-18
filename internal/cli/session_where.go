@@ -48,11 +48,11 @@ is exactly a name picks the newest session with that name.`,
 			if out.format != "text" {
 				return out.encode(app.Out, picked)
 			}
-			folders := make([][3]string, len(picked))
+			found := make([][3]string, len(picked))
 			for i, p := range picked {
-				folders[i] = [3]string{p.Label(), p.ShortID, p.Cwd}
+				found[i] = [3]string{p.Label(), p.ShortID, p.Cwd}
 			}
-			return app.printFolders(folders)
+			return app.printDirs(found)
 		},
 	}
 	cmd.Flags().BoolVar(&one, "one", false, "fail unless exactly one session matches")

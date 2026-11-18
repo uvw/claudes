@@ -61,20 +61,6 @@ func (app *App) refuse(source string, problems []string) error {
 		"Claude Code may have changed. Run claudes doctor, or pass --force to go ahead anyway", source, list))
 }
 
-// refusal is a safety or compatibility check that stopped a command before it
-// changed anything.
-type refusal struct{ error }
-
-func (r refusal) Unwrap() error { return r.error }
-
-func refused(err error) error { return refusal{err} }
-
-// noMatch is a target that names nothing, or several where one is needed,
-// found outside internal/target.
-type noMatch struct{ error }
-
-func (n noMatch) Unwrap() error { return n.error }
-
 func (app *App) warnVersion(ctx context.Context) {
 	if app.versionChecked {
 		return
@@ -87,24 +73,4 @@ func (app *App) warnVersion(ctx context.Context) {
 	if w := compat.Tested.CheckVersion(installed); w != "" {
 		app.warn("claudes: %s. Run claudes doctor if anything goes wrong.", w)
 	}
-}
-
-// installedVersion is `claude --version`, cached in CacheDir.
-func (app *App) installedVersion(ctx context.Context) (string, error) {
-	binary := app.claudePath()
-	return compat.CachedVersion(app.CacheDir, binary, app.Now(), func() (string, error) {
-		return app.Agents.Version(ctx)
-	})
-}
-
-// claudePath is where claude is on PATH, or "" when it is not found.
-func (app *App) claudePath() string {
-	if app.Which == nil {
-		return ""
-	}
-	path, err := app.Which("claude")
-	if err != nil {
-		return ""
-	}
-	return path
 }

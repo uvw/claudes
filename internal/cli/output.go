@@ -139,3 +139,17 @@ func homeShort(path string) string {
 	}
 	return "~" + string(filepath.Separator) + rel
 }
+
+// printDirs prints one directory bare, so cd "$(claudes where NAME)" works, or
+// several as name, id, and directory, so sessions that share a name stay apart.
+func (app *App) printDirs(found [][3]string) error {
+	if len(found) == 1 {
+		_, err := fmt.Fprintln(app.Out, shell.Printable(found[0][2]))
+		return err
+	}
+	table := make([][]string, 0, len(found))
+	for _, f := range found {
+		table = append(table, []string{shell.Printable(f[0]), f[1], dirCell(f[2])})
+	}
+	return app.writeTable(app.Out, table, tableFit{})
+}

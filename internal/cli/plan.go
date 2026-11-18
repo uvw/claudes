@@ -15,14 +15,6 @@ type planRow struct {
 	size string
 }
 
-// maxName is the most characters of a name a table shows. Claude Code's own
-// titles for sessions run past 60.
-const maxName = 40
-
-// nameCell is a name as a table shows it: printable, on one line, and cut to
-// maxName characters.
-func nameCell(name string) string { return firstLine(shell.Printable(name), maxName) }
-
 // printPlan prints the sessions a command is about to act on, with their
 // status.
 func (app *App) printPlan(heading string, rows []planRow) {
@@ -71,9 +63,9 @@ func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 // gate ends a dry run once its plan is printed, and asks before going ahead
 // with --confirm. proceed is false when the command should stop; err is
 // errReported when the user said no.
-func (app *App) gate(f *lifecycleFlags, question string) (proceed bool, err error) {
+func (app *App) gate(f planFlags, question string) (proceed bool, err error) {
 	if f.dryRun {
-		app.say("\nDry run: nothing was changed.")
+		app.dryRunDone()
 		return false, nil
 	}
 	if f.confirm && !app.confirmed("\n"+question) {
@@ -82,6 +74,9 @@ func (app *App) gate(f *lifecycleFlags, question string) (proceed bool, err erro
 	}
 	return true, nil
 }
+
+// dryRunDone ends a dry run's output.
+func (app *App) dryRunDone() { app.say("\nDry run: nothing was changed.") }
 
 // progress prints what happened to one session, in a column every command
 // shares. note follows the name, such as " and pinged".
