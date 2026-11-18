@@ -307,7 +307,9 @@ func TestJSONAndKeyValueOutputKeepTheWholeDirectory(t *testing.T) {
 		{"ls", "-o", "json"}, {"where", "deep-a"}, {"session", "where", "deep-a"},
 		{"session", "ls", "-o", "yaml"}, {"session", "show", "deep-a"},
 	} {
-		if out := runTable(t, h, deep, args); !strings.Contains(out, deep) {
+		// JSON writes each backslash of a Windows path as two.
+		escaped := strings.Trim(string(must(json.Marshal(deep))), `"`)
+		if out := runTable(t, h, deep, args); !strings.Contains(out, deep) && !strings.Contains(out, escaped) {
 			t.Errorf("%v: want the whole directory %s:\n%s", args, deep, out)
 		}
 	}
