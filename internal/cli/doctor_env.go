@@ -12,6 +12,7 @@ import (
 
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/version"
 )
 
 // envVars are the variables that change where claudes looks or how it runs.
@@ -70,7 +71,7 @@ a bug report.`,
 func (app *App) environment(ctx context.Context) []envSection {
 	exe, _ := os.Executable()
 	claudes := envSection{"claudes", [][2]string{
-		{"version", buildVersion()},
+		{"version", version.Build()},
 		{"executable", exe},
 		{"platform", runtime.GOOS + "/" + runtime.GOARCH},
 		{"go", runtime.Version()},

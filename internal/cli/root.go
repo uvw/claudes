@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -16,29 +15,8 @@ import (
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/version"
 )
-
-// Version and Commit are set at build time with -ldflags
-// "-X github.com/uvw/claudes/internal/cli.Version=...".
-var (
-	Version = "dev"
-	Commit  = ""
-)
-
-// buildVersion prefers the ldflags values, then the module version go install
-// records.
-func buildVersion() string {
-	if Version != "dev" {
-		if Commit != "" {
-			return Version + " (" + Commit + ")"
-		}
-		return Version
-	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		return info.Main.Version
-	}
-	return Version
-}
 
 // Main runs claudes and returns its exit code.
 func Main(args []string) int { return newApp().Run(args) }
@@ -179,7 +157,7 @@ ARGS starts with a claudes command.
 
 Bulk commands leave pinned sessions alone unless you name them. Pins are the
 same as Ctrl+T in agent view.`,
-		Version:       buildVersion(),
+		Version:       version.Build(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {

@@ -83,18 +83,6 @@ func TestSafetyRefusalsExitFour(t *testing.T) {
 	}
 }
 
-func TestBuildVersionPrefersTheReleaseVersion(t *testing.T) {
-	defer func(v, c string) { Version, Commit = v, c }(Version, Commit)
-	Version, Commit = "0.3.0", "abc1234"
-	if got := buildVersion(); got != "0.3.0 (abc1234)" {
-		t.Fatalf("got %q", got)
-	}
-	Commit = ""
-	if got := buildVersion(); got != "0.3.0" {
-		t.Fatalf("got %q", got)
-	}
-}
-
 // maxHelpWidth is the widest line help may print, so it reads in an
 // 80-column terminal without wrapping.
 const maxHelpWidth = 80
@@ -130,8 +118,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // command's.
 var notYetMoved = []string{
 	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
-	"dirs.go", "version.go",
-}
+	"dirs.go", }
 
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
@@ -267,7 +254,7 @@ var plumbingTypes = map[string]string{
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
 var notYetHelpers = []string{
-	"activity", "age", "ago", "branchCell", "buildVersion", "checkFail",
+	"activity", "age", "ago", "branchCell", "checkFail",
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
 	"dash", "describeForCompletion", "dirCell", "dirGone", "doing", "duRow",
 	"duTally", "duTop", "editFile", "entryOf", "firstLine",
@@ -332,9 +319,8 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.claudePath", "App.gcKeep", "App.gcPick", "App.ghProvenance",
-	"App.installedVersion", "App.remover", "App.sessionVersion",
-}
+	"App.gcKeep", "App.gcPick", "App.ghProvenance",
+	"App.remover", }
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.

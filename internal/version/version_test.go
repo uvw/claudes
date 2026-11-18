@@ -30,3 +30,19 @@ func TestCompareAndMinor(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildPrefersTheReleaseVersion(t *testing.T) {
+	defer func(v, c string) { Version, Commit = v, c }(Version, Commit)
+	Version, Commit = "0.3.0", "abc1234"
+	if got := Build(); got != "0.3.0 (abc1234)" {
+		t.Fatalf("got %q", got)
+	}
+	Commit = ""
+	if got := Build(); got != "0.3.0" {
+		t.Fatalf("got %q", got)
+	}
+	Version = "dev"
+	if got := Build(); got == "" {
+		t.Fatal("a source build has no version")
+	}
+}

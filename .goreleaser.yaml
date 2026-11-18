@@ -15,7 +15,7 @@ builds:
     # The commit's time, not the build's, so two builds of a tag match.
     mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
-      - -s -w -X github.com/uvw/claudes/internal/cli.Version={{.Version}} -X github.com/uvw/claudes/internal/cli.Commit={{.ShortCommit}}
+      - -s -w -X github.com/uvw/claudes/internal/version.Version={{.Version}} -X github.com/uvw/claudes/internal/version.Commit={{.ShortCommit}}
 
 archives:
   - formats: [tar.gz]

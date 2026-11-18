@@ -16,7 +16,7 @@ adds what an agent needs on top of them.
 | The run lock                              | `internal/lock`, `internal/cli/app_lock.go`                 |
 | The signals that end a run                | `internal/interrupt`                                        |
 | Error types and exit codes                | `internal/exit`                                             |
-| What the commands share                   | `internal/cli/app_*.go`, `{cells,dirs,version}.go`          |
+| What the commands share                   | `internal/cli/app_*.go`, `{cells,dirs}.go`                  |
 | Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
 | Which sessions a bulk command picks       | `internal/cli/app_selection.go`                             |
 | Stopping, parking, and relaunching        | `internal/cli/app_relaunch.go`                              |
@@ -25,7 +25,8 @@ adds what an agent needs on top of them.
 | gc                                        | `internal/cli/gc.go`                                        |
 | The calls to the `claude` command line    | `internal/claude/client.go`                                 |
 | Agent view's pins and per-job versions    | `internal/jobs/jobs.go`                                     |
-| The version a running session runs        | `internal/procs`, `internal/cli/version.go`                 |
+| The version a running session runs        | `internal/procs`, `internal/cli/app_compat.go`              |
+| Comparing versions, and claudes' own      | `internal/version`                                          |
 | The park file                             | `internal/park/park.go`                                     |
 | `config.yaml` and `claudes config`        | `internal/config`, `internal/cli/config*.go`                |
 | Compatibility checks and `claudes doctor` | `internal/compat`, `internal/cli/doctor.go`                 |

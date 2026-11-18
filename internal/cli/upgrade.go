@@ -63,7 +63,7 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 		app.say("This claudes came from %s", how)
 		return nil
 	}
-	if Version == "dev" {
+	if version.Version == "dev" {
 		app.say("This claudes was built from source, so upgrade it the same way:")
 		app.say("  go install github.com/uvw/claudes/cmd/claudes@latest")
 		return nil
@@ -74,16 +74,16 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 	if err != nil {
 		return err
 	}
-	newer := version.Compare(rel.Version, Version)
+	newer := version.Compare(rel.Version, version.Version)
 	switch {
 	case to == "" && newer <= 0:
-		app.say("claudes %s is the latest release.", Version)
+		app.say("claudes %s is the latest release.", version.Version)
 		return nil
 	case to != "" && newer == 0:
-		app.say("claudes %s is already installed.", Version)
+		app.say("claudes %s is already installed.", version.Version)
 		return nil
 	case check:
-		app.say("claudes %s is out; this is %s. Run claudes upgrade to install it.", rel.Version, Version)
+		app.say("claudes %s is out; this is %s. Run claudes upgrade to install it.", rel.Version, version.Version)
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 		}
 		return err
 	}
-	app.say("Upgraded claudes %s to %s, in %s", Version, rel.Version, exe)
+	app.say("Upgraded claudes %s to %s, in %s", version.Version, rel.Version, exe)
 	return nil
 }
 

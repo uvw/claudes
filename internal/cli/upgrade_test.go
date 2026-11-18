@@ -17,6 +17,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/uvw/claudes/internal/version"
 )
 
 // release serves a release of version for this computer, whose claudes binary
@@ -56,11 +58,11 @@ func (h *harness) release(t *testing.T, version string, body []byte) {
 }
 
 // installed puts a claudes binary of version at a path upgrade replaces.
-func (h *harness) installed(t *testing.T, version string) string {
+func (h *harness) installed(t *testing.T, release string) string {
 	t.Helper()
-	saved := Version
-	Version = version
-	t.Cleanup(func() { Version = saved })
+	saved := version.Version
+	version.Version = release
+	t.Cleanup(func() { version.Version = saved })
 	exe := filepath.Join(h.root, "bin", "claudes")
 	writeFile(t, exe, "old binary")
 	h.app.Executable = func() (string, error) { return exe, nil }
@@ -146,7 +148,7 @@ func TestUpgradeLeavesPackageManagersAndSourceBuildsAlone(t *testing.T) {
 		}
 	}
 
-	Version = "dev"
+	version.Version = "dev"
 	h.app.Executable = func() (string, error) { return filepath.Join(h.root, "bin", "claudes"), nil }
 	h.out.Reset()
 	h.ok(t, "upgrade")

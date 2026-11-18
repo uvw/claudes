@@ -61,7 +61,7 @@ var allowed = map[string][]string{
 }
 
 // notYetNamed are the packages AGENTS.md does not name yet.
-var notYetNamed = []string{"version"}
+var notYetNamed = []string{}
 
 // notYetRenamed are the package names that join two words, with the one word
 // each takes.
