@@ -58,7 +58,7 @@ and `lead+2, 3` for both. `-` means neither. `--wide` adds four columns:
   last, after `NAME`, and is cut to fit the terminal, or to 50 characters when
   the output goes elsewhere, so it never wraps.
 
-A long `DIR`, `NAME`, or `BRANCH` is shortened to fit too, as
+A long `DIR` or `NAME` is shortened to fit too, as
 [Table widths](reference.md#table-widths) describes, and `output.dirs` picks how
 a directory is shortened.
 
