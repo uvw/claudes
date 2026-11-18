@@ -18,7 +18,8 @@
    skill by `internal/install`. `internal/mcp` reads MCP configuration: the MCP
    keys of `~/.claude.json` and the settings files, `.mcp.json` files, plugins'
    MCP files, and `managed-mcp.json`. `internal/compat` reads the feature flags
-   in `~/.claude.json`, and nothing writes it.
+   in `~/.claude.json`. `internal/mcp` writes one thing in it, a directory's
+   `disabledMcpServers`, with a compare-and-swap, and nothing else writes it.
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with

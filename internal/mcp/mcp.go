@@ -1,6 +1,7 @@
 // Package mcp reads which MCP servers Claude Code gives a directory, and
 // whether each is on. It reads ~/.claude.json, the settings files, .mcp.json
-// files, installed plugins, and the managed file, and writes none of them.
+// files, installed plugins, and the managed file. The one thing it writes is
+// a directory's disabledMcpServers list in ~/.claude.json.
 //
 // A server's command, arguments, environment, headers, and URL can carry
 // tokens, so this package keeps only each server's name and kind.
@@ -195,28 +196,13 @@ func (r *reader) claudeJSON(path string) claudeConfig {
 	return claudeConfig{top: r.object(path)}
 }
 
-// project is the entry ~/.claude.json keeps for dir. Claude Code keys a
-// directory in a git repository by the repository's main worktree, and keys
-// any other directory by itself.
+// project is the entry ~/.claude.json keeps for dir.
 func (c claudeConfig) project(dir string) map[string]json.RawMessage {
-	projects := objectOf(c.top["projects"])
-	if len(projects) == 0 {
+	key, ok := c.projectKey(dir)
+	if !ok {
 		return nil
 	}
-	byDir := map[string]json.RawMessage{}
-	for key, raw := range projects {
-		byDir[configKey(key)] = raw
-	}
-	// Claude Code follows links before it looks for the repository.
-	if real, err := filepath.EvalSymlinks(dir); err == nil {
-		dir = real
-	}
-	for _, d := range []string{gitRoot(dir), dir} {
-		if raw, ok := byDir[configKey(d)]; ok && d != "" {
-			return objectOf(raw)
-		}
-	}
-	return nil
+	return objectOf(objectOf(c.top["projects"])[key])
 }
 
 // configKey is a directory as ~/.claude.json's projects name it, with forward
