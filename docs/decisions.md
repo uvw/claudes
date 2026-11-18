@@ -45,6 +45,7 @@ current.
 | [34](#34-mcp-control-never-prints-a-servers-secrets)                                  | MCP control never prints a server's secrets                                     |
 | [35](#35-claudes-reaches-into-a-running-session-through-a-mod)                        | claudes reaches into a running session through a mod                            |
 | [36](#36-claudes-writes-only-a-directorys-disabledmcpservers-with-a-compare-and-swap) | claudes writes only a directory's `disabledMcpServers`, with a compare-and-swap |
+| [37](#37-a-profile-launches-through-allowedmcpservers-matched-by-url-or-command)      | A profile launches through `allowedMcpServers`, matched by URL or command       |
 
 ## 1. Go, in one static binary
 
@@ -761,3 +762,27 @@ Weighed: decoding and encoding the whole file, which reorders keys and changes
 escapes; a lock file next to it, which Claude Code is not known to take; and
 writing while the session runs, which the session would ignore until it
 restarts.
+
+## 37. A profile launches through `allowedMcpServers`, matched by URL or command
+
+`claudes agents --profile NAME` writes an `allowedMcpServers` setting for the
+profile to `profiles/NAME.json` in claudes' state directory, readable only by
+the user, and runs `claude agents --settings` with that file. Each server
+claudes finds in the MCP configuration goes in by its `serverUrl`, or by its
+`serverCommand` with `${CLAUDE_PLUGIN_ROOT}` filled in. Any other goes in by its
+`serverName`. `claudes mcp use PROFILE TARGET` applies a profile to a session
+that already runs, through `mcp on` and `mcp off`.
+
+Why: an allowlist at launch gives agent view and every session it starts exactly
+the profile's servers, with no change to any directory's settings, and a
+respawned session keeps it. Claude Code matches a plugin's server only by its
+URL or command. A live test showed more: once the list holds one
+`serverCommand`, a stdio server named only by `serverName` is left out, so
+claudes uses commands and URLs wherever it can. A file keeps the servers' URLs
+and commands, which can carry tokens, out of the process list that
+`--settings JSON` would put them in.
+
+Weighed: a `deniedMcpServers` list of everything else, which lets in every
+server added later; names alone, which drop plugin servers and, beside one
+command, every stdio server; and turning servers off in each directory before
+launch, which changes settings other sessions share.

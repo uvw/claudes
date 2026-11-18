@@ -19,7 +19,7 @@ import (
 	"github.com/uvw/claudes/internal/target"
 )
 
-// The results of one server in mcp on and off.
+// The results of one server in mcp on, off, and use.
 const (
 	setDone      = "done"
 	setAlready   = "already"
@@ -31,7 +31,7 @@ const (
 	setUnchanged = "unchanged"
 )
 
-// The ways mcp on and off reach a session's servers.
+// The ways mcp on, off, and use reach a session's servers.
 const (
 	viaMod     = "mod"
 	viaRestart = "restart"
@@ -47,7 +47,7 @@ const (
 	settleWait = 3 * time.Second
 )
 
-// mcpChange is one server that mcp on or off acts on.
+// mcpChange is one server that mcp on, off, or use acts on.
 type mcpChange struct {
 	Name string `json:"name"`
 	// From is on or off, as disabledMcpServers has it before, and To is the
@@ -60,7 +60,7 @@ type mcpChange struct {
 	request mod.Request
 }
 
-// mcpSet is what mcp on and off print with -o json or yaml.
+// mcpSet is what mcp on, off, and use print with -o json or yaml.
 type mcpSet struct {
 	Command string `json:"command"`
 	Dir     string `json:"dir"`
@@ -74,7 +74,7 @@ type mcpSet struct {
 	Servers []mcpChange `json:"servers"`
 }
 
-// mcpSetFlags are the flags mcp on and off share.
+// mcpSetFlags are the flags mcp on, off, and use share.
 type mcpSetFlags struct {
 	in            string
 	restart       bool
@@ -109,7 +109,7 @@ func (f *mcpSetFlags) splitTarget(args []string) (patterns []string, tok string,
 	return args[:len(args)-1], args[len(args)-1], nil
 }
 
-// mcpSetCommand is mcp on or off.
+// mcpSetCommand is mcp on, off, or use.
 func (app *App) mcpSetCommand(verb string) *cobra.Command {
 	var f mcpSetFlags
 	var all bool
@@ -162,7 +162,7 @@ cut short. --in DIR writes the list of a directory where no session runs.`,
 	return setCommand(cmd)
 }
 
-// setCommand marks mcp on or off to run alone, as a command that
+// setCommand marks mcp on, off, or use to run alone, as a command that
 // changes sessions does, and to print its own -o json or yaml.
 func setCommand(cmd *cobra.Command) *cobra.Command {
 	alone(cmd).Annotations[ownOutput] = "true"

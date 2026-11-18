@@ -456,6 +456,28 @@ When claudes writes `~/.claude.json` itself, it changes only that directory's
 the file often, so claudes reads it, makes the change, and replaces the file
 only if it is unchanged since the read, keeping its mode.
 
+### Using a profile
+
+`claudes mcp use PROFILE TARGET` turns on exactly the servers PROFILE lists in a
+running session, and turns off every other server `mcp ls` lists for its
+directory. It goes through the session's claudes mod, as `mcp on` and `mcp off`
+do, and takes the same `--restart`, `--in DIR`, and `--dry-run`. A server the
+profile names that the directory does not have gets a warning.
+
+`claudes agents --profile PROFILE` opens agent view with exactly the profile's
+servers, in agent view and in every session it starts. claudes writes an
+`allowedMcpServers` setting to `profiles/PROFILE.json` in its state directory,
+readable only by you, and runs `claude agents --settings` with that file. The
+other arguments go to `claude agents` as they are, so
+`claudes agents --profile safe --model opus` works. A background session keeps
+the setting when it is respawned.
+
+Claude Code matches a plugin's server only by its URL or command, not its name.
+Once the setting holds one command, it matches a stdio server only by its
+command too, and a URL does the same for remote servers. So claudes allows each
+server it can find by its URL or command, and any other by its name. A server
+passed with `--mcp-config` is one claudes cannot find.
+
 ## The claudes mod
 
 Without help, claudes reaches a running session only from outside: it stops it,

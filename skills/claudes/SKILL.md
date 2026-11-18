@@ -143,6 +143,8 @@ binary by its full path rather than assuming it is gone.
 | is the claudes mod installed, loaded | `claudes mod status`; see "The claudes mod"               |
 | turn MCP server M off in session X   | `claudes mcp off M X`; see "The claudes mod"              |
 | turn every MCP server back on in X   | `claudes mcp on --all X`                                  |
+| use only profile P's MCPs in X       | `claudes mcp use P X`; `--dry-run` first                  |
+| open agent view with only profile P  | Ask the user to run `claudes agents --profile P`          |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.

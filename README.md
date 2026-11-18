@@ -202,6 +202,8 @@ Setup and diagnostics:
 | `mcp ls [TARGET]`            | List a session's MCP servers, and whether each is on        |
 | `mcp profiles`               | List the MCP profiles in `config.yaml`                      |
 | `mcp on\|off PATTERN TARGET` | Turn MCP servers on or off in a running session             |
+| `mcp use PROFILE TARGET`     | Turn on only a profile's MCP servers in a running session   |
+| `agents --profile NAME`      | Open agent view with only a profile's MCP servers           |
 | `mod install`, `uninstall`   | Add or remove the claudes mod, which reaches into sessions  |
 | `mod status`                 | Whether the mod is installed, and which sessions loaded it  |
 | `doctor`                     | Check the installed Claude Code against claudes             |

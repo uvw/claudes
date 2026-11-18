@@ -20,6 +20,8 @@
    MCP files, and `managed-mcp.json`. `internal/compat` reads the feature flags
    in `~/.claude.json`. `internal/mcp` writes one thing in it, a directory's
    `disabledMcpServers`, with a compare-and-swap, and nothing else writes it.
+   `internal/mcp` also writes the profile settings files that
+   `claudes agents --profile` passes to `claude agents`.
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
