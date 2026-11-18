@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -104,7 +105,7 @@ func TestSessionLsFiltersByRunningState(t *testing.T) {
 		t.Helper()
 		h.out.Reset()
 		h.ok(t, append([]string{"session", "ls", "-o", "json"}, args...)...)
-		var rows []pastSession
+		var rows []history.Session
 		if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +168,7 @@ func TestSessionLsShowsSizesAndSortsBySize(t *testing.T) {
 
 	h.out.Reset()
 	h.ok(t, "session", "ls", "big", "-o", "json")
-	var rows []pastSession
+	var rows []history.Session
 	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil {
 		t.Fatal(err)
 	}

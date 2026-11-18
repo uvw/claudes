@@ -54,7 +54,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 				switch {
 				case s.Interactive():
 					return exit.Refusal(fmt.Errorf("%s is an interactive session: only background sessions can be pinged", s.Label()))
-				case app.isHost(s):
+				case app.host().Is(s):
 					return exit.Refusal(fmt.Errorf("%s is the session running this command: it cannot ping itself", s.Label()))
 				}
 			}

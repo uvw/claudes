@@ -1,18 +1,18 @@
 package cli
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"path/filepath"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/history"
+	"github.com/uvw/claudes/internal/listing"
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/version"
 )
@@ -32,83 +32,13 @@ func (app *App) listed(ctx context.Context, all bool) ([]claude.Session, error) 
 	return sessions, nil
 }
 
-func (app *App) isHost(s claude.Session) bool {
-	return app.isHostID(s.SessionID) || app.HostJob != "" && s.JobID == app.HostJob
-}
-
-// isHostID reports whether sessionID is the session running claudes.
-func (app *App) isHostID(sessionID string) bool {
-	return app.HostID != "" && sessionID == app.HostID ||
-		app.HostJob != "" && claude.ShortID(sessionID) == app.HostJob
-}
-
-// hostLast moves the session running claudes to the end.
-func (app *App) hostLast(sessions []claude.Session) []claude.Session {
-	slices.SortStableFunc(sessions, func(a, b claude.Session) int {
-		return trueFirst(!app.isHost(a), !app.isHost(b))
-	})
-	return sessions
-}
-
-// trueFirst orders a before b when a is true and b is not, for sorting.
-func trueFirst(a, b bool) int {
-	switch {
-	case a == b:
-		return 0
-	case a:
-		return -1
-	default:
-		return 1
-	}
-}
-
-// sessionRef is how the JSON of session du and session triage names a session.
-type sessionRef struct {
-	ID        string `json:"id"`
-	SessionID string `json:"sessionId"`
-	Name      string `json:"name"`
-}
-
-// Label is the session's name, or its short id when it has none.
-func (r sessionRef) Label() string { return cmp.Or(r.Name, r.ID) }
-
-// pastSession is a session as claudes session shows it: what its transcript
-// says, and whether it runs now.
-type pastSession struct {
-	ShortID string `json:"id"`
-	transcripts.Session
-	Running bool `json:"running"`
-	// Disk is the space the session takes on disk.
-	Disk transcripts.Disk `json:"disk"`
-	// Activity is what the session did, or nil when its transcript was not
-	// read in full.
-	Activity *transcripts.Tally `json:"activity"`
-	// tallyErr is why reading the activity failed.
-	tallyErr error
-}
-
-// readTally counts what p did, unless its transcript is bigger than
-// transcripts.TallyLimit, or force reads it whatever its size.
-func readTally(p *pastSession, force bool) {
-	if p.Activity != nil || p.tallyErr != nil || !force && p.Size > transcripts.TallyLimit {
-		return
-	}
-	a, err := transcripts.ReadTally(p.Path)
-	if err != nil {
-		p.tallyErr = err
-		return
-	}
-	p.Activity = &a
-}
-
-func refOf(p pastSession) sessionRef {
-	return sessionRef{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name}
-}
+// host is the session running claudes.
+func (app *App) host() selection.Host { return selection.Host{ID: app.HostID, Job: app.HostJob} }
 
 // pastSessions lists every transcript, newest activity first, and marks the
 // running ones. A running session's name comes from agent view, which names
 // some sessions its transcript does not.
-func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
+func (app *App) pastSessions(ctx context.Context) ([]history.Session, error) {
 	list, err := app.Transcripts.List()
 	if err != nil {
 		return nil, err
@@ -126,9 +56,9 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 		app.warn("claudes: cannot tell which sessions are running: %v", err)
 	}
 	disks := app.Transcripts.Measure(list)
-	out := make([]pastSession, 0, len(list))
+	out := make([]history.Session, 0, len(list))
 	for i, t := range list {
-		p := pastSession{ShortID: t.ID(), Session: t, Disk: disks[i]}
+		p := history.Session{ShortID: t.ID(), Session: t, Disk: disks[i]}
 		if s, ok := live[t.SessionID]; ok {
 			p.Running = true
 			// claude agents names an unnamed session by its job id.
@@ -142,48 +72,15 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 }
 
 // onePast resolves a target to exactly one session.
-func (app *App) onePast(ctx context.Context, token string) (pastSession, error) {
+func (app *App) onePast(ctx context.Context, token string) (history.Session, error) {
 	list, err := app.pastSessions(ctx)
 	if err != nil {
-		return pastSession{}, err
+		return history.Session{}, err
 	}
-	return pickPast(token, list)
+	return history.Pick(token, list)
 }
 
-// pickPast resolves token to one of list, which is newest first. Sessions
-// reuse names over time, so a token that is exactly a name picks the newest
-// session with that name. Otherwise the token must name one session, as
-// target.Resolve decides.
-func pickPast(token string, list []pastSession) (pastSession, error) {
-	for _, p := range list {
-		if p.Name != "" && p.Name == token {
-			return p, nil
-		}
-	}
-	picked, err := target.Resolve([]string{token}, list)
-	if err == nil {
-		return picked[0], nil
-	}
-	if matches, merr := target.Match([]string{token}, list); merr == nil && (len(matches) == 1 || sameName(matches)) {
-		return matches[0], nil
-	}
-	return pastSession{}, err
-}
-
-// sameName reports whether every session in list has the same, non-empty name.
-func sameName(list []pastSession) bool {
-	if len(list) == 0 || list[0].Name == "" {
-		return false
-	}
-	for _, p := range list[1:] {
-		if p.Name != list[0].Name {
-			return false
-		}
-	}
-	return true
-}
-
-func (app *App) filterPast(list []pastSession, targets []string, in string, since time.Duration) ([]pastSession, error) {
+func (app *App) filterPast(list []history.Session, targets []string, in string, since time.Duration) ([]history.Session, error) {
 	if len(targets) > 0 {
 		var err error
 		if list, err = listMatch(app, targets, list); err != nil {
@@ -214,6 +111,24 @@ func (app *App) filterPast(list []pastSession, targets []string, in string, sinc
 	return out, nil
 }
 
+// gcKeep is the sessions session gc must leave alone, each with why: running,
+// listed by agent view, parked, or the session running claudes.
+func (app *App) gcKeep(ctx context.Context, list []history.Session) (map[string]string, error) {
+	listed, err := app.Agents.Sessions(ctx, true)
+	if err != nil {
+		return nil, exit.Refusal(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
+	}
+	entries, err := app.Park.Load()
+	if err != nil {
+		return nil, fmt.Errorf("cannot read the park file, so cannot tell which sessions are paused: %w", err)
+	}
+	parked := make([]string, len(entries))
+	for i, e := range entries {
+		parked[i] = e.SessionID
+	}
+	return history.Keep(list, listed, parked, app.host().IsID), nil
+}
+
 // midTurn is Session.MidTurn, plus a lead whose teammates are at work: its
 // turn goes on through them, so a restart should ping it to carry on.
 func (app *App) midTurn(s claude.Session) bool {
@@ -238,39 +153,9 @@ func (app *App) warnTeams(sessions []claude.Session) {
 	}
 }
 
-func joinNotes(notes ...string) string {
-	var kept []string
-	for _, n := range notes {
-		if n != "" {
-			kept = append(kept, n)
-		}
-	}
-	return strings.Join(kept, "; ")
-}
-
-// row is a session as `claudes ls` shows it.
-type row struct {
-	claude.Session
-	Pinned bool `json:"pinned"`
-	// Version is the Claude Code version the session last ran, when known.
-	Version  string `json:"version"`
-	Outdated bool   `json:"outdated"`
-	// Teammates are the agent team members the session leads that run now.
-	Teammates []string `json:"teammates"`
-	// Subagents and Shells count the subagents and background shells the
-	// session runs now. Tokens is agent view's running total of the tokens it
-	// used, PRs the pull requests it opened, and Doing agent view's one-line
-	// status. Each is null when unknown, as for an interactive session.
-	Subagents *int    `json:"subagents"`
-	Shells    *int    `json:"shells"`
-	Tokens    *int64  `json:"tokens"`
-	PRs       *int    `json:"prs"`
-	Doing     *string `json:"doing"`
-}
-
 // rows lists sessions for ls and where. installed is the installed
 // Claude Code version, or "" when unknown, which marks no session outdated.
-func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, error) {
+func (app *App) rows(ctx context.Context, all bool, installed string) ([]listing.Row, error) {
 	sessions, err := app.Agents.Sessions(ctx, all)
 	if err != nil {
 		return nil, err
@@ -279,28 +164,18 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	if err != nil {
 		app.warn("claudes: cannot read pins: %v", err)
 	}
-	rows := make([]row, 0, len(sessions))
+	rows := make([]listing.Row, 0, len(sessions))
 	for _, s := range sessions {
-		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
+		r := listing.Row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
 		a := app.Jobs.Live(s.JobID)
 		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
 		if !s.Running() {
 			// state.json can still list what ran when the process ended.
-			r.Subagents, r.Shells = zeroIfKnown(r.Subagents), zeroIfKnown(r.Shells)
+			r.Subagents, r.Shells = listing.ZeroIfKnown(r.Subagents), listing.ZeroIfKnown(r.Shells)
 		}
 		rows = append(rows, r)
 	}
-	slices.SortStableFunc(rows, func(a, b row) int {
-		return cmp.Or(trueFirst(a.Pinned, b.Pinned), trueFirst(a.Busy(), b.Busy()), cmp.Compare(b.StartedAt, a.StartedAt))
-	})
+	listing.Sort(rows)
 	return rows, nil
-}
-
-// zeroIfKnown is 0 for a known count, and nil for an unknown one.
-func zeroIfKnown(n *int) *int {
-	if n == nil {
-		return nil
-	}
-	return new(int)
 }

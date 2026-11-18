@@ -101,21 +101,17 @@ func (app *App) result(r string) string {
 	return r
 }
 
-func checkOK(name, detail string) check   { return check{name, resultOK, detail} }
-func checkWarn(name, detail string) check { return check{name, resultWarn, detail} }
-func checkFail(name, detail string) check { return check{name, resultFail, detail} }
-
 func (app *App) checkVersion(ctx context.Context) check {
 	const name = "claude"
 	installed, err := app.Agents.Version(ctx)
 	if err != nil {
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	}
 	where := cmp.Or(app.claudePath(), "not found on PATH")
 	if w := compat.Tested.CheckVersion(installed); w != "" {
-		return checkWarn(name, w+", at "+where)
+		return check{name, resultWarn, w + ", at " + where}
 	}
-	return checkOK(name, fmt.Sprintf("%s at %s, tested with %s", installed, where, compat.Tested))
+	return check{name, resultOK, fmt.Sprintf("%s at %s, tested with %s", installed, where, compat.Tested)}
 }
 
 func (app *App) checkCommandLine(ctx context.Context) check {
@@ -126,22 +122,22 @@ func (app *App) checkCommandLine(ctx context.Context) check {
 		agents, err = app.Agents.Help(ctx, "agents")
 	}
 	if err != nil {
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	}
 	if missing := compat.CheckHelp(root, agents); len(missing) > 0 {
-		return checkFail(name, "missing from claude's help: "+strings.Join(missing, ", "))
+		return check{name, resultFail, "missing from claude's help: " + strings.Join(missing, ", ")}
 	}
-	return checkOK(name, "every command and flag claudes calls is there")
+	return check{name, resultOK, "every command and flag claudes calls is there"}
 }
 
 func (app *App) checkSessions(ctx context.Context) check {
 	const name = "agents --json"
 	sessions, err := app.Agents.Sessions(ctx, true)
 	if err != nil {
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	}
 	if problems := compat.CheckSessions(sessions); len(problems) > 0 {
-		return checkFail(name, strings.Join(problems, "\n"))
+		return check{name, resultFail, strings.Join(problems, "\n")}
 	}
 	background, known := 0, 0
 	for _, s := range sessions {
@@ -153,22 +149,22 @@ func (app *App) checkSessions(ctx context.Context) check {
 		}
 	}
 	if background > 0 && known == 0 {
-		return checkWarn(name, fmt.Sprintf("no background session's Claude Code version is readable in %s, "+
-			"so ls shows no VERSION and restart --outdated picks nothing", app.Jobs.Dir))
+		return check{name, resultWarn, fmt.Sprintf("no background session's Claude Code version is readable in %s, "+
+			"so ls shows no VERSION and restart --outdated picks nothing", app.Jobs.Dir)}
 	}
-	return checkOK(name, fmt.Sprintf("%d session(s), every kind and status known", len(sessions)))
+	return check{name, resultOK, fmt.Sprintf("%d session(s), every kind and status known", len(sessions))}
 }
 
 func (app *App) checkPins() check {
 	const name = "pins.json"
 	ids, err := app.Jobs.Pins()
 	if err != nil {
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	}
 	if problems := compat.CheckPins(ids); len(problems) > 0 {
-		return checkFail(name, strings.Join(problems, "\n"))
+		return check{name, resultFail, strings.Join(problems, "\n")}
 	}
-	return checkOK(name, fmt.Sprintf("%d pinned", len(ids)))
+	return check{name, resultOK, fmt.Sprintf("%d pinned", len(ids))}
 }
 
 // checkPinsLock warns when Claude Code may write pins.json without the lock
@@ -177,19 +173,19 @@ func (app *App) checkPins() check {
 func (app *App) checkPinsLock() check {
 	const name = "pins lock"
 	if app.MCP.ConfigFile == "" {
-		return checkWarn(name, "cannot find Claude Code's settings file, so cannot tell how it writes pins.json")
+		return check{name, resultWarn, "cannot find Claude Code's settings file, so cannot tell how it writes pins.json"}
 	}
 	on, found, err := claude.Feature(app.MCP.ConfigFile, compat.PinsFlag)
 	switch {
 	case err != nil:
-		return checkWarn(name, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.MCP.ConfigFile, err))
+		return check{name, resultWarn, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.MCP.ConfigFile, err)}
 	case on:
-		return checkWarn(name, compat.PinsFlag+" is on, so Claude Code may write pins.json without pins.json.lock: "+
-			"pinning from agent view and from claudes at the same moment could lose one of the pins")
+		return check{name, resultWarn, compat.PinsFlag + " is on, so Claude Code may write pins.json without pins.json.lock: " +
+			"pinning from agent view and from claudes at the same moment could lose one of the pins"}
 	case found:
-		return checkOK(name, "Claude Code takes pins.json.lock, as claudes does ("+compat.PinsFlag+" is off)")
+		return check{name, resultOK, "Claude Code takes pins.json.lock, as claudes does (" + compat.PinsFlag + " is off)"}
 	}
-	return checkOK(name, "Claude Code takes pins.json.lock, as claudes does ("+compat.PinsFlag+" is not set)")
+	return check{name, resultOK, "Claude Code takes pins.json.lock, as claudes does (" + compat.PinsFlag + " is not set)"}
 }
 
 func (app *App) checkTranscripts() check {
@@ -197,11 +193,11 @@ func (app *App) checkTranscripts() check {
 	list, err := app.Transcripts.List()
 	switch {
 	case err != nil:
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	case !transcripts.FolderNamesMatch(list):
-		return checkFail(name, "recent sessions live in project directories claudes would not name that way, so claudes session mv would copy to the wrong one")
+		return check{name, resultFail, "recent sessions live in project directories claudes would not name that way, so claudes session mv would copy to the wrong one"}
 	}
-	return checkOK(name, fmt.Sprintf("%d session(s) in %s", len(list), app.Transcripts.Dir))
+	return check{name, resultOK, fmt.Sprintf("%d session(s) in %s", len(list), app.Transcripts.Dir)}
 }
 
 func (app *App) checkTeams() check {
@@ -209,30 +205,30 @@ func (app *App) checkTeams() check {
 	bad, err := app.Teams.Unreadable()
 	switch {
 	case err != nil:
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	case len(bad) > 0:
-		return checkWarn(name, fmt.Sprintf("cannot read the config.json of %s in %s, so their leads count as having teammates "+
-			"and bulk commands leave them out", strings.Join(bad, ", "), app.Teams.Teams))
+		return check{name, resultWarn, fmt.Sprintf("cannot read the config.json of %s in %s, so their leads count as having teammates "+
+			"and bulk commands leave them out", strings.Join(bad, ", "), app.Teams.Teams)}
 	}
-	return checkOK(name, app.Teams.Teams)
+	return check{name, resultOK, app.Teams.Teams}
 }
 
 func (app *App) checkConfig() check {
 	const name = "config.yaml"
 	switch {
 	case app.configErr != nil:
-		return checkFail(name, app.configErr.Error())
+		return check{name, resultFail, app.configErr.Error()}
 	case !config.Exists(app.ConfigPath):
-		return checkOK(name, "none at "+app.ConfigPath+", so the built-in defaults apply")
+		return check{name, resultOK, "none at " + app.ConfigPath + ", so the built-in defaults apply"}
 	}
-	return checkOK(name, app.ConfigPath)
+	return check{name, resultOK, app.ConfigPath}
 }
 
 func (app *App) checkPark() check {
 	const name = "park file"
 	entries, err := app.Park.Load()
 	if err != nil {
-		return checkFail(name, err.Error())
+		return check{name, resultFail, err.Error()}
 	}
-	return checkOK(name, fmt.Sprintf("%d parked, in %s", len(entries), app.Park.Path))
+	return check{name, resultOK, fmt.Sprintf("%d parked, in %s", len(entries), app.Park.Path)}
 }

@@ -28,6 +28,15 @@ func (s subject) ID() string    { return s.id }
 func (s subject) Label() string { return s.label }
 func (s subject) Dir() string   { return s.dir }
 
+func TestJoinNotesSkipsEmptyNotes(t *testing.T) {
+	if got := JoinNotes("", "a", "", "b"); got != "a; b" {
+		t.Errorf("got %q", got)
+	}
+	if got := JoinNotes("", ""); got != "" {
+		t.Errorf("got %q", got)
+	}
+}
+
 func TestEntriesCarryTheSubject(t *testing.T) {
 	s := subject{"abc", "api", "/work/api"}
 	if got, want := Result(s, "stopped", ", which stopped meanwhile"), (Entry{

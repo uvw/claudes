@@ -4,25 +4,14 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
 )
-
-// searchHit is a session search found, as -o json prints it.
-type searchHit struct {
-	ID         string              `json:"id"`
-	SessionID  string              `json:"sessionId"`
-	Name       string              `json:"name"`
-	Cwd        string              `json:"cwd"`
-	Score      float64             `json:"score"`
-	LastActive time.Time           `json:"lastActive"`
-	Matches    []transcripts.Match `json:"matches"`
-}
 
 type searchFlags struct {
 	pattern, ran, touched, branch, in string
@@ -116,7 +105,7 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 
 // search returns the best sessions that match, and how many more matched
 // beyond --top.
-func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) {
+func (app *App) search(words []string, f searchFlags) ([]history.Hit, int, error) {
 	switch {
 	case len(words) == 0 && f.pattern == "" && f.ran == "" && f.touched == "":
 		return nil, 0, errors.New("name something to search for: QUERY, -e PATTERN, --ran, or --touched")
@@ -125,9 +114,9 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 	if err != nil {
 		return nil, 0, err
 	}
-	past := make([]pastSession, len(list))
+	past := make([]history.Session, len(list))
 	for i, s := range list {
-		past[i] = pastSession{ShortID: s.ID(), Session: s}
+		past[i] = history.Session{ShortID: s.ID(), Session: s}
 	}
 	if past, err = app.filterPast(past, nil, f.in, f.since.d); err != nil {
 		return nil, 0, err
@@ -152,13 +141,5 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 	if f.top.n > 0 && len(results) > f.top.n {
 		results, more = results[:f.top.n], len(results)-f.top.n
 	}
-	hits := make([]searchHit, len(results))
-	for i, r := range results {
-		name := r.Name
-		if !f.noRedact {
-			name = transcripts.Redact(name)
-		}
-		hits[i] = searchHit{ID: r.ID(), SessionID: r.SessionID, Name: name, Cwd: r.Cwd, Score: r.Score, LastActive: r.LastActive, Matches: r.Matches}
-	}
-	return hits, more, nil
+	return history.Hits(results, f.noRedact), more, nil
 }

@@ -12,9 +12,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -72,11 +74,11 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 	if err != nil {
 		return err
 	}
-	p, err := pickPast(token, list)
+	p, err := history.Pick(token, list)
 	if err != nil {
 		return err
 	}
-	host := app.isHostID(p.SessionID)
+	host := app.host().IsID(p.SessionID)
 	switch {
 	case p.Running && !host:
 		return exit.Refusal(fmt.Errorf("%s is running, and what it says after the copy would stay behind. Stop it first", p.Label()))
@@ -116,7 +118,7 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 			return fmt.Errorf("copied, but cannot remove its background job: %w. Remove it with claudes gc %s, so claudes session resume --bg starts a new job in %s", err, job.id, dir)
 		}
 		app.say("removed its stopped background job %s: claudes session resume --bg %s starts a new one in %s%s",
-			job.id, p.ShortID, dir, withOptions(job.options))
+			job.id, p.ShortID, dir, job.withOptions())
 	case job.keep != "":
 		app.say("kept its background job %s, since %s. Until it is removed, claude --bg --resume wakes it in %s", job.id, job.keep, job.dir)
 	}
@@ -158,7 +160,7 @@ type movingJob struct {
 // jobToMove looks up p's background job. A stopped one is removed, since
 // claude --bg --resume wakes a job in its own directory, wherever it is run.
 // A paused one stays, since claudes resume wakes it where it was paused.
-func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movingJob, error) {
+func (app *App) jobToMove(ctx context.Context, p history.Session, dir string) (movingJob, error) {
 	job := movingJob{options: p.JobOptions()}
 	s, found, err := app.listedJob(ctx, p.SessionID)
 	if err != nil || !found {
@@ -176,7 +178,7 @@ func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movin
 	switch {
 	case !ok:
 		job.keep = "claudes cannot read the options Claude Code saved for it"
-	case !isFinished(s):
+	case !selection.IsFinished(s):
 		job.keep = fmt.Sprintf("it is not stopped (%s)", render.Dash(s.State))
 	case err != nil:
 		job.keep = fmt.Sprintf("claudes cannot tell whether it is paused: %v", err)
@@ -188,10 +190,10 @@ func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movin
 	return job, nil
 }
 
-// withOptions shows the options a new job gets, if any.
-func withOptions(options []string) string {
-	if len(options) == 0 {
+// withOptions shows the options the new job gets, if any.
+func (j movingJob) withOptions() string {
+	if len(j.options) == 0 {
 		return ""
 	}
-	return ", with " + shell.Printable(strings.Join(options, " "))
+	return ", with " + shell.Printable(strings.Join(j.options, " "))
 }

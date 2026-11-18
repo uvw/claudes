@@ -12,6 +12,7 @@ import (
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -157,7 +158,7 @@ func (app *App) resumeAs(ctx context.Context, sessionID, cwd, prompt string, job
 		if err != nil {
 			return false, err
 		}
-		return runningIn(sessions, func(x claude.Session) bool { return x.SessionID == sessionID }), nil
+		return selection.RunningIn(sessions, func(x claude.Session) bool { return x.SessionID == sessionID }), nil
 	})
 	if errors.Is(err, errTimedOut) {
 		return errNotYetRunning
@@ -174,11 +175,6 @@ var errNotYetRunning = fmt.Errorf("claude accepted the resume, but the session d
 // startWait bounds the wait for a resumed session to show as running.
 const startWait = 15 * time.Second
 
-// runningIn reports whether a session that match picks is running.
-func runningIn(sessions []claude.Session, match func(claude.Session) bool) bool {
-	return slices.ContainsFunc(sessions, func(s claude.Session) bool { return match(s) && s.Running() })
-}
-
 // waitGone waits until a stopped session's process has gone.
 // claude agents drops the PID as soon as claude stop returns, but the
 // process lives on for about a second, and a resume until then starts a copy.
@@ -189,7 +185,7 @@ func (app *App) waitGone(ctx context.Context, s claude.Session) error {
 		if err != nil {
 			return false, err
 		}
-		return !runningIn(sessions, func(x claude.Session) bool { return x.SessionID == s.SessionID }), nil
+		return !selection.RunningIn(sessions, func(x claude.Session) bool { return x.SessionID == s.SessionID }), nil
 	})
 	if errors.Is(err, errTimedOut) {
 		return fmt.Errorf("still running %s after it was stopped", stopWait)
@@ -212,7 +208,7 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []ren
 		missing = slices.DeleteFunc(slices.Clone(respawned), func(s claude.Session) bool {
 			// The old process can still show for a moment after respawn
 			// returns, so only a new PID counts as back.
-			return runningIn(sessions, func(x claude.Session) bool { return x.JobID == s.JobID && x.PID != s.PID })
+			return selection.RunningIn(sessions, func(x claude.Session) bool { return x.JobID == s.JobID && x.PID != s.PID })
 		})
 		return len(missing) == 0, nil
 	})
@@ -287,7 +283,7 @@ func (app *App) stopFailed(ctx context.Context, s claude.Session, stopErr error)
 		if err != nil {
 			return false, err
 		}
-		return !runningIn(sessions, func(x claude.Session) bool { return x.SessionID == s.SessionID }), nil
+		return !selection.RunningIn(sessions, func(x claude.Session) bool { return x.SessionID == s.SessionID }), nil
 	})
 	if errors.Is(err, errTimedOut) {
 		if err := app.unpark(s.SessionID); err != nil {

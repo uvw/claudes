@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"cmp"
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,24 +11,6 @@ import (
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/teams"
 )
-
-// teamRow is a team as claudes team ls shows it.
-type teamRow struct {
-	Team      string       `json:"team"`
-	LeadID    string       `json:"id"`
-	SessionID string       `json:"sessionId"`
-	Lead      string       `json:"lead"`
-	Cwd       string       `json:"cwd"`
-	Running   bool         `json:"running"`
-	Teammates []string     `json:"teammates"`
-	Tasks     []teams.Task `json:"tasks"`
-}
-
-func (r teamRow) Label() string { return cmp.Or(shell.Printable(r.Lead), r.LeadID) }
-
-func (r teamRow) ID() string { return r.LeadID }
-
-func (r teamRow) Aliases() []string { return claude.NonEmpty(r.Lead, r.LeadID, r.SessionID, r.Team) }
 
 func (app *App) teamLsCommand() *cobra.Command {
 	var all bool
@@ -71,7 +51,7 @@ runs, which claudes gc --teams removes.`,
 				if !r.Running {
 					lead = c.Faint(lead + " (not running)")
 				}
-				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), render.DirCell(r.Cwd), lead})
+				table = append(table, []string{r.LeadID, mates, teams.TaskSummary(r.Tasks), render.DirCell(r.Cwd), lead})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -82,7 +62,7 @@ runs, which claudes gc --teams removes.`,
 }
 
 // teamRows reads every team and joins it with its lead from claude agents.
-func (app *App) teamRows(ctx context.Context, all bool) ([]teamRow, error) {
+func (app *App) teamRows(ctx context.Context, all bool) ([]teams.Row, error) {
 	list, err := app.Teams.List()
 	if err != nil {
 		return nil, err
@@ -95,16 +75,10 @@ func (app *App) teamRows(ctx context.Context, all bool) ([]teamRow, error) {
 	for _, s := range sessions {
 		byID[s.SessionID] = s
 	}
-	rows := []teamRow{}
+	rows := []teams.Row{}
 	for _, t := range list {
 		s, known := byID[t.LeadSessionID]
-		r := teamRow{
-			Team: t.Name, LeadID: cmp.Or(s.JobID, claude.ShortID(t.LeadSessionID)), SessionID: t.LeadSessionID,
-			Lead: s.Name, Cwd: s.Cwd, Running: known && s.Running(), Teammates: t.Teammates(),
-		}
-		if r.Cwd == "" && len(t.Members) > 0 {
-			r.Cwd = t.Members[0].Cwd
-		}
+		r := teams.RowOf(t, s, known)
 		if !all && (!r.Running || len(r.Teammates) == 0) {
 			continue
 		}
@@ -114,27 +88,4 @@ func (app *App) teamRows(ctx context.Context, all bool) ([]teamRow, error) {
 		rows = append(rows, r)
 	}
 	return rows, nil
-}
-
-// taskSummary is how many of a team's tasks are done, and who works on the
-// open ones.
-func taskSummary(tasks []teams.Task) string {
-	if len(tasks) == 0 {
-		return "-"
-	}
-	done := 0
-	var working []string
-	for _, t := range tasks {
-		switch t.Status {
-		case "completed":
-			done++
-		case "in_progress":
-			working = append(working, shell.Printable(cmp.Or(t.Owner, "#"+t.ID)))
-		}
-	}
-	s := fmt.Sprintf("%d/%d done", done, len(tasks))
-	if len(working) > 0 {
-		s += ", working: " + strings.Join(working, ", ")
-	}
-	return s
 }

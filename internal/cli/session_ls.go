@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 )
 
@@ -37,10 +38,10 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 				return err
 			}
 			if running || stopped {
-				list = slices.DeleteFunc(list, func(p pastSession) bool { return p.Running != running })
+				list = slices.DeleteFunc(list, func(p history.Session) bool { return p.Running != running })
 			}
 			if sortBy.value == "size" {
-				slices.SortStableFunc(list, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
+				slices.SortStableFunc(list, func(a, b history.Session) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
 			}
 			if out != render.Text {
 				return out.Encode(app.Out, list)

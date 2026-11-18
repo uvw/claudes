@@ -203,18 +203,32 @@ func compareIDs(a, b string) int {
 	return strings.Compare(a, b)
 }
 
-// Folder is a team or task-list directory that gc can remove.
-type Folder struct {
+// Leftover is a team or task-list directory that gc can remove.
+type Leftover struct {
 	Path string
 	// Name is the directory's name, session-<short id>.
 	Name     string
 	Modified time.Time
 }
 
+// ID is the short id of the session the directory belonged to.
+func (l Leftover) ID() string { return strings.TrimPrefix(l.Name, "session-") }
+
+// Label is what the directory is: a team or a task list.
+func (l Leftover) Label() string {
+	if filepath.Base(filepath.Dir(l.Path)) == "teams" {
+		return "team"
+	}
+	return "task list"
+}
+
+// Dir is the directory itself.
+func (l Leftover) Dir() string { return l.Path }
+
 // Leftovers lists the team and task-list directories whose session is not in
 // keep and that last changed before cutoff. keep holds short session ids.
-func (st Store) Leftovers(keep map[string]bool, cutoff time.Time) ([]Folder, error) {
-	var out []Folder
+func (st Store) Leftovers(keep map[string]bool, cutoff time.Time) ([]Leftover, error) {
+	var out []Leftover
 	for _, dir := range []string{st.Teams, st.Tasks} {
 		entries, err := os.ReadDir(dir)
 		if errors.Is(err, fs.ErrNotExist) {
@@ -233,7 +247,7 @@ func (st Store) Leftovers(keep map[string]bool, cutoff time.Time) ([]Folder, err
 			if err != nil || !modified.Before(cutoff) {
 				continue
 			}
-			out = append(out, Folder{Path: path, Name: e.Name(), Modified: modified})
+			out = append(out, Leftover{Path: path, Name: e.Name(), Modified: modified})
 		}
 	}
 	return out, nil
@@ -267,7 +281,7 @@ func newest(dir string) (time.Time, error) {
 
 // Remove removes a directory Leftovers returned with remove: a move to the
 // system trash, or os.RemoveAll to delete it for good.
-func (st Store) Remove(f Folder, remove func(string) error) error {
+func (st Store) Remove(f Leftover, remove func(string) error) error {
 	if filepath.Dir(f.Path) != st.Teams && filepath.Dir(f.Path) != st.Tasks {
 		return fmt.Errorf("%s is not a team or task directory", f.Path)
 	}

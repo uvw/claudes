@@ -1,7 +1,9 @@
 // Package mcp reads which MCP servers Claude Code gives a directory, and
 // whether each is on. It reads the settings files, .mcp.json files, installed
 // plugins, and the managed file, and writes none of them. It reads
-// ~/.claude.json through internal/claude, which owns that file.
+// ~/.claude.json through internal/claude, which owns that file. It also
+// matches the servers against the profiles in config.yaml, for claudes mcp ls
+// and claudes mcp profiles.
 //
 // A server's command, arguments, environment, headers, and URL can carry
 // tokens, so this package keeps only each server's name and kind.

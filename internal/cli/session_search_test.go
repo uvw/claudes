@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -220,7 +221,7 @@ func TestSessionSearchFilters(t *testing.T) {
 		t.Helper()
 		h.out.Reset()
 		h.ok(t, append([]string{"session", "search", "-o", "json"}, args...)...)
-		var hits []searchHit
+		var hits []history.Hit
 		if err := json.Unmarshal(h.out.Bytes(), &hits); err != nil {
 			t.Fatal(err)
 		}

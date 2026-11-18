@@ -76,6 +76,15 @@ func (s Session) Activity() string {
 // Interactive reports whether the session is a TUI in a terminal.
 func (s Session) Interactive() bool { return s.Kind == KindInteractive }
 
+// Mode is the session's kind as a table shows it: tty for an interactive
+// session, and bg for a background one.
+func (s Session) Mode() string {
+	if s.Interactive() {
+		return "tty"
+	}
+	return "bg"
+}
+
 // ShortID is the first eight characters of the session id.
 func (s Session) ShortID() string { return ShortID(s.SessionID) }
 

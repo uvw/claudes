@@ -249,16 +249,7 @@ var plumbingTypes = map[string]string{
 
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
-var notYetHelpers = []string{
-	"activity", "checkFail", "checkOK", "checkWarn", "completeKeys", "count",
-	"describeForCompletion", "doing", "duRow", "duTally", "duTop", "firstPrompt",
-	"gcCommandFor", "isFinished", "joinNotes", "keepWhy", "kind", "leftovers",
-	"nameWithSource", "named", "noProfile", "orList", "pickPast", "readTally",
-	"refOf", "removeCommand", "requireFinished", "requireRunning", "runningIn",
-	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
-	"stamp", "taskSummary", "triageOf", "triageSize", "trivial", "trueFirst",
-	"withOptions", "zeroIfKnown",
-}
+var notYetHelpers = []string{}
 
 func TestCLIDeclaresNoHelpers(t *testing.T) {
 	var found []string
@@ -310,9 +301,7 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 
 // notYetShared are the *App methods a command file declares that other files
 // call.
-var notYetShared = []string{
-	"App.gcKeep", "App.gcPick",
-}
+var notYetShared = []string{}
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.

@@ -2,24 +2,15 @@ package cli
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
-
-// mcpProfile is one profile, as mcp profiles prints it.
-type mcpProfile struct {
-	Name    string   `json:"name"`
-	Servers []string `json:"servers"`
-	// Unknown are the servers that match none claudes can find.
-	Unknown []string `json:"unknown"`
-}
 
 func (app *App) mcpProfilesCommand() *cobra.Command {
 	var out render.Format
@@ -32,22 +23,15 @@ the current directory's, any directory's in ~/.claude.json, or an installed
 plugin's. Change the profiles with claudes config edit.`,
 		Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
-			profiles := app.Config.MCP.Profiles
 			dir, err := paths.Real("")
 			if err != nil {
 				return err
 			}
-			known := app.MCP.Known(dir)
-			list := make([]mcpProfile, 0, len(profiles))
-			for _, name := range slices.Sorted(maps.Keys(profiles)) {
-				p := mcpProfile{Name: name, Servers: append([]string{}, profiles[name]...), Unknown: []string{}}
-				for _, s := range p.Servers {
-					if !known[s] {
-						p.Unknown = append(p.Unknown, s)
-						app.warn("claudes: profile %s names %q, which matches no MCP server claudes can find", name, shell.Printable(s))
-					}
+			list := mcp.Profiles(app.Config.MCP.Profiles, app.MCP.Known(dir))
+			for _, p := range list {
+				for _, s := range p.Unknown {
+					app.warn("claudes: profile %s names %q, which matches no MCP server claudes can find", p.Name, shell.Printable(s))
 				}
-				list = append(list, p)
 			}
 			if out != render.Text {
 				return out.Encode(app.Out, list)

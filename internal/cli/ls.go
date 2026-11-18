@@ -8,9 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/listing"
 	"github.com/uvw/claudes/internal/render"
-	"github.com/uvw/claudes/internal/shell"
 )
 
 // agentsHeader heads the column that shows a session's agent team and the
@@ -60,7 +59,7 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 	return cmd
 }
 
-func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
+func (app *App) printTable(w io.Writer, rows []listing.Row, wide bool) error {
 	if len(rows) == 0 {
 		_, err := fmt.Fprintln(w, "No sessions.")
 		return err
@@ -85,13 +84,13 @@ func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
 		if r.Outdated {
 			ver, outdated = c.Yellow(ver+" (old)"), true
 		}
-		cells := []string{r.ID(), mark, kind(r.Session), render.Dash(r.State), app.status(render.Dash(r.Status)), app.agents(r)}
+		cells := []string{r.ID(), mark, r.Mode(), render.Dash(r.State), app.status(render.Dash(r.Status)), app.agents(r)}
 		if wide {
 			cells = append(cells, render.CountCell(r.Shells), render.Tokens(r.Tokens), render.CountCell(r.PRs))
 		}
 		cells = append(cells, render.Age(app.Now(), r.Started()), ver, render.DirCell(r.Cwd), render.NameCell(r.Label()))
 		if wide {
-			cells = append(cells, doing(r))
+			cells = append(cells, listing.Doing(r))
 		}
 		table = append(table, cells)
 	}
@@ -104,7 +103,7 @@ func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
 
 // agents is the AGENTS cell: lead+N for the agent team a session leads, and
 // how many subagents it runs now.
-func (app *App) agents(r row) string {
+func (app *App) agents(r listing.Row) string {
 	var parts []string
 	if n := len(r.Teammates); n > 0 {
 		parts = append(parts, app.colors.Magenta(fmt.Sprintf("lead+%d", n)))
@@ -116,14 +115,6 @@ func (app *App) agents(r row) string {
 		return "-"
 	}
 	return strings.Join(parts, ", ")
-}
-
-// doing is the DOING cell, which writeTable cuts to fit.
-func doing(r row) string {
-	if r.Doing == nil {
-		return "-"
-	}
-	return shell.Printable(*r.Doing)
 }
 
 // status colors a session's status: busy, waiting, and shell each in their own
@@ -138,11 +129,4 @@ func (app *App) status(s string) string {
 		return app.colors.Cyan(s)
 	}
 	return s
-}
-
-func kind(s claude.Session) string {
-	if s.Interactive() {
-		return "tty"
-	}
-	return "bg"
 }

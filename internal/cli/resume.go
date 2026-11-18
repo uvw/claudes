@@ -9,6 +9,7 @@ import (
 
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -136,7 +137,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		}
 	}
 
-	skip, err := skipSet(f.skip, candidates, func(r resumable) string { return r.SessionID })
+	skip, err := selection.Skip(f.skip, candidates, func(r resumable) string { return r.SessionID })
 	if err != nil {
 		return err
 	}

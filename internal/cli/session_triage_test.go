@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,6 +12,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -22,7 +22,7 @@ func TestSessionTriageSortsSessionsIntoRemoveReviewAndKeep(t *testing.T) {
 	work := h.folder("work")
 	week := 7 * 24 * time.Hour
 	manyTools := []string{prompt("review the pull request")}
-	for range reviewToolCalls + 1 {
+	for range history.ReviewToolCalls + 1 {
 		manyTools = append(manyTools, toolCall)
 	}
 	want := map[string]string{
@@ -39,12 +39,12 @@ func TestSessionTriageSortsSessionsIntoRemoveReviewAndKeep(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{}}
 
 	h.ok(t, "session", "triage", "-o", "json")
-	var report triageReport
+	var report history.TriageReport
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
 	got := map[string]string{}
-	for group, items := range map[string][]triageItem{"remove": report.Remove, "review": report.Review, "keep": report.Keep} {
+	for group, items := range map[string][]history.TriageItem{"remove": report.Remove, "review": report.Review, "keep": report.Keep} {
 		for _, it := range items {
 			got[it.SessionID] = group + " " + it.Why
 		}
@@ -73,28 +73,6 @@ func TestSessionTriageSortsSessionsIntoRemoveReviewAndKeep(t *testing.T) {
 	}
 }
 
-func TestGcCommandForNamesTheKindsOnlyWhenTheDefaultWouldNotDo(t *testing.T) {
-	items := func(whys ...string) []triageItem {
-		var out []triageItem
-		for _, w := range whys {
-			out = append(out, triageItem{Why: w})
-		}
-		return out
-	}
-	for _, tc := range []struct {
-		whys []string
-		want string
-	}{
-		{[]string{"empty", "copy"}, "claudes session gc"},
-		{[]string{"trivial"}, "claudes session gc --trivial"},
-		{[]string{"leftover", "trivial", "empty"}, "claudes session gc --empty --trivial --leftovers"},
-	} {
-		if got := gcCommandFor(items(tc.whys...)); got != tc.want {
-			t.Errorf("%v: got %q, want %q", tc.whys, got, tc.want)
-		}
-	}
-}
-
 // session gc ID removes the whole session, so an older copy or a leftover,
 // which shares the original's session id, shows no id.
 func TestOlderCopiesAndLeftoversHaveNoID(t *testing.T) {
@@ -115,7 +93,7 @@ func TestOlderCopiesAndLeftoversHaveNoID(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{}}
 
 	h.ok(t, "session", "triage", "-o", "json")
-	var triage triageReport
+	var triage history.TriageReport
 	if err := json.Unmarshal(h.out.Bytes(), &triage); err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +147,7 @@ func TestSessionTriageKeepsRunningParkedAndHostSessions(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{live}}
 
 	h.ok(t, "session", "triage", "-o", "json")
-	var report triageReport
+	var report history.TriageReport
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -183,24 +161,6 @@ func TestSessionTriageKeepsRunningParkedAndHostSessions(t *testing.T) {
 	want := map[string]string{live.SessionID: "running", parked: "parked", host: "the session running claudes"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf("keep (-want +got):\n%s", diff)
-	}
-}
-
-// A transcript claudes could not read is kept for that reason, not for being
-// too big to read, and is read only once.
-func TestTriageSaysWhenItCannotReadATranscript(t *testing.T) {
-	p := pastSession{Session: transcripts.Session{Path: filepath.Join(t.TempDir(), "gone.jsonl"), Size: 10}}
-	readTally(&p, false)
-	if p.Activity != nil || p.tallyErr == nil {
-		t.Fatalf("activity %+v, err %v", p.Activity, p.tallyErr)
-	}
-	if why := keepWhy(p); why != "cannot read it" {
-		t.Fatalf("kept as %q", why)
-	}
-	first := p.tallyErr
-	readTally(&p, true)
-	if !errors.Is(p.tallyErr, first) {
-		t.Fatal("read the transcript a second time")
 	}
 }
 
@@ -219,12 +179,12 @@ func TestSessionTriageNarrowsToADirectoryOrARecentWhile(t *testing.T) {
 		t.Helper()
 		h.out.Reset()
 		h.ok(t, append([]string{"session", "triage", "-o", "json"}, args...)...)
-		var report triageReport
+		var report history.TriageReport
 		if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 			t.Fatal(err)
 		}
 		var got []string
-		for _, group := range [][]triageItem{report.Remove, report.Review, report.Keep} {
+		for _, group := range [][]history.TriageItem{report.Remove, report.Review, report.Keep} {
 			for _, it := range group {
 				got = append(got, it.SessionID)
 			}

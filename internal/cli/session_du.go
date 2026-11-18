@@ -1,44 +1,15 @@
 package cli
 
 import (
-	"cmp"
 	"fmt"
-	"path/filepath"
-	"slices"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
-
-// duDir is the space the sessions of one project directory take.
-type duDir struct {
-	// Dir is where the newest of its sessions ran.
-	Dir string `json:"dir"`
-	// Project is the project directory under ~/.claude/projects.
-	Project  string           `json:"project"`
-	Sessions int              `json:"sessions"`
-	Disk     transcripts.Disk `json:"disk"`
-}
-
-// duSession is one of the sessions that take the most space.
-type duSession struct {
-	sessionRef
-	Cwd     string           `json:"cwd"`
-	Running bool             `json:"running"`
-	Disk    transcripts.Disk `json:"disk"`
-}
-
-type duReport struct {
-	Dirs []duDir `json:"dirs"`
-	// Top is the biggest sessions, with --top.
-	Top       []duSession            `json:"top"`
-	Leftovers []transcripts.Leftover `json:"leftovers"`
-	// Total includes the leftovers.
-	Total int64 `json:"total"`
-}
 
 func (app *App) sessionDuCommand() *cobra.Command {
 	var in string
@@ -80,8 +51,8 @@ session.`,
 			if list, err = app.filterPast(list, args, in, since.d); err != nil {
 				return err
 			}
-			report := duTally(list, leftovers)
-			report.Top = duTop(list, top.n)
+			report := history.UsageOf(list, leftovers)
+			report.Top = history.Biggest(list, top.n)
 			if out != render.Text {
 				return out.Encode(app.Out, report)
 			}
@@ -93,7 +64,7 @@ session.`,
 			var sum transcripts.Disk
 			sessions := 0
 			for _, f := range report.Dirs {
-				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), render.DirCell(f.Dir)))
+				table = append(table, history.UsageCells(f.Disk, strconv.Itoa(f.Sessions), render.DirCell(f.Dir)))
 				sum.Add(f.Disk)
 				sessions += f.Sessions
 			}
@@ -105,7 +76,7 @@ session.`,
 				table = append(table, []string{render.Size(size), "-", "-", "-", "-", "-",
 					fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers))})
 			}
-			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
+			table = append(table, history.UsageCells(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = render.Size(report.Total)
 			if err := app.writeTable(app.Out, table, tableFit{}); err != nil || len(report.Top) == 0 {
 				return err
@@ -129,51 +100,4 @@ session.`,
 	cmd.Flags().VarP(&top, "top", "t", "also list the N sessions that take the most space")
 	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
-}
-
-// duTop is the n sessions in list that take the most space, biggest first.
-func duTop(list []pastSession, n int) []duSession {
-	out := []duSession{}
-	if n <= 0 {
-		return out
-	}
-	sorted := slices.Clone(list)
-	slices.SortStableFunc(sorted, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
-	for _, p := range sorted[:min(n, len(sorted))] {
-		out = append(out, duSession{sessionRef: refOf(p), Cwd: p.Cwd, Running: p.Running, Disk: p.Disk})
-	}
-	return out
-}
-
-func duRow(d transcripts.Disk, sessions, dir string) []string {
-	return []string{render.Size(d.Total), render.Size(d.Transcript), render.Size(d.Sidecar),
-		render.Size(d.Copies), render.Size(d.FileHistory), sessions, dir}
-}
-
-// duTally groups list, which is newest first, by project directory, biggest
-// first.
-func duTally(list []pastSession, leftovers []transcripts.Leftover) duReport {
-	report := duReport{Dirs: []duDir{}, Leftovers: leftovers}
-	if report.Leftovers == nil {
-		report.Leftovers = []transcripts.Leftover{}
-	}
-	index := map[string]int{}
-	for _, p := range list {
-		project := filepath.Base(filepath.Dir(p.Path))
-		i, ok := index[project]
-		if !ok {
-			i = len(report.Dirs)
-			index[project] = i
-			report.Dirs = append(report.Dirs, duDir{Dir: p.Cwd, Project: project})
-		}
-		f := &report.Dirs[i]
-		f.Sessions++
-		f.Disk.Add(p.Disk)
-		report.Total += p.Disk.Total
-	}
-	for _, l := range leftovers {
-		report.Total += l.Size
-	}
-	slices.SortStableFunc(report.Dirs, func(a, b duDir) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
-	return report
 }

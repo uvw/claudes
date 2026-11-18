@@ -9,6 +9,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 )
 
 // sessionKind picks the sessions a command can act on, so completion offers
@@ -40,7 +41,7 @@ func (app *App) keeps(k sessionKind, s claude.Session) bool {
 		pins, err := app.Jobs.PinSet()
 		return err == nil && pins[s.JobID] == (k == pinnedSession)
 	case finishedSession:
-		return isFinished(s)
+		return selection.IsFinished(s)
 	}
 	return true
 }
@@ -75,7 +76,7 @@ func (app *App) sessionCompletions(cmd *cobra.Command, k sessionKind, taken []st
 		if !app.keeps(k, s) || slices.Contains(taken, s.Label()) {
 			continue
 		}
-		out = append(out, cobra.CompletionWithDesc(s.Label(), describeForCompletion(s)))
+		out = append(out, cobra.CompletionWithDesc(s.Label(), app.describeForCompletion(s)))
 	}
 	return out
 }
@@ -99,7 +100,7 @@ func (app *App) completeResumable(cmd *cobra.Command, args []string, _ string) (
 			if s.Running() || parked[s.SessionID] || slices.Contains(args, s.Label()) {
 				continue
 			}
-			out = append(out, cobra.CompletionWithDesc(s.Label(), describeForCompletion(s)))
+			out = append(out, cobra.CompletionWithDesc(s.Label(), app.describeForCompletion(s)))
 		}
 	}
 	return out, cobra.ShellCompDirectiveNoFileComp
@@ -118,11 +119,11 @@ func (app *App) completeResumeSkip(cmd *cobra.Command, _ []string, _ string) ([]
 	return out, cobra.ShellCompDirectiveNoFileComp
 }
 
-func describeForCompletion(s claude.Session) string {
-	return fmt.Sprintf("%s %s %s", s.ID(), kind(s), render.Dash(s.State))
+func (app *App) describeForCompletion(s claude.Session) string {
+	return fmt.Sprintf("%s %s %s", s.ID(), s.Mode(), render.Dash(s.State))
 }
 
-func completeKeys(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
+func (app *App) completeKeys(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}

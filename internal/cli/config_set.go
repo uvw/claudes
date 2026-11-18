@@ -11,7 +11,7 @@ func (app *App) configSetCommand() *cobra.Command {
 		Use:               "set KEY VALUE",
 		Short:             "Change one setting, keeping the rest of the file and its comments",
 		Args:              cobra.ExactArgs(2),
-		ValidArgsFunction: completeKeys,
+		ValidArgsFunction: app.completeKeys,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if err := app.configPathErr(); err != nil {
 				return err
