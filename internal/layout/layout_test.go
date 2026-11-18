@@ -28,7 +28,7 @@ var allowed = map[string][]string{
 	"internal/claude": {"internal/shell"},
 	"internal/cli": {
 		"internal/claude", "internal/compat", "internal/config", "internal/exit",
-		"internal/files", "internal/install", "internal/jobs", "internal/mcp", "internal/park",
+		"internal/files", "internal/install", "internal/interrupt", "internal/jobs", "internal/mcp", "internal/park",
 		"internal/paths", "internal/procs", "internal/shell", "internal/style",
 		"internal/target", "internal/teams", "internal/transcripts", "internal/trash",
 		"internal/upgrade", "internal/version", "skills",
@@ -38,6 +38,7 @@ var allowed = map[string][]string{
 	"internal/exit":          {"internal/target"},
 	"internal/files":         nil,
 	"internal/install":       {"internal/files", "internal/paths"},
+	"internal/interrupt":     nil,
 	"internal/jobs":          {"internal/files", "internal/paths"},
 	"internal/layout":        nil,
 	"internal/mcp":           {"internal/paths"},

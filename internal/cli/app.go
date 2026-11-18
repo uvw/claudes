@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/interrupt"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
@@ -135,7 +135,7 @@ func newApp() *App {
 		Err:            os.Stderr,
 		In:             os.Stdin,
 		Now:            time.Now,
-		Sleep:          sleep,
+		Sleep:          interrupt.Sleep,
 		Terminate:      procs.Terminate,
 		Started:        procs.Started,
 		RunningVersion: procs.RunningVersion,
@@ -143,7 +143,7 @@ func newApp() *App {
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
 		Edit:           editFile,
-		Interrupt:      interruptContext,
+		Interrupt:      interrupt.Context,
 		Which:          exec.LookPath,
 		Chdir:          os.Chdir,
 		HTTP:           &http.Client{Timeout: 5 * time.Minute},
@@ -184,22 +184,6 @@ func hostJob(dir string) string {
 		return id
 	}
 	return ""
-}
-
-// interruptContext is Interrupt: ctx, canceled by the first of stopSignals.
-func interruptContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(ctx, stopSignals...)
-}
-
-func sleep(ctx context.Context, d time.Duration) error {
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
-	}
 }
 
 // configPathErr is the error when claudes cannot even tell where config.yaml

@@ -130,8 +130,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // command's.
 var notYetMoved = []string{
 	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
-	"dirs.go", "signals_unix.go", "signals_unix_test.go",
-	"signals_windows.go", "version.go",
+	"dirs.go", "version.go",
 }
 
 // commandFiles are the names, without .go, that a command's file takes: its
@@ -272,14 +271,13 @@ var notYetHelpers = []string{
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
 	"dash", "describeForCompletion", "dirCell", "dirGone", "doing", "duRow",
 	"duTally", "duTop", "editFile", "entryOf", "firstLine",
-	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "interruptContext",
-	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
+	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
 	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
 	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
 	"realDir", "refOf", "relWithin", "removeCommand",
 	"requireFinished", "requireRunning", "resolved", "runningIn", "sameDir",
 	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
-	"sleep", "stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
+	"stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
 	"trivial", "trueFirst", "withOptions", "within", "zeroIfKnown",
 }
 

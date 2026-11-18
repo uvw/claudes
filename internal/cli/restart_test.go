@@ -1,12 +1,18 @@
 package cli
 
 import (
+	"os"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/interrupt"
 )
 
 func TestSkipThatMatchesNothingStopsTheCommand(t *testing.T) {
@@ -259,4 +265,33 @@ func TestRestartFailureIsReportedAndTheRestContinue(t *testing.T) {
 
 	assertCalls(t, h, "respawn "+bad.JobID, "respawn "+good.JobID)
 	assertContains(t, h.err.String(), "bad: boom")
+}
+
+// restart finishes the session in hand, names the rest, and exits 130 on a
+// SIGTERM, as it does on Ctrl-C.
+func TestASIGTERMDuringRestartReportsTheRest(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no SIGTERM to send")
+	}
+	self, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := newHarness(t)
+	a, b := h.bg("alpha", "idle"), h.bg("beta", "idle")
+	h.agents.snapshots = [][]claude.Session{{a, b}}
+	h.app.Interrupt = interrupt.Context
+	var once sync.Once
+	h.agents.beforeRespawn = func(string) {
+		once.Do(func() { _ = self.Signal(syscall.SIGTERM) })
+		// The signal reaches the run's context on another goroutine.
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if code := h.run("restart"); code != exit.Interrupted {
+		t.Fatalf("exit %d, want %d:\n%s\n%s", code, exit.Interrupted, h.out, h.err)
+	}
+	assertCalls(t, h, "respawn "+a.JobID)
+	assertContains(t, h.out.String(), "restarted  alpha")
+	assertContains(t, h.err.String(), "Not reached after Ctrl-C, left as they were: beta")
 }

@@ -13,7 +13,7 @@ adds what an agent needs on top of them.
 | Why something is the way it is               | `docs/decisions.md`                                         |
 | What's open                                  | GitHub issues, `docs/handoffs.md`                           |
 | Passthrough, wiring, and the host session    | `internal/cli/root.go`, `app.go`, `app_sessions.go`         |
-| The run lock, and the signals that end a run | `internal/cli/app_lock.go`, `internal/cli/signals_*.go`     |
+| The run lock, and the signals that end a run | `internal/cli/app_lock.go`, `internal/interrupt`            |
 | Error types and exit codes                   | `internal/exit`                                             |
 | What the commands share                      | `internal/cli/app_*.go`, `{cells,dirs,version}.go`          |
 | Restart, pause, and resume                   | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
