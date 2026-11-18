@@ -117,8 +117,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
 var notYetMoved = []string{
-	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
-	"dirs.go", }
+	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go"}
 
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
@@ -256,16 +255,15 @@ var plumbingTypes = map[string]string{
 var notYetHelpers = []string{
 	"activity", "age", "ago", "branchCell", "checkFail",
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
-	"dash", "describeForCompletion", "dirCell", "dirGone", "doing", "duRow",
+	"dash", "describeForCompletion", "dirCell", "doing", "duRow",
 	"duTally", "duTop", "editFile", "entryOf", "firstLine",
 	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
 	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
 	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
-	"realDir", "refOf", "relWithin", "removeCommand",
-	"requireFinished", "requireRunning", "resolved", "runningIn", "sameDir",
-	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
+	"refOf", "removeCommand",
+	"requireFinished", "requireRunning", "runningIn", "sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
 	"stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
-	"trivial", "trueFirst", "withOptions", "within", "zeroIfKnown",
+	"trivial", "trueFirst", "withOptions", "zeroIfKnown",
 }
 
 func TestCLIDeclaresNoHelpers(t *testing.T) {
@@ -319,8 +317,7 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.gcKeep", "App.gcPick", "App.ghProvenance",
-	"App.remover", }
+	"App.gcKeep", "App.gcPick", "App.ghProvenance"}
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.

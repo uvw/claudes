@@ -13,6 +13,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -244,7 +245,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			items = append(items, app.wholeSession(*p, kindEmpty))
 		case f.trivial && trivial(*p):
 			items = append(items, app.wholeSession(*p, kindTrivial))
-		case f.gone && dirGone(p.Cwd):
+		case f.gone && paths.Gone(p.Cwd):
 			items = append(items, app.wholeSession(*p, kindGone))
 		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
 			items = append(items, app.wholeSession(*p, kindOld))

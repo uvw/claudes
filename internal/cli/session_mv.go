@@ -13,6 +13,7 @@ import (
 
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -59,8 +60,8 @@ claudes session resume --bg then starts a new job in DIR with those options.`,
 }
 
 func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, purge bool) error {
-	dir, err := realDir(to)
-	if errors.Is(err, errNoDir) {
+	dir, err := paths.Real(to)
+	if errors.Is(err, paths.ErrNoDir) {
 		return fmt.Errorf("%w. Create or clone it first", err)
 	}
 	if err != nil {
@@ -94,7 +95,7 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 			return err
 		}
 	}
-	if sameDir(p.Cwd, dir) {
+	if paths.Same(p.Cwd, dir) {
 		return fmt.Errorf("%s already lives under %s", p.Label(), dir)
 	}
 	job := movingJob{options: p.JobOptions()}
@@ -167,7 +168,7 @@ func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movin
 		job.options = options
 	}
 	job.id, job.dir = s.JobID, cmp.Or(app.Jobs.Folder(s.JobID, s.SessionID), s.Cwd)
-	if sameDir(job.dir, dir) {
+	if paths.Same(job.dir, dir) {
 		return movingJob{options: job.options}, nil
 	}
 	parked, err := app.Park.Load()

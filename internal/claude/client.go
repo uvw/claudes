@@ -13,6 +13,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/uvw/claudes/internal/paths"
 )
 
 // Agents is what claudes needs from the claude command line.
@@ -254,7 +256,7 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt string, job 
 	if err := CheckOption(prompt); err != nil {
 		return "", err
 	}
-	if !FolderExists(cwd) {
+	if !paths.IsDir(cwd) {
 		return "", fmt.Errorf("directory %s is gone", cwd)
 	}
 	args := []string{"--bg"}
@@ -298,12 +300,6 @@ func withoutName(options []string) []string {
 		}
 	}
 	return out
-}
-
-// FolderExists reports whether dir is an existing directory.
-func FolderExists(dir string) bool {
-	info, err := os.Stat(dir)
-	return err == nil && info.IsDir()
 }
 
 // Help implements Agents.

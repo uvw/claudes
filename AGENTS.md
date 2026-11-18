@@ -16,7 +16,7 @@ adds what an agent needs on top of them.
 | The run lock                              | `internal/lock`, `internal/cli/app_lock.go`                 |
 | The signals that end a run                | `internal/interrupt`                                        |
 | Error types and exit codes                | `internal/exit`                                             |
-| What the commands share                   | `internal/cli/app_*.go`, `{cells,dirs}.go`                  |
+| What the commands share                   | `internal/cli/app_*.go`, `cells.go`                         |
 | Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
 | Which sessions a bulk command picks       | `internal/cli/app_selection.go`                             |
 | Stopping, parking, and relaunching        | `internal/cli/app_relaunch.go`                              |
@@ -39,6 +39,7 @@ adds what an agent needs on top of them.
 | Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`                   |
 | MCP servers, profiles, and `claudes mcp`  | `internal/mcp`, `internal/cli/mcp*.go`                      |
 | Where claudes keeps its own files         | `internal/paths`, one file per platform                     |
+| Checking directories: within, same, gone  | `internal/paths/dirs.go`                                    |
 | Atomic writes and lock directories        | `internal/files`                                            |
 | Colors and the text tables' layout        | `internal/style`                                            |
 | Fitting tables to the terminal            | `internal/style`, `internal/cli/app_output.go`              |

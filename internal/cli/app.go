@@ -186,6 +186,15 @@ func hostJob(dir string) string {
 	return ""
 }
 
+// remover is how a command removes a file or directory: it moves it to the
+// system trash, or with --purge deletes it for good.
+func (app *App) remover(purge bool) func(string) error {
+	if purge {
+		return os.RemoveAll
+	}
+	return app.Trash
+}
+
 // configPathErr is the error when claudes cannot even tell where config.yaml
 // is, such as a relative $CLAUDES_CONFIG.
 func (app *App) configPathErr() error {

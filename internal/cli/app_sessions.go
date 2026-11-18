@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -202,7 +203,7 @@ func (app *App) filterPast(list []pastSession, targets []string, in string, sinc
 	}
 	out := list[:0]
 	for _, p := range list {
-		if root != "" && !within(p.Cwd, root) && !within(resolved(p.Cwd), root) {
+		if root != "" && !paths.Within(p.Cwd, root) && !paths.Within(paths.Resolved(p.Cwd), root) {
 			continue
 		}
 		if since > 0 && app.Now().Sub(p.LastActive) > since {

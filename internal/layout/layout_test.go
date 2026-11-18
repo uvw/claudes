@@ -25,7 +25,7 @@ const module = "github.com/uvw/claudes"
 // this map, so each shows up in review.
 var allowed = map[string][]string{
 	"cmd/claudes":     {"internal/cli"},
-	"internal/claude": {"internal/shell"},
+	"internal/claude": {"internal/paths", "internal/shell"},
 	"internal/cli": {
 		"internal/claude", "internal/compat", "internal/config", "internal/exit",
 		"internal/files", "internal/install", "internal/interrupt", "internal/jobs", "internal/lock", "internal/mcp", "internal/park",
