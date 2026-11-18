@@ -131,13 +131,13 @@ func (app *App) lastWords(host claude.Session, verb string) {
 const resumeIndent = "             "
 
 func (app *App) resumeSession(ctx context.Context, sessionID, cwd, prompt string) error {
-	return app.resumeNamed(ctx, sessionID, cwd, prompt, "")
+	return app.resumeAs(ctx, sessionID, cwd, prompt, claude.NewJob{})
 }
 
-// resumeNamed is resumeSession for a session with no background job, which
-// Claude Code would otherwise list by its id alone.
-func (app *App) resumeNamed(ctx context.Context, sessionID, cwd, prompt, name string) error {
-	out, err := app.Agents.Resume(ctx, sessionID, cwd, prompt, name)
+// resumeAs is resumeSession for a session with no background job, which
+// starts one with job's name and options.
+func (app *App) resumeAs(ctx context.Context, sessionID, cwd, prompt string, job claude.NewJob) error {
+	out, err := app.Agents.Resume(ctx, sessionID, cwd, prompt, job)
 	if err != nil {
 		return err
 	}

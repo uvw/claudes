@@ -66,8 +66,13 @@ type Session struct {
 	Empty bool `json:"empty"`
 	// fits is whether the transcript's own records place it in its project
 	// directory, or Claude Code relocated it, so no recorded move applies.
-	fits bool
+	fits    bool
+	options []string
 }
+
+// JobOptions are the options of the background job session mv removed when
+// it moved the session, for the job claude --bg --resume starts in its place.
+func (s Session) JobOptions() []string { return s.options }
 
 // ID is the id to show: the first eight characters of the session id, as
 // agent view shows it.
@@ -155,9 +160,11 @@ func (st Store) List() ([]Session, error) {
 		}
 	}
 	for i := range out {
-		if dir, ok := moves[moveKey(out[i].Path, out[i].SessionID)]; ok && !out[i].fits {
-			out[i].Cwd = dir
+		m, ok := moves[moveKey(out[i].Path, out[i].SessionID)]
+		if ok && !out[i].fits {
+			out[i].Cwd = m.Dir
 		}
+		out[i].options = m.Options
 		// Every key is always present in -o json and -o yaml, a list as [].
 		if out[i].Copies == nil {
 			out[i].Copies = []string{}
@@ -174,9 +181,33 @@ func moveKey(path, sessionID string) string {
 	return strings.ToLower(filepath.Base(filepath.Dir(path))) + "/" + sessionID
 }
 
+// move is the directory a copy belongs to, and the options of the background
+// job session mv removed for it. A move with no options is written as the
+// directory alone, which claudes versions without options still read.
+type move struct {
+	Dir     string   `json:"dir"`
+	Options []string `json:"options,omitempty"`
+}
+
+func (m move) MarshalJSON() ([]byte, error) {
+	if len(m.Options) == 0 {
+		return json.Marshal(m.Dir)
+	}
+	type plain move
+	return json.Marshal(plain(m))
+}
+
+func (m *move) UnmarshalJSON(data []byte) error {
+	if err := json.Unmarshal(data, &m.Dir); err == nil {
+		return nil
+	}
+	type plain move
+	return json.Unmarshal(data, (*plain)(m))
+}
+
 // loadMoves reads the moves file. A missing one has no moves.
-func (st Store) loadMoves() (map[string]string, error) {
-	moves := map[string]string{}
+func (st Store) loadMoves() (map[string]move, error) {
+	moves := map[string]move{}
 	if st.Moves == "" {
 		return moves, nil
 	}
@@ -188,13 +219,13 @@ func (st Store) loadMoves() (map[string]string, error) {
 		return moves, err
 	}
 	if err := json.Unmarshal(data, &moves); err != nil {
-		return map[string]string{}, fmt.Errorf("%s is not a valid moves file: %w", st.Moves, err)
+		return map[string]move{}, fmt.Errorf("%s is not a valid moves file: %w", st.Moves, err)
 	}
 	return moves, nil
 }
 
 // recordMove notes that the copy at path belongs to dir.
-func (st Store) recordMove(path, sessionID, dir string) error {
+func (st Store) recordMove(path, sessionID string, m move) error {
 	if st.Moves == "" {
 		return nil
 	}
@@ -204,7 +235,7 @@ func (st Store) recordMove(path, sessionID, dir string) error {
 	if err != nil {
 		return err
 	}
-	moves[moveKey(path, sessionID)] = dir
+	moves[moveKey(path, sessionID)] = m
 	data, err := json.MarshalIndent(moves, "", "  ")
 	if err != nil {
 		return err
@@ -387,8 +418,9 @@ func records(data []byte, partial bool) []record {
 // Copy copies s's transcript, and its directory of subagent transcripts and tool
 // results when there is one, into the project directory for dir. It never moves
 // or deletes: the original stays, so the session still resumes from its old
-// directory. It returns the directory it copied into.
-func (st Store) Copy(s Session, dir string) (string, error) {
+// directory. It returns the directory it copied into. options are kept as the
+// copy's JobOptions.
+func (st Store) Copy(s Session, dir string, options []string) (string, error) {
 	name := Folder(dir)
 	if len(name) > maxFolder {
 		return "", fmt.Errorf("%s is too long: Claude Code shortens the names of such directories in a way claudes cannot match, so it would not find the copy", dir)
@@ -408,7 +440,7 @@ func (st Store) Copy(s Session, dir string) (string, error) {
 	if err := copyFile(s.Path, target); err != nil {
 		return "", err
 	}
-	if err := st.recordMove(target, s.SessionID, dir); err != nil {
+	if err := st.recordMove(target, s.SessionID, move{Dir: dir, Options: options}); err != nil {
 		return "", fmt.Errorf("copied, but cannot record where it belongs: %w", err)
 	}
 	sidecar := Sidecar(s)

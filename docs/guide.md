@@ -232,9 +232,25 @@ It refuses:
 every file of the copy matches it byte for byte. `--rm` refuses the session
 running claudes, which writes to its transcript until it exits.
 
+For a stopped background session, `mv` also removes its job with `claude rm`, as
+`gc` does, and keeps the options Claude Code saved for the job, such as
+`--model` and `--permission-mode`. A job wakes in the directory it started in,
+wherever `claude --bg --resume` runs from, so the old job would resume the
+session in the old directory. The next `session resume --bg` starts a new job in
+`DIR` with the saved options. `mv` keeps the job, and says why, when:
+
+1. The job is not stopped, such as one that started again after claudes listed
+   it.
+2. The session is paused, since `claudes resume` wakes it where it was paused.
+3. claudes cannot read the job's saved options.
+
+Until such a job is gone, `session resume --bg` refuses the session and prints
+the `claudes gc` command that removes the job.
+
 A copy's transcript still names the old directory until it is first resumed from
-the new one, so claudes records each move in `moves.json`. `session where`,
-`cd`, and `session resume` then use the new directory right away.
+the new one, so claudes records each move in `moves.json`, with the options of
+any job it removed. `session where`, `cd`, and `session resume` then use the new
+directory right away.
 
 `mv` copies rather than moving because a copy cannot lose the original if
 anything goes wrong, and because Claude Code's own record of a moved session, a

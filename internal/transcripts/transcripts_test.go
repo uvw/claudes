@@ -147,7 +147,7 @@ func TestCopyCopiesTheTranscriptAndItsSidecar(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dest, err := st.Copy(s, "/b")
+	dest, err := st.Copy(s, "/b", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +164,7 @@ func TestCopyCopiesTheTranscriptAndItsSidecar(t *testing.T) {
 	if _, err := os.Stat(src); err != nil {
 		t.Fatalf("the original is gone: %v", err)
 	}
-	if _, err := st.Copy(s, "/a"); err == nil || !strings.Contains(err.Error(), "already lives under") {
+	if _, err := st.Copy(s, "/a", nil); err == nil || !strings.Contains(err.Error(), "already lives under") {
 		t.Fatalf("copy into its own directory: %v", err)
 	}
 }
@@ -223,13 +223,13 @@ func TestCopyRefusesToOverwriteAnotherCopyOrALongFolder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Copy(s, "/b"); err == nil || !strings.Contains(err.Error(), "already has a copy") {
+	if _, err := st.Copy(s, "/b", nil); err == nil || !strings.Contains(err.Error(), "already has a copy") {
 		t.Fatalf("err %v", err)
 	}
 	if data, _ := os.ReadFile(existing); string(data) != "only here\n" {
 		t.Fatalf("the other copy changed: %q", data)
 	}
-	if _, err := st.Copy(s, "/"+strings.Repeat("x", 220)); err == nil || !strings.Contains(err.Error(), "too long") {
+	if _, err := st.Copy(s, "/"+strings.Repeat("x", 220), nil); err == nil || !strings.Contains(err.Error(), "too long") {
 		t.Fatalf("long directory: %v", err)
 	}
 }
@@ -287,7 +287,7 @@ func TestACorruptMovesFileIsKept(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Copy(s, "/b"); err == nil || !strings.Contains(err.Error(), "not a valid moves file") {
+	if _, err := st.Copy(s, "/b", nil); err == nil || !strings.Contains(err.Error(), "not a valid moves file") {
 		t.Fatalf("err %v", err)
 	}
 	if data, _ := os.ReadFile(moves); string(data) != "{not json" {

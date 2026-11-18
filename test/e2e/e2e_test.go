@@ -619,6 +619,45 @@ func TestSessionResumeHandsOffInTheSessionsFolder(t *testing.T) {
 	assertIn(t, got[0], dir)
 }
 
+func TestSessionMvCarriesAStoppedJobsOptionsToTheNewDirectory(t *testing.T) {
+	w := newWorld(t)
+	s := w.finished("plan", "stopped", time.Hour)
+	w.writeFile(filepath.Join(w.jobsDir(), s.ID, "state.json"),
+		`{"sessionId":"`+s.SessionID+`","respawnFlags":["--model","m","--permission-mode","plan"]}`)
+	w.transcript(s.Cwd, s.SessionID,
+		map[string]string{"type": "user", "sessionId": s.SessionID, "cwd": s.Cwd},
+		map[string]string{"type": "custom-title", "customTitle": "plan", "sessionId": s.SessionID},
+	)
+	to := w.folder("new home")
+
+	r := w.ok("session", "mv", "--rm", "plan", to)
+	assertContains(t, r.stdout, "removed its stopped background job "+s.ID)
+	assertArgs(t, w.actions(), []string{"rm", s.ID})
+	if _, err := os.Stat(filepath.Join(w.jobsDir(), s.ID)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the job's directory is still there: %v", err)
+	}
+
+	w.resetCalls()
+	w.ok("session", "resume", "--bg", "plan")
+	got := w.actions()
+	assertArgs(t, got, []string{"--bg", "--name=plan", "--model", "m", "--permission-mode", "plan", "--resume", s.SessionID})
+	assertIn(t, got[0], to)
+	if job := w.state()["plan"]; job.ID != s.SessionID[:8] || job.PID == 0 {
+		t.Fatalf("new job %+v", job)
+	}
+
+	// The new job saved --name with its options, and the next new job gets
+	// it once.
+	w.ok("stop", "plan")
+	next := w.folder("next home")
+	w.ok("session", "mv", "--rm", "plan", next)
+	w.resetCalls()
+	w.ok("session", "resume", "--bg", "plan")
+	got = w.actions()
+	assertArgs(t, got, []string{"--bg", "--name=plan", "--model", "m", "--permission-mode", "plan", "--resume", s.SessionID})
+	assertIn(t, got[0], next)
+}
+
 // folderName is how Claude Code names a working directory's project directory.
 func folderName(dir string) string {
 	return strings.Map(func(r rune) rune {

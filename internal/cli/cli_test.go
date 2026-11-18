@@ -58,6 +58,8 @@ type fakeAgents struct {
 	respawns map[string]int
 	// resumed are sessions Resume brought back that no snapshot lists.
 	resumed map[string]claude.Session
+	// jobsDir is the jobs directory, where rm deletes a job's files.
+	jobsDir string
 }
 
 func (f *fakeAgents) current() []claude.Session {
@@ -209,12 +211,26 @@ func (f *fakeAgents) Stop(_ context.Context, jobID string) error {
 	return err
 }
 
-func (f *fakeAgents) Remove(_ context.Context, jobID string) error { return f.job("rm", jobID) }
+// Remove drops a finished job from the list and deletes its directory, as
+// claude rm does.
+func (f *fakeAgents) Remove(_ context.Context, jobID string) error {
+	err := f.job("rm", jobID)
+	if err == nil {
+		f.finished = slices.DeleteFunc(slices.Clone(f.finished), func(s claude.Session) bool { return s.JobID == jobID })
+		if f.jobsDir != "" && jobIDPattern.MatchString(jobID) {
+			err = os.RemoveAll(filepath.Join(f.jobsDir, jobID))
+		}
+	}
+	return err
+}
 
-func (f *fakeAgents) Resume(_ context.Context, sessionID, cwd, prompt, name string) (string, error) {
+func (f *fakeAgents) Resume(_ context.Context, sessionID, cwd, prompt string, job claude.NewJob) (string, error) {
 	call := sessionID + " in " + filepath.Base(cwd) + " prompt=" + prompt
-	if name != "" {
-		call += " name=" + name
+	if job.Name != "" {
+		call += " name=" + job.Name
+	}
+	if len(job.Options) > 0 {
+		call += " options=" + strings.Join(job.Options, " ")
 	}
 	err := f.do("resume", call)
 	if err == nil {
@@ -303,7 +319,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 	if err := os.MkdirAll(filepath.Join(root, "jobs"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	h := &harness{agents: &fakeAgents{snapshots: snapshots}, out: &cutWriter{}, err: &cutWriter{}, root: root, now: start}
+	h := &harness{agents: &fakeAgents{snapshots: snapshots, jobsDir: filepath.Join(root, "jobs")}, out: &cutWriter{}, err: &cutWriter{}, root: root, now: start}
 	h.app = &App{
 		Agents:       h.agents,
 		Jobs:         jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},

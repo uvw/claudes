@@ -265,6 +265,9 @@ as usual. `--version` prints the version.
   Windows, claudes also reads one in `~/.local/state/claudes`, and moves it
   under `%LOCALAPPDATA%` the first time it changes the list.
 - `moves.json` maps each copy `session mv` made to the directory it belongs to.
+  When `session mv` removed the session's stopped background job, the entry is
+  an object, `{"dir": DIR, "options": [...]}`, with the options Claude Code had
+  saved for the job. `session resume --bg` passes them to the new job.
 - `run.lock` is a directory that exists only while a command changes sessions.
 - An `XDG_` variable that holds an absolute path moves its directory on every
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and

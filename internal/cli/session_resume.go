@@ -20,7 +20,9 @@ func (app *App) sessionResumeCommand() *cobra.Command {
 		Short: "Resume a past session in its own directory, from any directory",
 		Long: `Resume a past session in this terminal, in the directory it ran in, with an
 optional prompt. --bg resumes it in the background instead. A session that is
-still running is refused: resuming it would start a copy.`,
+still running is refused: resuming it would start a copy. When session mv
+removed the session's background job, --bg starts a new job with the old
+job's options, such as --model.`,
 		Args:              cobra.RangeArgs(1, 2),
 		ValidArgsFunction: app.completePast(true),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,16 +57,19 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 		return fmt.Errorf("%s ran in %s, which is gone. Move it with claudes session mv first", p.Label(), p.Cwd)
 	}
 	if bg {
-		job := claude.ShortID(p.SessionID)
+		job, found, err := app.findJob(ctx, p.SessionID)
+		if err != nil {
+			return err
+		}
 		if dir := app.Jobs.Folder(job, p.SessionID); dir != "" && !sameFolder(dir, p.Cwd) {
 			return fmt.Errorf("%s has a background job in %s, and claude --bg --resume would wake it there, not in %s. "+
 				"Resume it in this terminal without --bg, or remove the job first with claudes gc %s", p.Label(), dir, p.Cwd, job)
 		}
-		name := ""
-		if !app.Jobs.Has(job, p.SessionID) {
-			name = p.Name
+		var fresh claude.NewJob
+		if !found {
+			fresh = claude.NewJob{Name: p.Name, Options: p.JobOptions()}
 		}
-		if err := app.resumeNamed(ctx, p.SessionID, p.Cwd, prompt, name); errors.Is(err, errNotYetRunning) {
+		if err := app.resumeAs(ctx, p.SessionID, p.Cwd, prompt, fresh); errors.Is(err, errNotYetRunning) {
 			app.warn("claudes: %s: %v.", p.Label(), err)
 		} else if err != nil {
 			return err
@@ -81,6 +86,23 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 	}
 	app.unlock()
 	return app.Exec("claude", args...)
+}
+
+// findJob is the id of a session's background job, and whether it has one,
+// from claude agents and then a state.json under the session's short id.
+// Passing options to a job that exists starts a copy, so either one counts.
+func (app *App) findJob(ctx context.Context, sessionID string) (string, bool, error) {
+	sessions, err := app.Agents.Sessions(ctx, true)
+	if err != nil {
+		return "", false, err
+	}
+	for _, s := range sessions {
+		if s.SessionID == sessionID && s.JobID != "" {
+			return s.JobID, true, nil
+		}
+	}
+	job := claude.ShortID(sessionID)
+	return job, app.Jobs.Has(job, sessionID), nil
 }
 
 // sameFolder reports whether a and b name the same directory, which on Windows

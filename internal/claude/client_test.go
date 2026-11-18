@@ -167,7 +167,7 @@ func TestCallsToClaudeLeaveOutTheSessionsOwnVariables(t *testing.T) {
 
 func TestResumeRefusesAPromptThatLooksLikeAnOption(t *testing.T) {
 	r := &fakeRunner{}
-	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "--dangerously-skip-permissions", "")
+	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "--dangerously-skip-permissions", NewJob{})
 	if err == nil || len(r.calls) != 0 {
 		t.Fatalf("err %v, calls %q", err, r.calls)
 	}
@@ -175,7 +175,7 @@ func TestResumeRefusesAPromptThatLooksLikeAnOption(t *testing.T) {
 
 func TestResumeThatStartsACopyIsAFailure(t *testing.T) {
 	r := &fakeRunner{stderr: "Session is already running; started a copy as a new session."}
-	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "", "")
+	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "", NewJob{})
 	if err == nil || !strings.Contains(err.Error(), "started a copy") {
 		t.Fatalf("err %v", err)
 	}
@@ -207,7 +207,7 @@ func TestAFailingCommandReportsWhatItPrinted(t *testing.T) {
 func TestResumeRunsInTheFolderWithThePromptLast(t *testing.T) {
 	r := &fakeRunner{}
 	dir := t.TempDir()
-	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", dir, "carry on", ""); err != nil {
+	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", dir, "carry on", NewJob{}); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Equal(r.calls[0], []string{"--bg", "--resume", "sid", "carry on"}) || r.dirs[0] != dir {
@@ -215,9 +215,32 @@ func TestResumeRunsInTheFolderWithThePromptLast(t *testing.T) {
 	}
 }
 
+func TestResumeGivesANewJobItsNameAndOptionsBeforeTheSession(t *testing.T) {
+	r := &fakeRunner{}
+	job := NewJob{Name: "plan", Options: []string{"--add-dir", "/x", "--model", "m"}}
+	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "carry on", job); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"--bg", "--name=plan", "--add-dir", "/x", "--model", "m", "--resume", "sid", "carry on"}
+	if !slices.Equal(r.calls[0], want) {
+		t.Fatalf("args %q", r.calls[0])
+	}
+}
+
+func TestResumeNamesANewJobOnce(t *testing.T) {
+	r := &fakeRunner{}
+	job := NewJob{Name: "new", Options: []string{"--name=old", "--model", "m", "-n", "older", "--name", "oldest", "-n=x"}}
+	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "", job); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"--bg", "--name=new", "--model", "m", "--resume", "sid"}; !slices.Equal(r.calls[0], want) {
+		t.Fatalf("args %q", r.calls[0])
+	}
+}
+
 func TestResumeChecksTheFolderFirst(t *testing.T) {
 	r := &fakeRunner{}
-	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", "/no/such/directory", "", "")
+	_, err := (&Client{Runner: r}).Resume(t.Context(), "sid", "/no/such/directory", "", NewJob{})
 	if err == nil || !strings.Contains(err.Error(), "is gone") || len(r.calls) != 0 {
 		t.Fatalf("err %v, calls %q", err, r.calls)
 	}
@@ -350,7 +373,7 @@ func TestEachCallIsLoggedWhenThereIsALog(t *testing.T) {
 
 func TestResumeKeepsANameThatStartsWithADashOneArgument(t *testing.T) {
 	r := &fakeRunner{}
-	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "", "-x"); err != nil {
+	if _, err := (&Client{Runner: r}).Resume(t.Context(), "sid", t.TempDir(), "", NewJob{Name: "-x"}); err != nil {
 		t.Fatal(err)
 	}
 	if !slices.Contains(r.calls[0], "--name=-x") {

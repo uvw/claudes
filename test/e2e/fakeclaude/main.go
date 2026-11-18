@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -77,8 +78,9 @@ func (st *state) handle(args []string) int {
 			return 0
 		}
 	case "--bg":
-		if len(args) >= 3 && len(args) <= 4 && args[1] == "--resume" {
-			return st.resume(args[2])
+		// --bg [--name=NAME] [OPTION...] --resume ID [PROMPT]
+		if i := slices.Index(args, "--resume"); i > 0 && len(args)-i >= 2 && len(args)-i <= 3 {
+			return st.resume(args[i+1], args[1:i])
 		}
 	}
 	fmt.Fprintf(os.Stderr, "fakeclaude: unknown call %q\n", args)
@@ -111,17 +113,33 @@ func (st *state) job(op, id string) int {
 		st.start(s)
 	case "rm":
 		st.Sessions = slices.Delete(st.Sessions, i, i+1)
+		if err := os.RemoveAll(filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), "jobs", id)); err != nil {
+			fail(err.Error())
+		}
 	default:
 		fmt.Printf("%s of %s\n", op, s.Name)
 	}
 	return 0
 }
 
-func (st *state) resume(sessionID string) int {
+// resume wakes a session's job, or starts a job in this directory for a
+// session that has a transcript and no job, with the name and options given.
+func (st *state) resume(sessionID string, options []string) int {
 	i := slices.IndexFunc(st.Sessions, func(s fake.Session) bool { return s.SessionID == sessionID })
 	if i < 0 {
-		fmt.Fprintf(os.Stderr, "No conversation found with session ID: %s\n", sessionID)
-		return 1
+		found, _ := filepath.Glob(filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), "projects", "*", sessionID+".jsonl"))
+		if len(found) == 0 {
+			fmt.Fprintf(os.Stderr, "No conversation found with session ID: %s\n", sessionID)
+			return 1
+		}
+		if err := st.newJob(sessionID, options); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		i = len(st.Sessions) - 1
+	} else if len(options) > 0 {
+		fmt.Println("The session has a job, so this started a copy of it.")
+		return 0
 	}
 	s := &st.Sessions[i]
 	if s.PID > 0 {
@@ -132,6 +150,32 @@ func (st *state) resume(sessionID string) int {
 	st.start(s)
 	fmt.Printf("Resumed %s in the background.\n", s.SessionID)
 	return 0
+}
+
+// newJob adds a job for a session, and writes its state.json with the options,
+// --name included, as Claude Code saves them to pass again.
+func (st *state) newJob(sessionID string, options []string) error {
+	home := os.Getenv("CLAUDE_CONFIG_DIR")
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	s := fake.Session{ID: sessionID[:8], SessionID: sessionID, Cwd: wd, Kind: "background"}
+	for _, o := range options {
+		if name, ok := strings.CutPrefix(o, "--name="); ok {
+			s.Name = name
+		}
+	}
+	state, err := json.Marshal(map[string]any{"sessionId": sessionID, "cwd": wd, "respawnFlags": options})
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(home, "jobs", s.ID)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	st.Sessions = append(st.Sessions, s)
+	return os.WriteFile(filepath.Join(dir, "state.json"), state, 0o644)
 }
 
 func (st *state) start(s *fake.Session) {
