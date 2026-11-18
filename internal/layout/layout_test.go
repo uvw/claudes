@@ -29,9 +29,9 @@ var allowed = map[string][]string{
 	"internal/cli": {
 		"internal/claude", "internal/compat", "internal/config", "internal/files",
 		"internal/install", "internal/jobs", "internal/mcp", "internal/park",
-		"internal/paths", "internal/procs", "internal/selfupdate", "internal/shell",
-		"internal/style", "internal/target", "internal/teams", "internal/transcripts",
-		"internal/trash", "internal/version", "skills",
+		"internal/paths", "internal/procs", "internal/shell", "internal/style",
+		"internal/target", "internal/teams", "internal/transcripts", "internal/trash",
+		"internal/upgrade", "internal/version", "skills",
 	},
 	"internal/compat":        {"internal/claude", "internal/files", "internal/jobs", "internal/version"},
 	"internal/config":        {"internal/files", "internal/paths", "internal/style"},
@@ -43,13 +43,13 @@ var allowed = map[string][]string{
 	"internal/park":          {"internal/claude", "internal/files", "internal/paths", "internal/shell"},
 	"internal/paths":         nil,
 	"internal/procs":         nil,
-	"internal/selfupdate":    nil,
 	"internal/shell":         nil,
 	"internal/style":         nil,
 	"internal/target":        nil,
 	"internal/teams":         {"internal/claude", "internal/paths"},
 	"internal/transcripts":   {"internal/claude", "internal/files", "internal/paths", "internal/shell"},
 	"internal/trash":         {"internal/files"},
+	"internal/upgrade":       nil,
 	"internal/version":       nil,
 	"skills":                 nil,
 	"test/e2e":               {"test/e2e/internal/fake"},
@@ -62,9 +62,7 @@ var notYetNamed = []string{"version"}
 
 // notYetRenamed are the package names that join two words, with the one word
 // each takes.
-var notYetRenamed = map[string]string{
-	"selfupdate": "upgrade",
-}
+var notYetRenamed = map[string]string{}
 
 // twoWords are names that join two words. A name of lowercase letters can
 // still be two words, which no pattern tells apart, so this lists the ones

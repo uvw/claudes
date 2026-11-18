@@ -1,6 +1,6 @@
-// Package selfupdate finds claudes' release for this computer, downloads and
+// Package upgrade finds claudes' release for this computer, downloads and
 // checks its archive, and puts the new binary in place of the running one.
-package selfupdate
+package upgrade
 
 import (
 	"archive/tar"

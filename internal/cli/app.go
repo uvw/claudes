@@ -19,11 +19,11 @@ import (
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
-	"github.com/uvw/claudes/internal/selfupdate"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/trash"
+	"github.com/uvw/claudes/internal/upgrade"
 )
 
 const (
@@ -147,7 +147,7 @@ func newApp() *App {
 		Which:          exec.LookPath,
 		Chdir:          os.Chdir,
 		HTTP:           &http.Client{Timeout: 5 * time.Minute},
-		ReleasesURL:    selfupdate.Releases,
+		ReleasesURL:    upgrade.Releases,
 		Executable:     os.Executable,
 		HostID:         os.Getenv("CLAUDE_CODE_SESSION_ID"),
 		HostJob:        hostJob(os.Getenv("CLAUDE_JOB_DIR")),

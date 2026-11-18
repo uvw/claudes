@@ -43,7 +43,7 @@ adds what an agent needs on top of them.
 | CI, security scans, and releases             | `.github/workflows/`, `docs/releasing.md`                   |
 | The release notes' prompt, tests, and pin    | `.github/release-notes/`                                    |
 | The checks' tools and their pins             | `tools/`, `.github/workflows/hack/tool-pins.sh`             |
-| `claudes upgrade` and its downloads          | `internal/cli/upgrade.go`, `internal/selfupdate`            |
+| `claudes upgrade` and its downloads          | `internal/cli/upgrade.go`, `internal/upgrade`               |
 | Scripts the workflows run                    | `.github/workflows/hack/`                                   |
 | The install scripts                          | `install/install.sh`, `install/install.ps1`                 |
 | Developer tools, such as the notices file    | `hack/`                                                     |

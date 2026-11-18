@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/selfupdate"
+	"github.com/uvw/claudes/internal/upgrade"
 	"github.com/uvw/claudes/internal/version"
 )
 
@@ -69,8 +69,8 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 		return nil
 	}
 
-	base := selfupdate.Base(app.ReleasesURL, to)
-	rel, err := selfupdate.Find(ctx, app.HTTP, base, runtime.GOOS, runtime.GOARCH)
+	base := upgrade.Base(app.ReleasesURL, to)
+	rel, err := upgrade.Find(ctx, app.HTTP, base, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return err
 	}
@@ -93,21 +93,21 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 	}
 	defer os.RemoveAll(tmp)
 	app.say("Downloading %s", rel.Archive)
-	archive, err := selfupdate.Download(ctx, app.HTTP, rel, tmp)
+	archive, err := upgrade.Download(ctx, app.HTTP, rel, tmp)
 	if err != nil {
 		return err
 	}
 	app.say("Checksum matches checksums.txt")
-	note, err := app.Provenance(ctx, archive, strings.HasPrefix(base, selfupdate.Releases))
+	note, err := app.Provenance(ctx, archive, strings.HasPrefix(base, upgrade.Releases))
 	if err != nil {
 		return err
 	}
 	app.say("%s", note)
-	next, err := selfupdate.Unpack(archive, tmp)
+	next, err := upgrade.Unpack(archive, tmp)
 	if err != nil {
 		return err
 	}
-	if err := selfupdate.Install(next, exe); err != nil {
+	if err := upgrade.Install(next, exe); err != nil {
 		if errors.Is(err, os.ErrPermission) {
 			return fmt.Errorf("%w. Run claudes upgrade as a user who can write %s, or reinstall with the install script", err, filepath.Dir(exe))
 		}
