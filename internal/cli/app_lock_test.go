@@ -96,17 +96,3 @@ func TestTheRunLockOutlivesASuspendButNotItsOwner(t *testing.T) {
 	h.ok(t, "stop", "api")
 	assertCalls(t, h, "stop "+s.JobID)
 }
-
-func TestTheRunLockNamesItsProcess(t *testing.T) {
-	h := newHarness(t)
-	owner := h.app.lockOwner()
-	h.app.Alive = func(pid int, started time.Time) bool { return pid == os.Getpid() && started.Equal(start) }
-	if h.app.lockOwnerGone(owner) {
-		t.Fatalf("owner %q of this process reads as gone", owner)
-	}
-	for _, bad := range []string{"", "x", "0 " + start.Format(time.RFC3339Nano), "42 yesterday"} {
-		if !h.app.lockOwnerGone([]byte(bad)) {
-			t.Errorf("owner %q reads as running", bad)
-		}
-	}
-}

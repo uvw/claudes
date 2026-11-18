@@ -11,23 +11,23 @@
 3. Each file and directory claudes reads or writes belongs to one package, and
    only that package opens it; the others call it.
 
-   | File or directory                                                                                                      | Owner                                    |
-   | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-   | `~/.claude/jobs/`, `pins.json` and each job's `state.json` among them                                                  | `internal/jobs`                          |
-   | `~/.claude/projects/`, and each session's `file-history`, `session-env`, and `debug` log                               | `internal/transcripts`                   |
-   | `~/.claude/teams/` and `~/.claude/tasks/`                                                                              | `internal/teams`                         |
-   | `~/.claude.json`, for its MCP keys and the feature flags Claude Code caches                                            | `internal/mcp`                           |
-   | `~/.claude/settings.json`, and a directory's `.claude/settings.json` and `.claude/settings.local.json`                 | `internal/mcp`                           |
-   | `.mcp.json` files                                                                                                      | `internal/mcp`                           |
-   | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`                           |
-   | `managed-mcp.json`                                                                                                     | `internal/mcp`                           |
-   | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts`                   |
-   | `run.lock`, in claudes' state directory                                                                                | `internal/cli`, through `internal/files` |
-   | The park file                                                                                                          | `internal/park`                          |
-   | `config.yaml`                                                                                                          | `internal/config`                        |
-   | The directories claudes keeps its own files in                                                                         | `internal/paths`                         |
-   | The cached `claude --version`                                                                                          | `internal/compat`                        |
-   | The installed agent skill                                                                                              | `internal/install`                       |
+   | File or directory                                                                                                      | Owner                  |
+   | ---------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+   | `~/.claude/jobs/`, `pins.json` and each job's `state.json` among them                                                  | `internal/jobs`        |
+   | `~/.claude/projects/`, and each session's `file-history`, `session-env`, and `debug` log                               | `internal/transcripts` |
+   | `~/.claude/teams/` and `~/.claude/tasks/`                                                                              | `internal/teams`       |
+   | `~/.claude.json`, for its MCP keys and the feature flags Claude Code caches                                            | `internal/mcp`         |
+   | `~/.claude/settings.json`, and a directory's `.claude/settings.json` and `.claude/settings.local.json`                 | `internal/mcp`         |
+   | `.mcp.json` files                                                                                                      | `internal/mcp`         |
+   | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |
+   | `managed-mcp.json`                                                                                                     | `internal/mcp`         |
+   | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts` |
+   | `run.lock`, in claudes' state directory                                                                                | `internal/lock`        |
+   | The park file                                                                                                          | `internal/park`        |
+   | `config.yaml`                                                                                                          | `internal/config`      |
+   | The directories claudes keeps its own files in                                                                         | `internal/paths`       |
+   | The cached `claude --version`                                                                                          | `internal/compat`      |
+   | The installed agent skill                                                                                              | `internal/install`     |
 
    Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
    files, plugin files, or `managed-mcp.json`.
