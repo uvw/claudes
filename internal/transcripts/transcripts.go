@@ -401,7 +401,7 @@ func summarize(path string) (Session, error) {
 		s.Name, s.NameSource = sum.aiTitle, "ai"
 	}
 	project := filepath.Base(filepath.Dir(path))
-	s.Cwd = sum.folder(project)
+	s.Cwd = sum.dir(project)
 	s.fits = sum.relocated != "" || strings.EqualFold(Folder(s.Cwd), project)
 	s.Branch, s.Version, s.LastPrompt, s.Started = sum.branch, sum.version, sum.lastPrompt, sum.started
 	s.Empty = info.Size() <= headSize && empty(headRecords, clean)
@@ -435,8 +435,8 @@ func (m *summary) take(r record) {
 
 // directory is the session's directory: where Claude Code relocated it, or else the
 // recorded directory that names the project directory it lives in, so a session
-// that wandered into a subfolder resumes where Claude Code looks for it.
-func (m *summary) folder(project string) string {
+// that wandered into a subdirectory resumes where Claude Code looks for it.
+func (m *summary) dir(project string) string {
 	switch {
 	case m.relocated != "":
 		return m.relocated

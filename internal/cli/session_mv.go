@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -53,8 +52,11 @@ claudes session resume --bg then starts a new job in DIR with those options.`,
 	return cmd
 }
 
-func (app *App) moveSession(ctx context.Context, token, folder string, resume, rm bool) error {
-	dir, err := realFolder(folder)
+func (app *App) moveSession(ctx context.Context, token, to string, resume, rm bool) error {
+	dir, err := realDir(to)
+	if errors.Is(err, errNoDir) {
+		return fmt.Errorf("%w. Create or clone it first", err)
+	}
 	if err != nil {
 		return err
 	}
@@ -86,7 +88,7 @@ func (app *App) moveSession(ctx context.Context, token, folder string, resume, r
 			return err
 		}
 	}
-	if sameFolder(p.Cwd, dir) {
+	if sameDir(p.Cwd, dir) {
 		return fmt.Errorf("%s already lives under %s", p.Label(), dir)
 	}
 	job := movingJob{options: p.JobOptions()}
@@ -155,7 +157,7 @@ func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movin
 		job.options = options
 	}
 	job.id, job.dir = s.JobID, cmp.Or(app.Jobs.Folder(s.JobID, s.SessionID), s.Cwd)
-	if sameFolder(job.dir, dir) {
+	if sameDir(job.dir, dir) {
 		return movingJob{options: job.options}, nil
 	}
 	parked, err := app.Park.Load()
@@ -180,24 +182,4 @@ func withOptions(options []string) string {
 		return ""
 	}
 	return ", with " + shell.Printable(strings.Join(options, " "))
-}
-
-// realFolder is directory as an absolute path with links resolved, as the
-// working directory Claude Code records for a session started there.
-func realFolder(folder string) (string, error) {
-	abs, err := filepath.Abs(folder)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := filepath.EvalSymlinks(abs)
-	if errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("%s does not exist. Create or clone it first", abs)
-	}
-	if err != nil {
-		return "", err
-	}
-	if info, err := os.Stat(resolved); err != nil || !info.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", abs)
-	}
-	return resolved, nil
 }

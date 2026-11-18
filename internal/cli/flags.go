@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -83,3 +86,32 @@ const forceUsage = "go ahead even when Claude Code's output looks unfamiliar (se
 func (app *App) addForce(cmd *cobra.Command, usage string) {
 	cmd.Flags().BoolVar(&app.force, "force", false, usage)
 }
+
+// days is a duration flag that also accepts a number of days, such as 7d.
+type days struct{ d time.Duration }
+
+func (v *days) String() string {
+	if v.d > 0 && v.d%(24*time.Hour) == 0 {
+		return strconv.Itoa(int(v.d/(24*time.Hour))) + "d"
+	}
+	return v.d.String()
+}
+
+func (v *days) Set(s string) error {
+	if n, ok := strings.CutSuffix(s, "d"); ok {
+		count, err := strconv.Atoi(n)
+		if err != nil || count < 0 {
+			return errors.New("use a whole number of days, such as 7d")
+		}
+		v.d = time.Duration(count) * 24 * time.Hour
+		return nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d < 0 {
+		return errors.New("use a duration such as 7d or 12h")
+	}
+	v.d = d
+	return nil
+}
+
+func (v *days) Type() string { return "duration" }

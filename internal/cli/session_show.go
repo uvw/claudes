@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -66,18 +65,6 @@ func stamp(t time.Time) string {
 		return ""
 	}
 	return t.Local().Format("2006-01-02 15:04")
-}
-
-// firstLine is the first line of s, cut to at most limit characters.
-func firstLine(s string, limit int) string {
-	s, _, cut := strings.Cut(s, "\n")
-	if r := []rune(s); len(r) > limit {
-		return string(r[:limit-1]) + "…"
-	}
-	if cut {
-		return s + " …"
-	}
-	return s
 }
 
 // nameWithSource is a name with where it came from.

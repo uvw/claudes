@@ -28,10 +28,10 @@ const gcFloor = 24 * time.Hour
 type gcItem struct {
 	sessionID, name string
 	// why is empty, trivial, gone, old, copy, sidecar, leftover, or named.
-	why    string
-	folder string
-	paths  []string
-	size   int64
+	why   string
+	dir   string
+	paths []string
+	size  int64
 	// transcript and changed are the transcript the item was planned from and
 	// when it last changed then, so a session that came back to life since is
 	// left alone. A leftover has neither.
@@ -156,7 +156,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 	var total int64
 	rows := make([]planRow, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, planRow{id: it.ID(), name: it.name, label: it.why, cwd: it.folder, size: style.Size(it.size)})
+		rows = append(rows, planRow{id: it.ID(), name: it.name, label: it.why, cwd: it.dir, size: style.Size(it.size)})
 		total += it.size
 	}
 	app.printPlanOf("Removing", "session(s) and dir(s)", "WHY", rows)
@@ -226,7 +226,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			items = append(items, app.wholeSession(p, "empty"))
 		case f.trivial && trivial(p):
 			items = append(items, app.wholeSession(p, "trivial"))
-		case f.gone && folderGone(p.Cwd):
+		case f.gone && dirGone(p.Cwd):
 			items = append(items, app.wholeSession(p, "gone"))
 		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
 			items = append(items, app.wholeSession(p, "old"))
@@ -235,7 +235,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 				if changed := modTime(c); !changed.IsZero() && changed.Before(recent) {
 					paths := transcripts.CopyFiles(c)
 					items = append(items, gcItem{sessionID: p.SessionID, name: p.Label() + " (older copy)", why: "copy",
-						folder: filepath.Dir(c), paths: paths, size: sizeOf(paths), transcript: c, changed: changed})
+						dir: filepath.Dir(c), paths: paths, size: sizeOf(paths), transcript: c, changed: changed})
 				}
 			}
 		}
@@ -263,7 +263,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			continue
 		}
 		items = append(items, gcItem{sessionID: l.SessionID, name: l.Kind + " " + claude.ShortID(l.SessionID),
-			why: "leftover", folder: l.Path, paths: []string{l.Path}, size: l.Size})
+			why: "leftover", dir: l.Path, paths: []string{l.Path}, size: l.Size})
 	}
 	return items, nil
 }
@@ -286,7 +286,7 @@ func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
 	if len(paths) == 0 {
 		return gcItem{}, false
 	}
-	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: "sidecar", folder: cmp.Or(p.Cwd, sidecar),
+	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: "sidecar", dir: cmp.Or(p.Cwd, sidecar),
 		paths: paths, size: sizeOf(paths), transcript: p.Path, changed: modTime(p.Path)}, true
 }
 
@@ -303,7 +303,7 @@ func trivial(p pastSession) bool {
 }
 
 func (app *App) wholeSession(p pastSession, why string) gcItem {
-	return gcItem{sessionID: p.SessionID, name: p.Label(), why: why, folder: cmp.Or(p.Cwd, filepath.Dir(p.Path)),
+	return gcItem{sessionID: p.SessionID, name: p.Label(), why: why, dir: cmp.Or(p.Cwd, filepath.Dir(p.Path)),
 		paths: app.Transcripts.SessionFiles(p.Session), size: p.Disk.Total + app.extraSize(p.Session),
 		transcript: p.Path, changed: modTime(p.Path)}
 }
@@ -395,16 +395,6 @@ func (app *App) gcRemoveItem(it gcItem, root string, purge bool) error {
 		}
 	}
 	return nil
-}
-
-// folderGone reports whether dir is known and no longer exists. A directory that
-// cannot be checked, such as one behind a permission error, does not count.
-func folderGone(dir string) bool {
-	if dir == "" {
-		return false
-	}
-	_, err := os.Stat(dir)
-	return errors.Is(err, fs.ErrNotExist)
 }
 
 func modTime(path string) time.Time {

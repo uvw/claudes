@@ -62,7 +62,7 @@ func entryOf(s subject) reportEntry {
 	case leftover:
 		e.Cwd = s.Path
 	case gcItem:
-		e.Cwd = s.folder
+		e.Cwd = s.dir
 	}
 	return e
 }

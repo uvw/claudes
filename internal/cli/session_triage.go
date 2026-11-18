@@ -99,7 +99,7 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 	}
 	removed := map[string]bool{}
 	for _, it := range items {
-		t := triageItem{ID: it.ID(), SessionID: it.sessionID, Name: it.name, Cwd: it.folder, Size: it.size, Why: it.why}
+		t := triageItem{ID: it.ID(), SessionID: it.sessionID, Name: it.name, Cwd: it.dir, Size: it.size, Why: it.why}
 		if p, ok := byID[it.sessionID]; ok && (it.why == "empty" || it.why == "trivial") {
 			removed[it.sessionID] = true
 			readActivity(&p, false)

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -113,4 +115,26 @@ func TestCheckInvocationCatchesWhatDoesNotExist(t *testing.T) {
 // as <command>, NAME, or ID.
 func placeholder(w string) bool {
 	return strings.HasPrefix(w, "<") || w == strings.ToUpper(w) && strings.ToLower(w) != w
+}
+
+func TestSkillPrintsAndInstalls(t *testing.T) {
+	h := newHarness(t, nil)
+	if code := h.run("skill"); code != 0 || !strings.HasPrefix(h.out.String(), "---\nname: claudes\n") {
+		t.Fatalf("exit %d, output:\n%s", code, h.out)
+	}
+	printed := h.out.String()
+
+	config := filepath.Join(h.root, "config")
+	t.Setenv("CLAUDE_CONFIG_DIR", config)
+	h.ok(t, "skill", "--install")
+	data, err := os.ReadFile(filepath.Join(config, "skills", "claudes", "SKILL.md"))
+	if err != nil || string(data) != printed {
+		t.Fatalf("installed %q, err %v", data, err)
+	}
+
+	other := filepath.Join(h.root, "agents-skills")
+	h.ok(t, "skill", "--dir", other)
+	if _, err := os.Stat(filepath.Join(other, "claudes", "SKILL.md")); err != nil {
+		t.Fatal(err)
+	}
 }

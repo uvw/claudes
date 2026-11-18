@@ -5,11 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -114,18 +112,6 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 		return cmp.Or(trueFirst(a.Pinned, b.Pinned), trueFirst(a.Busy(), b.Busy()), cmp.Compare(b.StartedAt, a.StartedAt))
 	})
 	return rows, nil
-}
-
-// trueFirst orders a before b when a is true and b is not, for sorting.
-func trueFirst(a, b bool) int {
-	switch {
-	case a == b:
-		return 0
-	case a:
-		return -1
-	default:
-		return 1
-	}
 }
 
 // none is 0 for a known count, and nil for an unknown one.
@@ -248,90 +234,6 @@ func kind(s claude.Session) string {
 		return "tty"
 	}
 	return "bg"
-}
-
-func dash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
-}
-
-// age is how long before now t was, such as 3d, or "-" when t is unknown.
-func age(now, t time.Time) string {
-	if t.IsZero() {
-		return "-"
-	}
-	d := now.Sub(t)
-	switch {
-	case d < time.Minute:
-		return "now"
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
-	}
-}
-
-// relWithin is path relative to root, and whether path is root or below it.
-func relWithin(root, path string) (string, bool) {
-	rel, err := filepath.Rel(root, path)
-	if err != nil || filepath.IsAbs(rel) || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", false
-	}
-	return rel, true
-}
-
-func (app *App) whereCommand() *cobra.Command {
-	var out outputFlag
-	cmd := &cobra.Command{
-		Use:   "where TARGET...",
-		Short: `Print the directories of the sessions the targets match, as in cd "$(claudes where NAME)"`,
-		Long: `Print the directories of the sessions the targets match. With one match, prints the
-bare directory, so cd "$(claudes where NAME)" works. With several, prints each
-session's name, id, and directory, which it shortens to fit as every table
-does. With -o json or yaml, prints the same session objects as claudes ls. A target with *, ?, or [ is a pattern over names and
-ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
-		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: app.completeSessions(anySession, false),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			installed, _ := app.Agents.Version(cmd.Context())
-			rows, err := app.rows(cmd.Context(), true, installed)
-			if err != nil {
-				return err
-			}
-			picked, err := target.Match(args, rows)
-			if err != nil {
-				return err
-			}
-			if out.format != "text" {
-				return out.encode(app.Out, picked)
-			}
-			folders := make([][3]string, len(picked))
-			for i, s := range picked {
-				folders[i] = [3]string{s.Label(), s.ID(), s.Cwd}
-			}
-			return app.printFolders(folders)
-		},
-	}
-	out.add(cmd, app.Config.Output.Format)
-	return cmd
-}
-
-// printFolders prints one directory bare, so cd "$(claudes where NAME)" works, or
-// several as name, id, and directory, so sessions that share a name stay apart.
-func (app *App) printFolders(folders [][3]string) error {
-	if len(folders) == 1 {
-		_, err := fmt.Fprintln(app.Out, shell.Printable(folders[0][2]))
-		return err
-	}
-	table := make([][]string, 0, len(folders))
-	for _, f := range folders {
-		table = append(table, []string{shell.Printable(f[0]), f[1], dirCell(f[2])})
-	}
-	return app.writeTable(app.Out, table, tableFit{})
 }
 
 // listMatch keeps the rows any of targets match. A target that matches

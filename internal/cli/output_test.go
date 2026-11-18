@@ -492,3 +492,20 @@ func namesPath(e ast.Expr, names []string) bool {
 	}
 	return false
 }
+
+func TestHomeShort(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	sep := string(filepath.Separator)
+	for path, want := range map[string]string{
+		home:                                  "~",
+		filepath.Join(home, "work", "repo"):   "~" + sep + filepath.Join("work", "repo"),
+		home + "-other":                       home + "-other",
+		filepath.Join(os.TempDir(), "x", "y"): filepath.Join(os.TempDir(), "x", "y"),
+	} {
+		if got := homeShort(path); got != want {
+			t.Errorf("%s: got %s, want %s", path, got, want)
+		}
+	}
+}

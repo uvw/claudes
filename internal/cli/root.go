@@ -31,7 +31,6 @@ import (
 	"github.com/uvw/claudes/internal/selfupdate"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
-	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/trash"
@@ -62,23 +61,6 @@ func buildVersion() string {
 const (
 	defaultPing  = "Claude Code was restarted while you were working. Pick up where you left off."
 	pollInterval = 15 * time.Second
-)
-
-// errReported means the command already told the user what went wrong.
-var errReported = errors.New("failures were reported")
-
-// errSomeFailed means the command reported sessions it could not handle.
-var errSomeFailed = fmt.Errorf("%w: some sessions failed", errReported)
-
-// Exit codes, so a script or an agent can tell what happened without reading
-// the text.
-const (
-	exitFailed      = 1   // anything else that went wrong
-	exitNoMatch     = 2   // a target named no session, or several
-	exitSomeFailed  = 3   // the command reported sessions it could not handle
-	exitRefused     = 4   // a safety or compatibility check stopped it
-	exitBusy        = 5   // another claudes was changing sessions
-	exitInterrupted = 130 // Ctrl-C
 )
 
 // App is everything the commands touch, so tests can swap it.
@@ -333,9 +315,6 @@ func (app *App) Run(args []string) int {
 			r.Error = err.Error()
 		}
 	})
-	var match *target.MatchError
-	var missed noMatch
-	var refusal refusal
 	switch {
 	case ctx.Err() != nil && app.endsOnInterrupt && err == nil:
 		return 0
@@ -351,22 +330,11 @@ func (app *App) Run(args []string) int {
 		return exitFailed
 	}
 	app.errorLine("claudes: %s", shell.PrintableText(err.Error()))
-	switch {
-	case errors.Is(err, errBusy):
-		return exitBusy
-	case errors.As(err, &refusal):
-		return exitRefused
-	case errors.As(err, &match), errors.As(err, &missed):
-		return exitNoMatch
-	}
-	return exitFailed
+	return exitCode(err)
 }
 
 // lockStale is how long the run lock outlives a claudes that died holding it.
 const lockStale = 30 * time.Second
-
-// errBusy means another claudes holds the run lock.
-var errBusy = errors.New("another claudes is changing sessions")
 
 // runsAlone marks a command that changes sessions or pins. One such command
 // runs at a time, so two cannot stop the same session twice.
@@ -478,7 +446,7 @@ same as Ctrl+T in agent view.`,
 		alone(reports(app.pingCommand())),
 		alone(reports(app.stopCommand())),
 		app.logsCommand(),
-		app.handOffCommand("attach", "Open a background session in this terminal", false),
+		app.attachCommand(),
 		app.whereCommand(),
 		alone(reports(app.gcCommand())),
 		app.skillCommand(),
@@ -579,4 +547,16 @@ func (app *App) hostLast(sessions []claude.Session) []claude.Session {
 		return trueFirst(!app.isHost(a), !app.isHost(b))
 	})
 	return sessions
+}
+
+// trueFirst orders a before b when a is true and b is not, for sorting.
+func trueFirst(a, b bool) int {
+	switch {
+	case a == b:
+		return 0
+	case a:
+		return -1
+	default:
+		return 1
+	}
 }

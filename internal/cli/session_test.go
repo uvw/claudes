@@ -618,14 +618,14 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Folders) != 2 || report.Folders[0].Folder != work || report.Folders[0].Sessions != 2 ||
-		report.Folders[0].Disk.Sidecar != 2048 || report.Folders[1].Sessions != 1 {
-		t.Fatalf("directories %+v", report.Folders)
+	if len(report.Dirs) != 2 || report.Dirs[0].Dir != work || report.Dirs[0].Sessions != 2 ||
+		report.Dirs[0].Disk.Sidecar != 2048 || report.Dirs[1].Sessions != 1 {
+		t.Fatalf("directories %+v", report.Dirs)
 	}
 	if len(report.Leftovers) != 1 || report.Leftovers[0].SessionID != orphan || report.Leftovers[0].Size != 300 {
 		t.Fatalf("leftovers %+v", report.Leftovers)
 	}
-	if want := report.Folders[0].Disk.Total + report.Folders[1].Disk.Total + 300; report.Total != want {
+	if want := report.Dirs[0].Disk.Total + report.Dirs[1].Disk.Total + 300; report.Total != want {
 		t.Fatalf("total %d, want %d", report.Total, want)
 	}
 
@@ -642,7 +642,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Folders) != 1 || len(report.Leftovers) != 0 {
+	if len(report.Dirs) != 1 || len(report.Leftovers) != 0 {
 		t.Fatalf("--in counted other directories or leftovers: %+v", report)
 	}
 }

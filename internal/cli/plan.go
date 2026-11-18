@@ -15,14 +15,6 @@ type planRow struct {
 	size string
 }
 
-// maxName is the most characters of a name a table shows. Claude Code's own
-// titles for sessions run past 60.
-const maxName = 40
-
-// nameCell is a name as a table shows it: printable, on one line, and cut to
-// maxName characters.
-func nameCell(name string) string { return firstLine(shell.Printable(name), maxName) }
-
 // printPlan prints the sessions a command is about to act on, with their
 // status.
 func (app *App) printPlan(heading string, rows []planRow) {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -63,7 +61,7 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 		if err != nil {
 			return err
 		}
-		if dir := app.Jobs.Folder(job, p.SessionID); dir != "" && !sameFolder(dir, p.Cwd) {
+		if dir := app.Jobs.Folder(job, p.SessionID); dir != "" && !sameDir(dir, p.Cwd) {
 			return fmt.Errorf("%s has a background job in %s, and claude --bg --resume would wake it there, not in %s. "+
 				"Resume it in this terminal without --bg, or remove the job first with claudes gc %s", p.Label(), dir, p.Cwd, job)
 		}
@@ -115,15 +113,4 @@ func (app *App) listedJob(ctx context.Context, sessionID string) (claude.Session
 		return claude.Session{}, false, nil
 	}
 	return sessions[i], true, nil
-}
-
-// sameFolder reports whether a and b name the same directory, which on Windows
-// can differ in case.
-func sameFolder(a, b string) bool {
-	if filepath.Clean(a) == filepath.Clean(b) {
-		return true
-	}
-	ai, errA := os.Stat(a)
-	bi, errB := os.Stat(b)
-	return errA == nil && errB == nil && os.SameFile(ai, bi)
 }

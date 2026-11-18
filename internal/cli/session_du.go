@@ -13,10 +13,10 @@ import (
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
-// duFolder is the space the sessions of one project directory take.
-type duFolder struct {
-	// Folder is where the newest of its sessions ran.
-	Folder string `json:"dir"`
+// duDir is the space the sessions of one project directory take.
+type duDir struct {
+	// Dir is where the newest of its sessions ran.
+	Dir string `json:"dir"`
 	// Project is the project directory under ~/.claude/projects.
 	Project  string           `json:"project"`
 	Sessions int              `json:"sessions"`
@@ -34,7 +34,7 @@ type duSession struct {
 }
 
 type duReport struct {
-	Folders []duFolder `json:"dirs"`
+	Dirs []duDir `json:"dirs"`
 	// Top is the biggest sessions, with --top.
 	Top       []duSession            `json:"top"`
 	Leftovers []transcripts.Leftover `json:"leftovers"`
@@ -87,15 +87,15 @@ session.`,
 			if out.format != "text" {
 				return out.encode(app.Out, report)
 			}
-			if len(report.Folders) == 0 && len(leftovers) == 0 {
+			if len(report.Dirs) == 0 && len(leftovers) == 0 {
 				fmt.Fprintln(app.Out, "No sessions.")
 				return nil
 			}
 			table := [][]string{{"TOTAL", "TRANSCRIPTS", "SIDECARS", "COPIES", "HISTORY", "SESSIONS", "DIR"}}
 			var sum transcripts.Disk
 			sessions := 0
-			for _, f := range report.Folders {
-				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), dirCell(f.Folder)))
+			for _, f := range report.Dirs {
+				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), dirCell(f.Dir)))
 				sum.Add(f.Disk)
 				sessions += f.Sessions
 			}
@@ -147,15 +147,15 @@ func duTop(list []pastSession, n int) []duSession {
 	return out
 }
 
-func duRow(d transcripts.Disk, sessions, folder string) []string {
+func duRow(d transcripts.Disk, sessions, dir string) []string {
 	return []string{style.Size(d.Total), style.Size(d.Transcript), style.Size(d.Sidecar),
-		style.Size(d.Copies), style.Size(d.FileHistory), sessions, folder}
+		style.Size(d.Copies), style.Size(d.FileHistory), sessions, dir}
 }
 
 // duTally groups list, which is newest first, by project directory, biggest
 // first.
 func duTally(list []pastSession, leftovers []transcripts.Leftover) duReport {
-	report := duReport{Folders: []duFolder{}, Leftovers: leftovers}
+	report := duReport{Dirs: []duDir{}, Leftovers: leftovers}
 	if report.Leftovers == nil {
 		report.Leftovers = []transcripts.Leftover{}
 	}
@@ -164,11 +164,11 @@ func duTally(list []pastSession, leftovers []transcripts.Leftover) duReport {
 		project := filepath.Base(filepath.Dir(p.Path))
 		i, ok := index[project]
 		if !ok {
-			i = len(report.Folders)
+			i = len(report.Dirs)
 			index[project] = i
-			report.Folders = append(report.Folders, duFolder{Folder: p.Cwd, Project: project})
+			report.Dirs = append(report.Dirs, duDir{Dir: p.Cwd, Project: project})
 		}
-		f := &report.Folders[i]
+		f := &report.Dirs[i]
 		f.Sessions++
 		f.Disk.Add(p.Disk)
 		report.Total += p.Disk.Total
@@ -176,6 +176,6 @@ func duTally(list []pastSession, leftovers []transcripts.Leftover) duReport {
 	for _, l := range leftovers {
 		report.Total += l.Size
 	}
-	slices.SortStableFunc(report.Folders, func(a, b duFolder) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
+	slices.SortStableFunc(report.Dirs, func(a, b duDir) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
 	return report
 }

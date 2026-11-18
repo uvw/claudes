@@ -130,18 +130,6 @@ func (app *App) bulk(running []claude.Session, skip map[string]bool, withInterac
 	return sel, nil
 }
 
-// sessionVersion is the Claude Code version a session runs: the one its
-// process's executable names, or else the job's cliVersion, which Claude Code
-// updates only once a respawned session takes a turn.
-func (app *App) sessionVersion(s claude.Session) string {
-	if s.PID > 0 && app.RunningVersion != nil {
-		if v := app.RunningVersion(s.PID); v != "" {
-			return v
-		}
-	}
-	return app.Jobs.Version(s.JobID)
-}
-
 // keepOutdated narrows the chosen sessions to those on an older Claude Code
 // than the installed one.
 func (app *App) keepOutdated(ctx context.Context, sel *selection) error {
