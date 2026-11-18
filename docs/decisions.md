@@ -461,12 +461,13 @@ terminal with `x/term`. `internal/style` owns both: it decides per stream,
 stdout and stderr apart, and lines tables up by what the terminal shows rather
 than by bytes. The variables follow the
 [clicolors convention](https://bixense.com/clicolors/): `NO_COLOR` turns colors
-off, `CLICOLOR_FORCE` turns them on for a pipe, and `CLICOLOR=0` turns them off,
-in that order. An empty variable counts as unset, and `CLICOLOR_FORCE=0` forces
-nothing. `CLICOLOR=1`, which many macOS users export for `ls`, leaves a pipe
-plain, and so does `TTY_FORCE`, which `colorprofile` honors on its own. JSON,
-YAML, completions, `init`, and `skill` stay plain. Colors use the 16 basic ANSI
-colors, so they follow the terminal's theme.
+off, `CLICOLOR_FORCE` or its alias `FORCE_COLOR` turns them on for a pipe, and
+`CLICOLOR=0` turns them off, in that order. An empty variable counts as unset,
+and `CLICOLOR_FORCE=0` or `FORCE_COLOR=0` forces nothing. `CLICOLOR=1`, which
+many macOS users export for `ls`, leaves a pipe plain, and so does `TTY_FORCE`,
+which `colorprofile` honors on its own. JSON, YAML, completions, `init`, and
+`skill` stay plain. Colors use the 16 basic ANSI colors, so they follow the
+terminal's theme.
 
 Why: a terminal UI is planned (uvw/claudes#18), and Bubble Tea builds on
 lipgloss, so the styles and detection carry over to it. `colorprofile` knows

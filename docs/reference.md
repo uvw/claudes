@@ -266,7 +266,8 @@ variables in this order, and the first that applies wins. An empty variable
 counts as unset.
 
 1. `NO_COLOR`, set to any value, turns colors off.
-2. `CLICOLOR_FORCE`, set to any value but `0`, turns colors on, even for a pipe.
+2. `CLICOLOR_FORCE` or `FORCE_COLOR`, set to any value but `0`, turns colors on,
+   even for a pipe. Many CI systems and Node tools set `FORCE_COLOR`.
 3. `CLICOLOR=0` turns colors off.
 4. Otherwise a terminal that shows colors gets them, unlike one with
    `TERM=dumb`, and a pipe doesn't. `CLICOLOR=1`, which many macOS users export

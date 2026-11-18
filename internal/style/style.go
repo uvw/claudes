@@ -22,14 +22,14 @@ var On = Palette{on: true}
 // Detect decides whether text written to w gets colors. env is the
 // environment, as os.Environ returns it. It follows the clicolors convention
 // (https://bixense.com/clicolors/), where an empty variable counts as unset.
-// In that order, NO_COLOR turns colors off, CLICOLOR_FORCE, unless 0, turns
-// them on even when w is not a terminal, and CLICOLOR=0 turns them off.
-// Otherwise w gets colors when it is a terminal that shows them.
+// In that order, NO_COLOR turns colors off, CLICOLOR_FORCE or FORCE_COLOR,
+// unless 0, turns them on even when w is not a terminal, and CLICOLOR=0 turns
+// them off. Otherwise w gets colors when it is a terminal that shows them.
 func Detect(w io.Writer, env []string) Palette {
 	if lookup(env, "NO_COLOR") != "" {
 		return Palette{}
 	}
-	if force := lookup(env, "CLICOLOR_FORCE"); force == "" || force == "0" {
+	if !forced(env, "CLICOLOR_FORCE") && !forced(env, "FORCE_COLOR") {
 		if lookup(env, "CLICOLOR") == "0" || !isTerminal(w) || !shows(w, env) {
 			return Palette{}
 		}
@@ -39,6 +39,12 @@ func Detect(w io.Writer, env []string) Palette {
 		lipgloss.EnableLegacyWindowsANSI(f)
 	}
 	return On
+}
+
+// forced reports whether env sets key to force colors: to anything but 0.
+func forced(env []string, key string) bool {
+	v := lookup(env, key)
+	return v != "" && v != "0"
 }
 
 // isTerminal reports whether w is a terminal. Tests replace it.

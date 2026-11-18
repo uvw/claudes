@@ -73,6 +73,10 @@ func TestColorVariablesOnAPipe(t *testing.T) {
 		{[]string{"CLICOLOR=0", "CLICOLOR_FORCE=1"}, true},
 		{[]string{"CLICOLOR_FORCE=1", "NO_COLOR=1"}, false},
 		{[]string{"CLICOLOR=1", "NO_COLOR=1"}, false},
+		{[]string{"FORCE_COLOR=1"}, true},
+		{[]string{"FORCE_COLOR=0"}, false},
+		{[]string{"CLICOLOR=0", "FORCE_COLOR=1"}, true},
+		{[]string{"FORCE_COLOR=1", "NO_COLOR=1"}, false},
 	} {
 		t.Run(strings.Join(tc.env, " "), func(t *testing.T) {
 			h := newHarness(t)
@@ -150,6 +154,7 @@ func TestDoctorColorsEachResult(t *testing.T) {
 func TestDoctorEnvShowsEachColorVariable(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	t.Setenv("CLICOLOR_FORCE", "1")
+	t.Setenv("FORCE_COLOR", "3")
 	t.Setenv("CLICOLOR", "0")
 	h := newHarness(t)
 	h.ok(t, "doctor", "env", "-o", "json")
@@ -158,7 +163,7 @@ func TestDoctorEnvShowsEachColorVariable(t *testing.T) {
 		t.Fatalf("%v:\n%s", err, h.out)
 	}
 	env := report["environment"]
-	if env["NO_COLOR"] != `""` || env["CLICOLOR_FORCE"] != "1" || env["CLICOLOR"] != "0" {
+	if env["NO_COLOR"] != `""` || env["CLICOLOR_FORCE"] != "1" || env["FORCE_COLOR"] != "3" || env["CLICOLOR"] != "0" {
 		t.Fatalf("environment %v", env)
 	}
 }

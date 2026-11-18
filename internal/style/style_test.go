@@ -54,7 +54,18 @@ func TestDetect(t *testing.T) {
 		{"CLICOLOR_FORCE=0 on a terminal", tty, append([]string{"CLICOLOR_FORCE=0"}, terminal...), true},
 		{"an empty CLICOLOR_FORCE on a pipe", pipe, []string{"CLICOLOR_FORCE="}, false},
 
+		{"FORCE_COLOR=1 on a pipe", pipe, []string{"FORCE_COLOR=1"}, true},
+		{"FORCE_COLOR set to anything", pipe, []string{"FORCE_COLOR=true"}, true},
+		{"FORCE_COLOR on a dumb terminal", tty, []string{"FORCE_COLOR=1", "TERM=dumb"}, true},
+		{"FORCE_COLOR=0 on a pipe", pipe, []string{"FORCE_COLOR=0"}, false},
+		{"FORCE_COLOR=0 on a terminal", tty, append([]string{"FORCE_COLOR=0"}, terminal...), true},
+		{"an empty FORCE_COLOR on a pipe", pipe, []string{"FORCE_COLOR="}, false},
+		{"FORCE_COLOR=0 leaves CLICOLOR_FORCE", pipe, []string{"FORCE_COLOR=0", "CLICOLOR_FORCE=1"}, true},
+		{"CLICOLOR_FORCE=0 leaves FORCE_COLOR", pipe, []string{"CLICOLOR_FORCE=0", "FORCE_COLOR=1"}, true},
+
 		{"NO_COLOR over CLICOLOR_FORCE", pipe, []string{"NO_COLOR=1", "CLICOLOR_FORCE=1"}, false},
+		{"NO_COLOR over FORCE_COLOR", pipe, []string{"NO_COLOR=1", "FORCE_COLOR=1"}, false},
+		{"FORCE_COLOR over CLICOLOR=0", pipe, []string{"CLICOLOR=0", "FORCE_COLOR=1"}, true},
 		{"NO_COLOR over CLICOLOR=1", tty, append([]string{"NO_COLOR=1", "CLICOLOR=1"}, terminal...), false},
 		{"CLICOLOR_FORCE over CLICOLOR=0", pipe, []string{"CLICOLOR=0", "CLICOLOR_FORCE=1"}, true},
 		{"CLICOLOR_FORCE=0 leaves CLICOLOR=0", tty, append([]string{"CLICOLOR=0", "CLICOLOR_FORCE=0"}, terminal...), false},

@@ -225,7 +225,7 @@ type result struct {
 // and every directory claudes reads replaced, and the color variables dropped.
 // PATH holds only the fake, so the real claude can never be found.
 func (w *world) environ() []string {
-	drop := []string{"PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PWD", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "TTY_FORCE"}
+	drop := []string{"PATH", "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "PWD", "NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "FORCE_COLOR", "TTY_FORCE"}
 	var env []string
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
