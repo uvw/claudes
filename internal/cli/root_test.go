@@ -114,10 +114,6 @@ func TestHelpFitsEightyColumns(t *testing.T) {
 // appFile is the name of a file of plumbing the commands share.
 var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 
-// notYetMoved are the files that are neither root, an app file, nor a
-// command's.
-var notYetMoved = []string{}
-
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
 func commandFiles(t *testing.T) map[string]bool {
@@ -149,18 +145,9 @@ func TestEveryFileIsACommandAnAppFileOrRoot(t *testing.T) {
 		base, test := strings.CutSuffix(strings.TrimSuffix(name, ".go"), "_test")
 		fits := base == "root" || base == "app" || appFile.MatchString(base) || commands[base] ||
 			test && base == "harness"
-		waiting := slices.Contains(notYetMoved, name)
-		switch {
-		case !fits && !waiting:
+		if !fits {
 			t.Errorf("%s is not root, app, app_<concern>, or a command's file: "+
 				"move its code to one of those, or to a package of its own concern", name)
-		case fits && waiting:
-			t.Errorf("%s fits now: take it off notYetMoved", name)
-		}
-	}
-	for _, name := range notYetMoved {
-		if !slices.Contains(names, name) {
-			t.Errorf("notYetMoved lists %s, which is gone: take it off", name)
 		}
 	}
 }
@@ -211,8 +198,8 @@ func takesApp(fn *ast.FuncDecl) bool {
 	return len(params) > 0 && isApp(params[0].Type)
 }
 
-// declName is how the allow-lists name a function: its name, or Type.name for
-// a method.
+// declName is how a failure names a function: its name, or Type.name for a
+// method.
 func declName(fn *ast.FuncDecl) string {
 	if fn.Recv == nil {
 		return fn.Name.Name
@@ -247,12 +234,9 @@ var plumbingTypes = map[string]string{
 	"errWriter":      "writes the log to App.Err, which tests swap",
 }
 
-// notYetHelpers are the functions this package declares that belong in an app
-// file as *App methods, or in a package of their own concern.
-var notYetHelpers = []string{}
-
 func TestCLIDeclaresNoHelpers(t *testing.T) {
-	var found []string
+	// used is the exceptions some plumbing file still declares.
+	used := map[string]bool{}
 	for name, f := range parsed(t) {
 		local := map[string]bool{}
 		for _, decl := range f.Decls {
@@ -274,34 +258,33 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 			case isPlumbing(name):
 				if fn.Recv != nil {
 					_, fits = plumbingTypes[recvType(fn)]
+					used[recvType(fn)] = fits
 				} else {
 					_, excepted := plumbingFuncs[fn.Name.Name]
 					fits = takesApp(fn) || excepted
+					used[fn.Name.Name] = used[fn.Name.Name] || excepted
 				}
 			default:
 				// A command file's own flag and output types may have methods.
 				fits = fn.Recv != nil && local[recvType(fn)]
 			}
-			if fits {
-				continue
-			}
-			found = append(found, declName(fn))
-			if !slices.Contains(notYetHelpers, declName(fn)) {
+			if !fits {
 				t.Errorf("%s declares %s: make it an *App method in an app file, "+
 					"or move it to a package of its own concern", name, declName(fn))
 			}
 		}
 	}
-	for _, name := range notYetHelpers {
-		if !slices.Contains(found, name) {
-			t.Errorf("%s is no longer a helper: take it off notYetHelpers", name)
+	for name := range plumbingFuncs {
+		if !used[name] {
+			t.Errorf("plumbingFuncs lists %s, which no app file declares: take it off", name)
+		}
+	}
+	for name := range plumbingTypes {
+		if !used[name] {
+			t.Errorf("plumbingTypes lists %s, whose methods no app file declares: take it off", name)
 		}
 	}
 }
-
-// notYetShared are the *App methods a command file declares that other files
-// call.
-var notYetShared = []string{}
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.
@@ -331,7 +314,6 @@ func TestSharedAppMethodsLiveInAppFiles(t *testing.T) {
 			return true
 		})
 	}
-	var found []string
 	for name, f := range files {
 		if isPlumbing(name) {
 			continue
@@ -351,18 +333,61 @@ func TestSharedAppMethodsLiveInAppFiles(t *testing.T) {
 			if len(callers) == 0 {
 				continue
 			}
-			found = append(found, declName(fn))
-			if !slices.Contains(notYetShared, declName(fn)) {
-				slices.Sort(callers)
-				t.Errorf("%s declares %s, which %s also call: move it to an app file",
-					name, declName(fn), strings.Join(callers, ", "))
-			}
+			slices.Sort(callers)
+			t.Errorf("%s declares %s, which %s also call: move it to an app file",
+				name, declName(fn), strings.Join(callers, ", "))
 		}
 	}
-	for _, name := range notYetShared {
-		if !slices.Contains(found, name) {
-			t.Errorf("%s is no longer shared: take it off notYetShared", name)
+}
+
+// sideEffects are the functions and values with a side effect the tests
+// replace through an App field. Only app.go, which wires the real ones, names
+// them.
+var sideEffects = []string{
+	"time.Now", "time.Sleep", "time.After", "time.Tick", "time.NewTimer", "time.NewTicker",
+	"os.Exit", "os.Getenv", "os.LookupEnv", "os.Environ", "os.Chdir", "os.Executable",
+	"os.Stdin", "os.Stdout", "os.Stderr", "exec.Command", "exec.CommandContext", "exec.LookPath",
+	"signal.Notify", "procs.Terminate", "procs.Started", "procs.Running", "procs.RunningVersion",
+	"claude.Exec", "interrupt.Sleep", "interrupt.Context", "trash.Move", "config.Edit",
+	"render.TerminalWidth",
+}
+
+// sideEffectsElsewhere are the files other than app.go that may name one of
+// sideEffects, each with what and why.
+var sideEffectsElsewhere = map[string]string{
+	"root.go os.Getenv": "App.Run reads CLAUDES_LOG, which tests set with t.Setenv",
+}
+
+func TestSideEffectsAreAppFields(t *testing.T) {
+	seen := map[string]bool{}
+	defer func() {
+		for use := range sideEffectsElsewhere {
+			if !seen[use] {
+				t.Errorf("sideEffectsElsewhere lists %s, which no longer happens: take it off", use)
+			}
 		}
+	}()
+	for name, f := range parsed(t) {
+		if name == "app.go" {
+			continue
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			x, ok := sel.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			use := x.Name + "." + sel.Sel.Name
+			_, excepted := sideEffectsElsewhere[name+" "+use]
+			seen[name+" "+use] = excepted
+			if slices.Contains(sideEffects, use) && !excepted {
+				t.Errorf("%s calls %s: go through the App field that wraps it, so tests can replace it", name, use)
+			}
+			return true
+		})
 	}
 }
 

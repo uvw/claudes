@@ -1,7 +1,8 @@
 // Package teams reads Claude Code's agent teams: the team configs under
 // ~/.claude/teams and the shared task lists under ~/.claude/tasks. A team is
 // named session-<lead's short id>, and while teammates run, its config lists
-// them beside the lead.
+// them beside the lead. It also builds the rows claudes team ls shows, and
+// finds the directories claudes gc --teams removes.
 package teams
 
 import (

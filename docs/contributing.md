@@ -2,8 +2,14 @@
 
 ## Design rules
 
-1. One package per concern under `internal/`. `cli` holds the commands and
-   depends on the others; the others never import `cli`.
+1. One package per concern under `internal/`, named with one lowercase word,
+   with a doc comment that states its concern. `cli` holds three kinds of file:
+   `root.go`; `app.go` and the `app_<concern>.go` files, which hold the `App`
+   methods the commands share; and one file per command, named for its path,
+   such as `session_mv.go`. Code that needs neither `App` nor cobra goes in the
+   package of its concern. Imports go downward: `cli` imports the other
+   packages, and none of them imports `cli`. `AGENTS.md`, "Package layout",
+   lists each rule and the test that enforces it.
 2. The `claude` command line is reached only through the `claude.Agents`
    interface, and the terminal handoffs (`logs`, `attach`, passthrough, and
    `session resume`) only through `cli.App.Exec`, so every command can be tested
@@ -33,7 +39,9 @@
    files, plugin files, or `managed-mcp.json`.
 
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
-   process, and exec) are fields on `cli.App`.
+   process, exec, and the environment) are fields on `cli.App`, and only
+   `cli/app.go` wires the real ones. Each one's real code lives in the package
+   of its concern, such as `procs.Terminate`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
    build tags, never in runtime checks.
 6. Keep to the README's [goals and non-goals](../README.md#goals-and-non-goals):
