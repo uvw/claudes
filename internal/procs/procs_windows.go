@@ -21,8 +21,9 @@ const (
 // Terminate kills a claude process and every process it started, then waits
 // for it to exit. Windows has no SIGTERM for console programs, so nothing is
 // asked to stop gracefully first. It refuses a process that is not claude, or
-// that started after listedAt. A process that is already gone is not an error.
-func Terminate(pid int, listedAt time.Time) error {
+// that started after the session or after listedAt (checkStart). A process
+// that is already gone is not an error.
+func Terminate(pid int, sessionStarted, listedAt time.Time) error {
 	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.PROCESS_TERMINATE|windows.SYNCHRONIZE, false, uint32(pid))
 	if errors.Is(err, windows.ERROR_INVALID_PARAMETER) {
 		return nil
@@ -45,7 +46,7 @@ func Terminate(pid int, listedAt time.Time) error {
 	if err != nil {
 		return fmt.Errorf("cannot read the start time of pid %d: %w", pid, err)
 	}
-	if err := checkStart(pid, started, listedAt); err != nil {
+	if err := checkStart(pid, started, sessionStarted, listedAt); err != nil {
 		return err
 	}
 	// claudes itself may be one of them, when it stops the session it runs

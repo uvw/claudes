@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 		time.Sleep(30 * time.Second)
 		os.Exit(0)
 	case "stopper":
-		Terminate(os.Getppid(), time.Now())
+		Terminate(os.Getppid(), time.Time{}, time.Now())
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
@@ -92,14 +92,36 @@ func TestIsClaudeCommand(t *testing.T) {
 
 func TestCheckStartRefusesAProcessStartedAfterTheList(t *testing.T) {
 	listed := time.Date(2026, 11, 14, 10, 0, 0, 0, time.UTC)
-	if err := checkStart(1, listed.Add(-time.Hour), listed); err != nil {
+	if err := checkStart(1, listed.Add(-time.Hour), time.Time{}, listed); err != nil {
 		t.Fatalf("earlier process refused: %v", err)
 	}
-	if err := checkStart(1, listed.Add(time.Second), listed); err == nil {
+	if err := checkStart(1, listed.Add(time.Second), time.Time{}, listed); err == nil {
 		t.Fatal("later process accepted")
 	}
-	if err := checkStart(1, listed.Add(time.Second), time.Time{}); err != nil {
+	if err := checkStart(1, listed.Add(time.Second), time.Time{}, time.Time{}); err != nil {
 		t.Fatalf("unknown list time refused: %v", err)
+	}
+}
+
+func TestCheckStartRefusesAProcessStartedAfterTheSession(t *testing.T) {
+	session := time.Date(2026, 11, 17, 17, 14, 36, 104e6, time.Local)
+	listed := session.Add(time.Hour)
+	for _, tc := range []struct {
+		name    string
+		started time.Time
+		ok      bool
+	}{
+		// Measured: an interactive session's process starts about 2 s before
+		// its startedAt, and ps rounds down to the second.
+		{"an interactive session's own process", session.Add(-2100 * time.Millisecond).Truncate(time.Second), true},
+		{"a spare that waited hours for its job", session.Add(-8 * time.Hour), true},
+		{"within the slack", session.Add(time.Second), true},
+		{"a PID reused after the session started", session.Add(10 * time.Minute), false},
+	} {
+		err := checkStart(1, tc.started, session, listed)
+		if (err == nil) != tc.ok {
+			t.Errorf("%s: err %v", tc.name, err)
+		}
 	}
 }
 
@@ -153,7 +175,7 @@ func start(t *testing.T, name, mode string) helper {
 
 func TestTerminateRefusesAProcessThatIsNotClaude(t *testing.T) {
 	h := start(t, "not-claude", "sleep")
-	if err := Terminate(h.pid, time.Now()); err == nil || !strings.Contains(err.Error(), "not a claude process") {
+	if err := Terminate(h.pid, time.Time{}, time.Now()); err == nil || !strings.Contains(err.Error(), "not a claude process") {
 		t.Fatalf("err %v", err)
 	}
 	if !Alive(h.pid) {
@@ -163,8 +185,13 @@ func TestTerminateRefusesAProcessThatIsNotClaude(t *testing.T) {
 
 func TestTerminateRefusesAReusedPID(t *testing.T) {
 	h := start(t, "claude", "sleep")
-	if err := Terminate(h.pid, time.Now().Add(-time.Hour)); err == nil || !strings.Contains(err.Error(), "started after") {
+	if err := Terminate(h.pid, time.Time{}, time.Now().Add(-time.Hour)); err == nil || !strings.Contains(err.Error(), "started after") {
 		t.Fatalf("err %v, want a process that started after the list refused", err)
+	}
+	// The session started an hour ago, and the list is now: the PID was
+	// reused before claudes listed the sessions.
+	if err := Terminate(h.pid, time.Now().Add(-time.Hour), time.Now()); err == nil || !strings.Contains(err.Error(), "after the session did") {
+		t.Fatalf("err %v, want a process that started after the session refused", err)
 	}
 	if !Alive(h.pid) {
 		t.Fatal("the process was killed")
@@ -182,7 +209,7 @@ func TestTerminateStopsClaudeAndItsChildren(t *testing.T) {
 			p.Kill()
 		}
 	})
-	if err := Terminate(h.pid, time.Now()); err != nil {
+	if err := Terminate(h.pid, time.Time{}, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -202,7 +229,7 @@ func TestTerminateStopsClaudeAndItsChildren(t *testing.T) {
 func TestTerminateOfAProcessThatIsGoneIsNotAnError(t *testing.T) {
 	h := start(t, "claude", "sleep")
 	h.kill()
-	if err := Terminate(h.pid, time.Now()); err != nil {
+	if err := Terminate(h.pid, time.Time{}, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 }

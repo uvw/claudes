@@ -54,9 +54,22 @@ func isFile(path string) bool {
 	return err == nil && info.Mode().IsRegular()
 }
 
-// checkStart refuses a process that started after claudes listed the
-// sessions: its PID was reused, so it is not the session's process.
-func checkStart(pid int, started, listedAt time.Time) error {
+// startSlack is how much later than the session's startedAt its process may
+// seem to start. A session's process always starts first: Claude Code records
+// startedAt once it is up, about two seconds later, and a background session
+// runs in a spare process started ahead of time. The slack only absorbs
+// rounding and clock adjustments.
+const startSlack = 2 * time.Second
+
+// checkStart refuses a process whose PID was reused, so it is not the
+// session's: one that started after the session did (sessionStarted, from
+// claude agents --json), or after claudes listed the sessions (listedAt). A
+// zero time skips its check.
+func checkStart(pid int, started, sessionStarted, listedAt time.Time) error {
+	if !sessionStarted.IsZero() && started.After(sessionStarted.Add(startSlack)) {
+		return fmt.Errorf("pid %d belongs to a process started %s after the session did, not to the session",
+			pid, started.Sub(sessionStarted).Round(time.Second))
+	}
 	if !listedAt.IsZero() && started.After(listedAt) {
 		return fmt.Errorf("pid %d belongs to a process started after the sessions were listed, not to the session", pid)
 	}
