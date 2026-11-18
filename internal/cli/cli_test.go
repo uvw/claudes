@@ -19,6 +19,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/jobs"
+	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/safefile"
 	"github.com/uvw/claudes/internal/teams"
@@ -326,6 +327,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		Park:         park.File{Path: filepath.Join(h.root, "state", "parked.json")},
 		LockPath:     filepath.Join(h.root, "state", "run.lock"),
 		ClaudeConfig: filepath.Join(h.root, ".claude.json"),
+		MCP:          mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
 		Out:          h.out,
 		Err:          h.err,
 		In:           strings.NewReader(""),

@@ -7,8 +7,9 @@ description: >-
   after the update", "kick the stuck one", "tell X to run the tests", "where is
   the api session", "why did X stop", "pause everything before I reboot"), to
   find or move past sessions ("find the session where I did X last week",
-  "move this session to the new repo"), or mentions the claudes command or
-  Ctrl+T pins. Not for starting new agents.
+  "move this session to the new repo"), to see which MCP servers a session
+  has, or mentions the claudes command or Ctrl+T pins. Not for starting new
+  agents.
 compatibility: Needs the claudes binary and Claude Code's claude command on PATH.
 ---
 
@@ -137,6 +138,8 @@ binary by its full path rather than assuming it is gone.
 | resume a past session X              | `claudes session resume --bg X`; see "Past sessions"      |
 | move this session to directory Y     | `claudes session mv ID Y`; see "Past sessions"            |
 | change the default ping or timeout   | `claudes config get`, then `claudes config set KEY VALUE` |
+| which MCPs does X have, what's on    | `claudes mcp ls X`, or `--in DIR`; `-o json` for scripts  |
+| what would profile P turn off        | `claudes mcp ls X --profile P`; it changes nothing        |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.
@@ -371,6 +374,9 @@ Whether one is worth keeping takes reading what it was asked.
   or kill `claude` processes yourself. claudes keeps agent view's files intact
   and checks which process belongs to which session. `CLAUDE_CONFIG_DIR` and
   `XDG_STATE_HOME` move those files, so run claudes with the user's environment.
+- Read `~/.claude.json` or a `.mcp.json` to answer which MCP servers a session
+  has. They hold the servers' tokens; `claudes mcp ls` shows the names and
+  states without them.
 
 ## Changing directories
 

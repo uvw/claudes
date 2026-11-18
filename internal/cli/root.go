@@ -23,6 +23,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/jobs"
+	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
@@ -109,6 +110,8 @@ type App struct {
 	// ClaudeConfig is Claude Code's settings file, ~/.claude.json, which
 	// claudes only reads, for the flags doctor reports.
 	ClaudeConfig string
+	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads.
+	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
@@ -219,6 +222,7 @@ func newApp() *App {
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
 	app.ClaudeConfig, _ = paths.ClaudeConfigFile()
+	app.MCP, _ = mcp.DefaultStore()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
@@ -481,6 +485,7 @@ same as Ctrl+T in agent view.`,
 		app.doctorCommand(),
 		app.sessionCommand(),
 		app.teamCommand(),
+		app.mcpCommand(),
 		app.cdCommand(),
 		app.initCommand(),
 		app.upgradeCommand(),

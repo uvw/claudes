@@ -199,6 +199,8 @@ Setup and diagnostics:
 | Command                      | What it does                                                |
 | ---------------------------- | ----------------------------------------------------------- |
 | `config`                     | Show or change settings in `config.yaml`                    |
+| `mcp ls [TARGET]`            | List a session's MCP servers, and whether each is on        |
+| `mcp profiles`               | List the MCP profiles in `config.yaml`                      |
 | `doctor`                     | Check the installed Claude Code against claudes             |
 | `doctor env`                 | Print versions, file locations, and the variables           |
 | `init bash\|zsh\|fish\|pwsh` | Print the shell function behind `claudes cd`                |
@@ -211,7 +213,7 @@ Setup and diagnostics:
 | Document                                                                                     | What it covers                                                       |
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)               | Every way to install, shell setup, the agent skill, and uninstalling |
-| [Using claudes](https://github.com/uvw/claudes/blob/main/docs/guide.md)                      | Naming sessions, flags, safety, past sessions, agent teams, and logs |
+| [Using claudes](https://github.com/uvw/claudes/blob/main/docs/guide.md)                      | Naming sessions, flags, safety, past sessions, teams, logs, and MCP  |
 | [Reference](https://github.com/uvw/claudes/blob/main/docs/reference.md)                      | Output, exit codes, troubleshooting, configuration, and files        |
 | [Agent skill](skills/claudes/SKILL.md)                                                       | How a coding agent uses claudes, as a skill                          |
 | [Security](https://github.com/uvw/claudes/blob/main/docs/security.md)                        | Reporting a problem, and checking a download                         |

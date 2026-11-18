@@ -352,6 +352,70 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
   and have not changed for longer than `--older-than`, 7 days by default.
   `--dry-run` shows them first.
 
+## MCP servers
+
+`claudes mcp ls` lists the MCP servers Claude Code gives a session, and whether
+each one is on. Name a session, past or running, to list the servers of its
+directory, or pass `--in DIR` (`-i`). With neither, it lists the current
+directory's.
+
+```console
+$ claudes mcp ls api
+MCP servers in ~/src/api:
+NAME                SCOPE    STATE    KIND   PROFILES
+browser             user     on       stdio  safe, web
+plugin:docs:search  plugin   on       http   safe
+repo-tool           project  pending  stdio  -
+issue-tracker       user     off      http   web
+```
+
+1. `SCOPE` says where the server comes from: `user` is `mcpServers` in
+   `~/.claude.json`, `local` is that directory's entry there, `project` is a
+   `.mcp.json` in the directory or one above it, `plugin` is an enabled plugin,
+   and `managed` is an administrator's `managed-mcp.json`. When two scopes
+   define one name, claudes lists the one Claude Code uses: local, then project,
+   then user, then plugin. A `managed-mcp.json` replaces all the others.
+2. `STATE` is `on`, `off` when `/mcp` turned the server off in that directory,
+   or `pending` for a project server nobody has approved or rejected yet. Claude
+   Code saves that answer in `~/.claude.json` or a settings file, as
+   `enableAllProjectMcpServers`, `enabledMcpjsonServers`, or
+   `disabledMcpjsonServers`. A rejected server is off.
+3. `KIND` is the transport, such as `stdio`, `http`, or `sse`.
+4. Servers that are on come first, then pending ones, then those that are off,
+   each by name, so what a session loads reads first.
+
+claudes never prints a server's command, arguments, environment, headers, or
+URL, because they can carry tokens.
+
+The files claudes reads are not a stable Claude Code interface. A field it
+cannot read shows `-`, and a file it cannot read gets a warning while the rest
+of the list still prints. claudes does not show claude.ai connectors or servers
+passed with `--mcp-config`, and does not apply the `allowedMcpServers` and
+`deniedMcpServers` settings.
+
+### MCP profiles
+
+A profile names the servers that stay on for one kind of work. Profiles live
+under `mcp.profiles` in [config.yaml](reference.md#configuration), and
+`claudes config edit` changes them.
+
+```yaml
+mcp:
+  profiles:
+    safe: [browser, "plugin:docs:search"]
+    web: [browser, issue-tracker]
+```
+
+`claudes mcp profiles` lists them, and warns about a name that matches no server
+claudes can find: one of the current directory's, any directory's in
+`~/.claude.json`, or an installed plugin's. `claudes mcp ls --profile safe` adds
+a `PROFILE` column with each server's state under that profile, next to the
+current one. The `PROFILES` column of `mcp ls` names the profiles that keep each
+server on.
+
+`mcp ls` and `mcp profiles` only read. Turning servers on and off, and starting
+a session with a profile, come in a later release.
+
 ## Following a session
 
 `claudes logs NAME` prints a background session's recent screen, as

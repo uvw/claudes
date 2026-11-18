@@ -32,6 +32,7 @@ adds what an agent needs on top of them.
 | Disk use and removing past sessions       | `internal/cli/session_{du,gc,triage}.go`           |
 | Moving files to the system trash          | `internal/trash`, one file per platform            |
 | Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`          |
+| MCP servers, profiles, and `claudes mcp`  | `internal/mcp`, `internal/cli/mcp.go`              |
 | Where claudes keeps its own files         | `internal/paths`, one file per platform            |
 | Atomic writes and lock directories        | `internal/safefile`                                |
 | Colors and the text tables' layout        | `internal/style`                                   |

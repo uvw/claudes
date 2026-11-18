@@ -21,7 +21,7 @@ func write(t *testing.T, data string) string {
 
 func TestAMissingFileIsAnEmptyConfig(t *testing.T) {
 	c, err := Load(filepath.Join(t.TempDir(), "none.yaml"))
-	if err != nil || c != (Config{}) {
+	if err != nil || !cmp.Equal(c, Config{}) {
 		t.Fatalf("config %+v, err %v", c, err)
 	}
 }
@@ -91,7 +91,7 @@ func TestSetRefusesABadValueAndAnUnknownKey(t *testing.T) {
 
 func TestTheTemplateLoadsAsAnEmptyConfig(t *testing.T) {
 	c, err := Load(write(t, string(Template())))
-	if err != nil || c != (Config{}) {
+	if err != nil || !cmp.Equal(c, Config{}) {
 		t.Fatalf("config %+v, err %v", c, err)
 	}
 	for _, k := range Keys {
@@ -208,5 +208,45 @@ func TestSetWritesThroughALink(t *testing.T) {
 	}
 	if c := mustLoad(t, real); c.Ping.Text != "hi" {
 		t.Fatalf("the linked file holds %+v", c)
+	}
+}
+
+func TestMCPProfiles(t *testing.T) {
+	path := write(t, "mcp:\n  profiles:\n    safe: [browser, \"plugin:docs:search\"]\n    none:\n")
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]ServerNames{"safe": {"browser", "plugin:docs:search"}, "none": nil}
+	if diff := cmp.Diff(want, c.MCP.Profiles); diff != "" {
+		t.Fatalf("profiles (-want +got):\n%s", diff)
+	}
+	if v, _ := Get(c, "mcp.profiles"); v != `{"none":[],"safe":["browser","plugin:docs:search"]}` {
+		t.Fatalf("get: %s", v)
+	}
+	if v, _ := Get(Config{}, "mcp.profiles"); v != "" {
+		t.Fatalf("get with no profiles: %q", v)
+	}
+	if err := Set(path, "mcp.profiles", "safe"); err == nil || !strings.Contains(err.Error(), "config edit") {
+		t.Fatalf("set: %v", err)
+	}
+}
+
+func TestMCPProfilesRefuseWhatIsNotANameList(t *testing.T) {
+	for data, want := range map[string]string{
+		"mcp:\n  profiles:\n    safe: browser\n":      "a profile is a list",
+		"mcp:\n  profiles:\n    safe: [7]\n":          "a server name is a string",
+		"mcp:\n  profiles:\n    safe: [true]\n":       "a server name is a string",
+		"mcp:\n  profiles:\n    safe: [[a]]\n":        "a server name is a string",
+		"mcp:\n  profiles:\n    safe: [\"\"]\n":       "not a server name",
+		"mcp:\n  profiles:\n    safe: [\"a\\nb\"]\n":  "not a server name",
+		"mcp:\n  profiles:\n    \"two words\": [a]\n": "not a profile name",
+		"mcp:\n  profiles:\n    \"-dash\": [a]\n":     "not a profile name",
+		"mcp:\n  profiles: [a]\n":                     "cannot construct",
+		"mcp:\n  profile:\n    safe: [a]\n":           "field profile not found",
+	} {
+		if _, err := Load(write(t, data)); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: err %v, want %q", data, err, want)
+		}
 	}
 }
