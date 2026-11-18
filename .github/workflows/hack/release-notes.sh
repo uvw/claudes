@@ -239,11 +239,25 @@ tag_fences() {
     { print }'
 }
 
+# unwrap joins the lines Prettier wrapped at 80 columns back into one line per
+# paragraph or list item, since a release page shows each newline as a break.
+# Code blocks, headings, tables, and quotes keep their lines.
+unwrap() {
+  awk '
+    function flush() { if (buf != "") print buf; buf = "" }
+    /^[[:space:]]*```/ { flush(); print; fence = !fence; next }
+    fence { print; next }
+    /^[[:space:]]*$/ { flush(); print; next }
+    /^[[:space:]]*([-*+]|[0-9]+[.)])[[:space:]]/ || /^[[:space:]]*[#|>]/ { flush(); buf = $0; next }
+    { line = $0; if (buf == "") buf = line; else { sub(/^[[:space:]]+/, "", line); buf = buf " " line } }
+    END { flush() }'
+}
+
 body() {
   local notes=${1:?usage: release-notes.sh body NOTES BODY} current=${2:?usage: release-notes.sh body NOTES BODY}
   verify "$notes"
   # Drops the notes' trailing blank lines.
-  awk 'NF { for (; blank > 0; blank--) print ""; print; next } { blank++ }' "$notes"
+  unwrap <"$notes" | awk 'NF { for (; blank > 0; blank--) print ""; print; next } { blank++ }'
   printf '\n## All changes\n\n'
   # Drops what an earlier run put before "All changes", then release-please's
   # version heading, since the release page already shows the version.
@@ -347,6 +361,29 @@ NOTES
   grep -q '^### Features$' "$tmp/body.md" || die "test: body lost the changelog"
   body "$notes" "$tmp/body.md" | cmp -s - "$tmp/body.md" || die "test: body changed its own output"
   echo "ok   body puts the notes before the changelog, once"
+
+  cat >"$tmp/wrapped.md" <<'NOTES'
+## TL;DR
+
+- **New:** one two
+  three four.
+  1. nested item
+     wraps here.
+
+A paragraph that
+runs on.
+
+```sh
+claudes ls
+--wide
+```
+NOTES
+  body "$tmp/wrapped.md" "$notes_dir/testdata/release-body.txt" >"$tmp/unwrapped.md"
+  grep -qxF -- '- **New:** one two three four.' "$tmp/unwrapped.md" || die "test: body kept a list item wrapped"
+  grep -qxF -- '  1. nested item wraps here.' "$tmp/unwrapped.md" || die "test: body kept a nested item wrapped"
+  grep -qxF -- 'A paragraph that runs on.' "$tmp/unwrapped.md" || die "test: body kept a paragraph wrapped"
+  grep -qxF -- '--wide' "$tmp/unwrapped.md" || die "test: body joined lines in a code block"
+  echo "ok   body puts each paragraph and list item on one line"
   echo "All release notes tests passed"
 }
 
