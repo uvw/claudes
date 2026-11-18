@@ -130,6 +130,20 @@ func (app *App) lastWords(host claude.Session, verb string) {
 	app.unlock()
 }
 
+// restartHost restarts the session running claudes, which ends this command.
+func (app *App) restartHost(ctx context.Context, host claude.Session) error {
+	if host.Interactive() {
+		return app.stopHost(ctx, host, "Stopping", false)
+	}
+	if host.JobID == "" {
+		return errors.New("claude agents gave no job id for this session")
+	}
+	app.say("")
+	app.say("Restarting this session (%s) last. Output ends here.", host.Label())
+	app.lastWords(host, "restarting")
+	return app.Agents.Respawn(ctx, host.JobID)
+}
+
 // resumeIndent lines up the notes claude prints under a progress line.
 const resumeIndent = "             "
 
@@ -247,6 +261,13 @@ func (app *App) unpark(sessionID string) error {
 // session is parked until it is back, and is not stopped at all when its
 // directory is gone, because it could not be resumed.
 func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) error {
+	return app.relaunchAround(ctx, s, prompt, nil)
+}
+
+// relaunchAround is relaunch that runs between, when it is not nil, once the
+// session's process is gone and before it is resumed. The session is resumed
+// even when between fails, and the error is returned.
+func (app *App) relaunchAround(ctx context.Context, s claude.Session, prompt string, between func() error) error {
 	if !paths.IsDir(s.Cwd) {
 		return fmt.Errorf("directory %s is gone, so it was not stopped", s.Cwd)
 	}
@@ -260,14 +281,18 @@ func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) e
 	if err := app.waitGone(ctx, s); err != nil {
 		return fmt.Errorf("stopped, but not resumed (%w). %s", err, parked)
 	}
+	var betweenErr error
+	if between != nil {
+		betweenErr = between()
+	}
 	if err := app.resumeSession(ctx, s.SessionID, s.Cwd, prompt); errors.Is(err, errNotYetRunning) {
 		// Kept parked, so claudes resume brings it back if it never came up.
 		app.warn("claudes: %s: %v.", s.Label(), err)
-		return nil
+		return betweenErr
 	} else if err != nil {
-		return fmt.Errorf("stopped, but not resumed (%w). %s", err, parked)
+		return errors.Join(betweenErr, fmt.Errorf("stopped, but not resumed (%w). %s", err, parked))
 	}
-	return app.unpark(s.SessionID)
+	return errors.Join(betweenErr, app.unpark(s.SessionID))
 }
 
 // stopSettle bounds how long stopFailed watches for a stop that lands late.

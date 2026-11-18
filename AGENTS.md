@@ -7,65 +7,67 @@ adds what an agent needs on top of them.
 
 ## Where to look first
 
-| You need                                        | Open                                                      |
-| ----------------------------------------------- | --------------------------------------------------------- |
-| What a command does and its flags               | `docs/guide.md`, then `claudes <cmd> --help`              |
-| Why something is the way it is                  | `docs/decisions.md`                                       |
-| What's open                                     | GitHub issues, `docs/handoffs.md`                         |
-| Where code goes, and the tests that check it    | "Package layout" below, `internal/layout`                 |
-| A command's code                                | `internal/cli/<path>.go`, such as `session_mv.go`         |
-| The command tree and passthrough                | `internal/cli/root.go`                                    |
-| The `App` and the real side effects it wires    | `internal/cli/app.go`                                     |
-| Printing, warnings, the log, and `writeTable`   | `internal/cli/app_output.go`                              |
-| Plans, progress, the report, and the gate       | `internal/cli/app_report.go`, `internal/render/report.go` |
-| Flags several commands share                    | `internal/cli/app_flags.go`                               |
-| Shell completion                                | `internal/cli/app_complete.go`                            |
-| Listing sessions, past sessions, and team leads | `internal/cli/app_sessions.go`                            |
-| Which sessions a bulk command picks             | `internal/selection`, `internal/cli/app_selection.go`     |
-| The session running claudes                     | `internal/selection/host.go`                              |
-| Stopping, parking, and relaunching              | `internal/cli/app_relaunch.go`                            |
-| Handing the terminal to `claude`                | `internal/cli/app_handoff.go`                             |
-| The compatibility gate and installed version    | `internal/cli/app_compat.go`, `internal/compat`           |
-| The run lock                                    | `internal/files/runlock.go`, `internal/cli/app_lock.go`   |
-| The rows `ls` and `where` print                 | `internal/cli/app_listing.go`                             |
-| Past sessions: gc, triage, du, show, and search | `internal/history`                                        |
-| The signals that end a run                      | `internal/cli/app_signals.go`, one file per platform      |
-| Error types and exit codes                      | `internal/cli/app_exit.go`                                |
-| The calls to the `claude` command line          | `internal/claude/client.go`                               |
-| Reading `~/.claude.json`                        | `internal/claude/config.go`                               |
-| Agent view's pins and per-job versions          | `internal/jobs`                                           |
-| The version a running session runs              | `internal/procs`, `internal/cli/app_compat.go`            |
-| Comparing versions, and claudes' own            | `internal/version`                                        |
-| The park file                                   | `internal/park`                                           |
-| `config.yaml` and the editor                    | `internal/config`                                         |
-| Reading and copying transcripts                 | `internal/transcripts`                                    |
-| How `session search` matches and ranks          | `internal/transcripts/search.go`                          |
-| Moving files to the system trash                | `internal/trash`, one file per platform                   |
-| Putting them back, and `trashed.json`           | `internal/trash/manifest.go`                              |
-| Agent teams, task lists, and `team ls` rows     | `internal/teams`                                          |
-| MCP servers and profiles                        | `internal/mcp`                                            |
-| The claudes mod and its request files           | `plugins/claudes-mod`, `internal/mod`                     |
-| `claudes mod` and the `claude plugin` calls     | `internal/cli/mod*.go`, `internal/claude/plugin.go`       |
-| Where claudes keeps its own files               | `internal/paths`, one file per platform                   |
-| Checking directories: within, same, gone        | `internal/paths/dirs.go`                                  |
-| Atomic writes and lock directories              | `internal/files`                                          |
-| Colors, tables, cells, and `-o` formats         | `internal/render`                                         |
-| Fitting tables to the terminal                  | `internal/render/fit.go`, `internal/cli/app_output.go`    |
-| `claudes upgrade` and its downloads             | `internal/upgrade`                                        |
-| How a typed name or id finds a session          | `internal/target`                                         |
-| Resume and remove commands, and quoting         | `internal/shell`, one file per platform                   |
-| Stopping an interactive session                 | `internal/procs`, one file per platform                   |
-| The agent skill and `claudes skill`             | `skills/claudes/SKILL.md`, `internal/cli/skill.go`        |
-| The compiled binary against a fake claude       | `test/e2e`, with the fake in `fakeclaude/`                |
-| CI, security scans, and releases                | `.github/workflows/`, `docs/releasing.md`                 |
-| Fuzz targets and the weekly fuzz run            | `docs/contributing.md`, `.github/workflows/fuzz.yaml`     |
-| The release notes' prompt, tests, and pin       | `.github/release-notes/`                                  |
-| The checks' tools and their pins                | `tools/`, `.github/workflows/hack/tool-pins.sh`           |
-| Scripts the workflows run                       | `.github/workflows/hack/`                                 |
-| The install scripts                             | `install/install.sh`, `install/install.ps1`               |
-| Developer tools, such as the notices file       | `hack/`                                                   |
-| Homebrew, winget, and their tokens              | `docs/releasing.md`, "Package managers"                   |
-| The README's demo GIF                           | `docs/demo/`, rendered by `hack/demo.sh`                  |
+| You need                                         | Open                                                      |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| What a command does and its flags                | `docs/guide.md`, then `claudes <cmd> --help`              |
+| Why something is the way it is                   | `docs/decisions.md`                                       |
+| What's open                                      | GitHub issues, `docs/handoffs.md`                         |
+| Where code goes, and the tests that check it     | "Package layout" below, `internal/layout`                 |
+| A command's code                                 | `internal/cli/<path>.go`, such as `session_mv.go`         |
+| The command tree and passthrough                 | `internal/cli/root.go`                                    |
+| The `App` and the real side effects it wires     | `internal/cli/app.go`                                     |
+| Printing, warnings, the log, and `writeTable`    | `internal/cli/app_output.go`                              |
+| Plans, progress, the report, and the gate        | `internal/cli/app_report.go`, `internal/render/report.go` |
+| Flags several commands share                     | `internal/cli/app_flags.go`                               |
+| Shell completion                                 | `internal/cli/app_complete.go`                            |
+| Listing sessions, past sessions, and team leads  | `internal/cli/app_sessions.go`                            |
+| Which sessions a bulk command picks              | `internal/selection`, `internal/cli/app_selection.go`     |
+| The session running claudes                      | `internal/selection/host.go`                              |
+| Stopping, parking, and relaunching               | `internal/cli/app_relaunch.go`                            |
+| Handing the terminal to `claude`                 | `internal/cli/app_handoff.go`                             |
+| The compatibility gate and installed version     | `internal/cli/app_compat.go`, `internal/compat`           |
+| The run lock                                     | `internal/files/runlock.go`, `internal/cli/app_lock.go`   |
+| The rows `ls` and `where` print                  | `internal/cli/app_listing.go`                             |
+| Past sessions: gc, triage, du, show, and search  | `internal/history`                                        |
+| The signals that end a run                       | `internal/cli/app_signals.go`, one file per platform      |
+| Error types and exit codes                       | `internal/cli/app_exit.go`                                |
+| The calls to the `claude` command line           | `internal/claude/client.go`                               |
+| Reading `~/.claude.json`                         | `internal/claude/config.go`                               |
+| Agent view's pins and per-job versions           | `internal/jobs`                                           |
+| The version a running session runs               | `internal/procs`, `internal/cli/app_compat.go`            |
+| Comparing versions, and claudes' own             | `internal/version`                                        |
+| The park file                                    | `internal/park`                                           |
+| `config.yaml` and the editor                     | `internal/config`                                         |
+| Reading and copying transcripts                  | `internal/transcripts`                                    |
+| How `session search` matches and ranks           | `internal/transcripts/search.go`                          |
+| Moving files to the system trash                 | `internal/trash`, one file per platform                   |
+| Putting them back, and `trashed.json`            | `internal/trash/manifest.go`                              |
+| Agent teams, task lists, and `team ls` rows      | `internal/teams`                                          |
+| MCP servers and profiles                         | `internal/mcp`                                            |
+| `claudes mcp on`, `off`, and the mod's answers   | `internal/cli/app_mcp.go`, `internal/mcp/switch.go`       |
+| Writing `disabledMcpServers` in `~/.claude.json` | `internal/claude/config_write.go`                         |
+| The claudes mod and its request files            | `plugins/claudes-mod`, `internal/mod`                     |
+| `claudes mod` and the `claude plugin` calls      | `internal/cli/mod*.go`, `internal/claude/plugin.go`       |
+| Where claudes keeps its own files                | `internal/paths`, one file per platform                   |
+| Checking directories: within, same, gone         | `internal/paths/dirs.go`                                  |
+| Atomic writes and lock directories               | `internal/files`                                          |
+| Colors, tables, cells, and `-o` formats          | `internal/render`                                         |
+| Fitting tables to the terminal                   | `internal/render/fit.go`, `internal/cli/app_output.go`    |
+| `claudes upgrade` and its downloads              | `internal/upgrade`                                        |
+| How a typed name or id finds a session           | `internal/target`                                         |
+| Resume and remove commands, and quoting          | `internal/shell`, one file per platform                   |
+| Stopping an interactive session                  | `internal/procs`, one file per platform                   |
+| The agent skill and `claudes skill`              | `skills/claudes/SKILL.md`, `internal/cli/skill.go`        |
+| The compiled binary against a fake claude        | `test/e2e`, with the fake in `fakeclaude/`                |
+| CI, security scans, and releases                 | `.github/workflows/`, `docs/releasing.md`                 |
+| Fuzz targets and the weekly fuzz run             | `docs/contributing.md`, `.github/workflows/fuzz.yaml`     |
+| The release notes' prompt, tests, and pin        | `.github/release-notes/`                                  |
+| The checks' tools and their pins                 | `tools/`, `.github/workflows/hack/tool-pins.sh`           |
+| Scripts the workflows run                        | `.github/workflows/hack/`                                 |
+| The install scripts                              | `install/install.sh`, `install/install.ps1`               |
+| Developer tools, such as the notices file        | `hack/`                                                   |
+| Homebrew, winget, and their tokens               | `docs/releasing.md`, "Package managers"                   |
+| The README's demo GIF                            | `docs/demo/`, rendered by `hack/demo.sh`                  |
 
 ## Package layout
 

@@ -702,3 +702,78 @@ func (h *harness) loaded(t *testing.T, s claude.Session) {
 	data, _ := json.Marshal(mod.Presence{Protocol: mod.Protocol, Session: s.SessionID, Version: "0.1.0", At: h.now.UnixMilli()})
 	writeFile(t, filepath.Join(h.app.Mod.Dir, "sessions", s.SessionID+".json"), string(data))
 }
+
+// The ways the fake mod answers a request.
+const (
+	modRuns    = "runs"    // runs /mcp, which changes ~/.claude.json
+	modNoop    = "noop"    // says done, but nothing changes
+	modRefuses = "refuses" // refuses every request
+	modSilent  = "silent"  // never answers
+)
+
+// fakeMod stands in for the claudes mod in s, answering its requests the way
+// how says each time claudes sleeps. It returns the requests it saw.
+func (h *harness) fakeMod(t *testing.T, s claude.Session, how string) *[]mod.Request {
+	t.Helper()
+	h.agents.markets = []claude.Marketplace{{Name: mod.Marketplace, Source: "github", Repo: mod.DefaultSource}}
+	h.agents.plugins = []claude.Plugin{{ID: mod.ID, Version: "0.1.0", Scope: "user", Enabled: true}}
+	h.loaded(t, s)
+	var seen []mod.Request
+	sleep := h.app.Sleep
+	h.app.Sleep = func(ctx context.Context, d time.Duration) error {
+		data, err := os.ReadFile(filepath.Join(h.app.Mod.Dir, "requests", s.SessionID+".json"))
+		if err == nil && how != modSilent {
+			var file struct {
+				Requests []mod.Request `json:"requests"`
+			}
+			if err := json.Unmarshal(data, &file); err != nil {
+				t.Fatal(err)
+			}
+			for _, r := range file.Requests {
+				if slices.Contains(seen, r) {
+					continue
+				}
+				seen = append(seen, r)
+				res := mod.Result{ID: r.ID, Session: s.SessionID, Status: mod.Done, Version: "0.1.0"}
+				switch how {
+				case modRefuses:
+					res.Status, res.Reason = mod.Refused, "the mod runs only /mcp"
+				case modRuns:
+					verb, name, _ := strings.Cut(r.Args, " ")
+					if _, _, err := claude.SetDisabled(h.app.MCP.ConfigFile, s.Cwd, func(list []string) []string {
+						list = slices.DeleteFunc(list, func(n string) bool { return n == name })
+						if verb == "disable" {
+							list = append(list, name)
+						}
+						return list
+					}); err != nil {
+						t.Fatal(err)
+					}
+				}
+				out, _ := json.Marshal(res)
+				writeFile(t, filepath.Join(h.app.Mod.Dir, "results", r.ID+".json"), string(out))
+			}
+		}
+		return sleep(ctx, d)
+	}
+	return &seen
+}
+
+// mcpSession is a running session whose directory has the servers browser
+// and web-api, with web-api turned off.
+func (h *harness) mcpSession(t *testing.T, status string) claude.Session {
+	t.Helper()
+	s := h.bg("api", status)
+	h.agents.snapshots = [][]claude.Session{{s}}
+	h.mcpServers(t, s.Cwd, map[string]any{"disabledMcpServers": []string{"web-api"}})
+	return s
+}
+
+func (h *harness) disabled(t *testing.T, dir string) []string {
+	t.Helper()
+	d, err := h.app.disabled(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return d
+}

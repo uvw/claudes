@@ -1,5 +1,6 @@
 // Package claude wraps the parts of the claude command line that claudes uses,
-// and reads ~/.claude.json, the state file Claude Code keeps beside ~/.claude.
+// and reads ~/.claude.json, the state file Claude Code keeps beside ~/.claude,
+// where it writes only a project's disabledMcpServers list.
 package claude
 
 import (

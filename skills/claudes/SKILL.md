@@ -7,9 +7,9 @@ description: >-
   after the update", "kick the stuck one", "tell X to run the tests", "where is
   the api session", "why did X stop", "pause everything before I reboot"), to
   find, move, or restore past sessions ("find the session where I did X last
-  week", "move this session to the new repo", "undo that clean-up"), to see
-  which MCP servers a session has, or mentions the claudes command or Ctrl+T pins. Not for starting new
-  agents.
+  week", "move this session to the new repo", "undo that clean-up"), to see or
+  switch which MCP servers a session has, or mentions the claudes command or
+  Ctrl+T pins. Not for starting new agents.
 compatibility: Needs the claudes binary and Claude Code's claude command on PATH.
 ---
 
@@ -142,6 +142,8 @@ binary by its full path rather than assuming it is gone.
 | which MCPs does X have, what's on    | `claudes mcp ls X`, or `--in DIR`; `-o json` for scripts  |
 | what would profile P turn off        | `claudes mcp ls X --profile P`; it changes nothing        |
 | is the claudes mod installed, loaded | `claudes mod status`; see "The claudes mod"               |
+| turn MCP server M off in session X   | `claudes mcp off M X`; see "The claudes mod"              |
+| turn every MCP server back on in X   | `claudes mcp on --all X`                                  |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.
@@ -208,8 +210,8 @@ These commands are read-only. Run them freely:
 - `mcp ls`, `mcp profiles`, and `mod status`
 - `doctor`, `doctor env`, `config get`, `config path`, `upgrade --check`,
   `skill` without `--install` or `--dir`, `--version`, and `--help`
-- `restart`, `pause`, `resume`, `gc`, `session gc`, and `session restore` with
-  `--dry-run`
+- `restart`, `pause`, `resume`, `gc`, `session gc`, `session restore`, `mcp on`,
+  and `mcp off` with `--dry-run`
 
 Every other command changes the user's sessions or their computer, such as
 `upgrade`, `skill --install`, `config set`, and `gc --teams`. Run one only as
@@ -421,6 +423,16 @@ before `claudes mod install` or `claudes mod uninstall`.
    repository, for an unreleased version.
 3. Never write the request files under claudes' state directory yourself. Go
    through the claudes commands that use the mod.
+4. `claudes mcp off M X` and `claudes mcp on M X` ask X's mod to run
+   `/mcp disable` or `/mcp enable` once X is idle, and check the result. They
+   change X's whole repository: every session there shares the setting. Run them
+   for the session the user named; preview with `--dry-run`. Exit 3 means a
+   server timed out, was refused, or did not change: show the table.
+5. Without the mod, the command is refused, and the message names
+   `claudes mod install` and `--restart`. `--restart` stops X and resumes it,
+   cutting off its turn, so treat it like `restart` and ask first. On your own
+   session, the mod runs the command when your turn ends, so the result says
+   `queued`.
 
 ## Never
 
@@ -431,6 +443,8 @@ before `claudes mod install` or `claudes mod uninstall`.
   or kill `claude` processes yourself. claudes keeps agent view's files intact
   and checks which process belongs to which session. `CLAUDE_CONFIG_DIR` and
   `XDG_STATE_HOME` move those files, so run claudes with the user's environment.
+- Edit `~/.claude.json` to turn a server on or off. `claudes mcp on` and
+  `claudes mcp off` change only that list, and keep Claude Code's other writes.
 - Read `~/.claude.json` or a `.mcp.json` to answer which MCP servers a session
   has. They hold the servers' tokens; `claudes mcp ls` shows the names and
   states without them.

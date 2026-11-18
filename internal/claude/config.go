@@ -11,8 +11,8 @@ import (
 )
 
 // Config is ~/.claude.json, where Claude Code keeps the user's MCP servers,
-// an entry for each project, and the feature flags it caches. claudes reads it
-// and never writes it.
+// an entry for each project, and the feature flags it caches. claudes writes
+// only a project's disabledMcpServers list in it, through SetDisabled.
 type Config struct{ top map[string]json.RawMessage }
 
 // ReadConfig reads ~/.claude.json from path. A missing file reads as empty. A
@@ -39,28 +39,58 @@ func ReadConfig(path string) (Config, error) {
 // Key is the value of a top-level key, or nil.
 func (c Config) Key(name string) json.RawMessage { return c.top[name] }
 
-// Project is the entry ~/.claude.json keeps for dir. Claude Code keys a
-// directory in a git repository by the repository's main worktree, and keys
-// any other directory by itself.
+// Project is the entry ~/.claude.json keeps for dir.
 func (c Config) Project(dir string) map[string]json.RawMessage {
-	projects := objectOf(c.top["projects"])
-	if len(projects) == 0 {
+	key, ok := c.EntryKey(dir)
+	if !ok {
 		return nil
 	}
-	byDir := map[string]json.RawMessage{}
-	for key, raw := range projects {
-		byDir[ProjectKey(key)] = raw
+	return objectOf(objectOf(c.top["projects"])[key])
+}
+
+// EntryKey is the key ~/.claude.json keeps dir's entry under, and whether it
+// has one. Claude Code keys a directory in a git repository by the
+// repository's main worktree, and keys any other directory by itself, so two
+// directories with one key share their settings.
+func (c Config) EntryKey(dir string) (string, bool) {
+	projects := objectOf(c.top["projects"])
+	if len(projects) == 0 {
+		return "", false
+	}
+	byDir := map[string]string{}
+	for key := range projects {
+		byDir[ProjectKey(key)] = key
 	}
 	// Claude Code follows links before it looks for the repository.
 	if real, err := filepath.EvalSymlinks(dir); err == nil {
 		dir = real
 	}
 	for _, d := range []string{gitRoot(dir), dir} {
-		if raw, ok := byDir[ProjectKey(d)]; ok && d != "" {
-			return objectOf(raw)
+		if key, ok := byDir[ProjectKey(d)]; ok && d != "" {
+			return key, true
 		}
 	}
-	return nil
+	return "", false
+}
+
+// Disabled is the disabledMcpServers list of dir's entry: the servers /mcp
+// turned off there. An item that is not a string is skipped.
+func (c Config) Disabled(dir string) []string { return stringsOf(c.Project(dir)["disabledMcpServers"]) }
+
+// stringsOf decodes the strings in a JSON list, skipping anything else.
+func stringsOf(raw json.RawMessage) []string {
+	var items []json.RawMessage
+	if json.Unmarshal(raw, &items) != nil {
+		return nil
+	}
+	var out []string
+	for _, item := range items {
+		var s string
+		if json.Unmarshal(item, &s) == nil {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // ProjectKey is a directory as ~/.claude.json's projects name it, with forward

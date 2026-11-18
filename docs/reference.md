@@ -12,7 +12,7 @@ Pick a format with `-o`:
 | `ls`, `where`, `team ls`                                    | text, json, yaml | `output.format`, or text |
 | `session ls`, `show`, `where`, `du`, `search`, and `triage` | text, json, yaml | `output.format`, or text |
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
-| `mcp ls`, `mcp profiles`, `mod status`                      | text, json, yaml | `output.format`, or text |
+| `mcp ls`, `profiles`, `on`, and `off`, and `mod status`     | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
 | `gc`, `pin`, `unpin`, `session gc`, `session restore`       | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
@@ -240,6 +240,35 @@ Each server has:
 `mcp profiles` prints a list of profiles, each with `name`, `servers`, and
 `unknown`: the servers that match none claudes can find.
 
+`mcp on` and `mcp off` print one object:
+
+| Field     | Meaning                                                      |
+| --------- | ------------------------------------------------------------ |
+| `command` | `mcp on` or `mcp off`                                        |
+| `dir`     | The directory whose `disabledMcpServers` list changed        |
+| `id`      | The session's id, or empty with `--in`                       |
+| `name`    | The session's name, or empty with `--in`                     |
+| `via`     | `mod`, `restart`, or `file`: the mod, `--restart`, or `--in` |
+| `dryRun`  | Whether it was a dry run                                     |
+| `servers` | The servers it was asked about, by name                      |
+
+Each server has `name`; `from` and `to`, each `on` or `off`, for its state in
+`disabledMcpServers` before and the one asked for; `result`; and `note`, which
+says why for any result but `done`. `result` is one of:
+
+| Result      | Meaning                                                        |
+| ----------- | -------------------------------------------------------------- |
+| `done`      | It is now in the state asked for                               |
+| `already`   | It was already in that state, so claudes left it alone         |
+| `planned`   | A dry run would change it                                      |
+| `queued`    | The session running claudes runs it when its turn ends         |
+| `refused`   | The mod refused the request                                    |
+| `error`     | `/mcp` or the write failed                                     |
+| `timed out` | The mod gave no answer within `--timeout`                      |
+| `unchanged` | The command ran, but `~/.claude.json` does not show the change |
+
+`timed out`, `refused`, `error`, and `unchanged` make the command exit 3.
+
 #### The claudes mod
 
 `mod status` prints one object:
@@ -396,8 +425,11 @@ interface. So before a command changes anything, claudes checks what it read:
   per run. The installed version is cached for six hours.
 
 `claudes mcp` reads Claude Code's MCP configuration, which is not a stable
-interface either, and changes nothing. A field it cannot read shows `-`, and a
-file it cannot read gets a warning, so it never fails on them.
+interface either. A field it cannot read shows `-`, and a file it cannot read
+gets a warning, so `mcp ls` never fails on them. `mcp on` and `mcp off` change
+only a directory's `disabledMcpServers` list in `~/.claude.json`. Through the
+mod, Claude Code's own `/mcp` writes it. With `--restart` or `--in`, claudes
+writes it, and leaves every other byte of the file as it was.
 
 The claudes mod runs on Claude Code's plugin mod API, which is early access and
 can change between releases. `claude plugin validate` and the mod's tests catch
@@ -473,5 +505,7 @@ as usual. `--version` prints the version.
   moves the original to the system trash; `session gc`, which moves past
   sessions there; `gc --teams`, which moves leftover team and task directories
   there; `session restore`, which moves them back; and `skill --install`.
-  Unpinning also deletes the job's `order` file, as agent view does. Everything
-  else it changes goes through the `claude` command.
+  Unpinning also deletes the job's `order` file, as agent view does. Outside
+  `~/.claude`, it writes only a directory's `disabledMcpServers` in
+  `~/.claude.json`, for `mcp on` and `mcp off` with `--restart` or `--in`.
+  Everything else it changes goes through the `claude` command.

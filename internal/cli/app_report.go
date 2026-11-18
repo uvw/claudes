@@ -163,6 +163,10 @@ type report struct {
 	printed bool
 }
 
+// ownOutput marks a command that runs alone but prints its own -o json or yaml
+// in place of the report.
+const ownOutput = "own-output"
+
 // reports adds -o to a command that changes sessions.
 func (app *App) reports(cmd *cobra.Command) *cobra.Command {
 	var out render.Format
@@ -174,7 +178,7 @@ func (app *App) reports(cmd *cobra.Command) *cobra.Command {
 // -o yaml. Its text output is dropped from then on.
 func (app *App) startReport(cmd *cobra.Command) {
 	f := cmd.Flags().Lookup("output")
-	if f == nil || cmd.Annotations[runsAlone] == "" || f.Value.String() == "text" {
+	if f == nil || cmd.Annotations[runsAlone] == "" || cmd.Annotations[ownOutput] != "" || f.Value.String() == "text" {
 		return
 	}
 	d := cmd.Flags().Lookup("dry-run")
