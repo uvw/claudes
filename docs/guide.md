@@ -197,12 +197,18 @@ directory of tool results and subagent transcripts takes.
 transcript, subagent transcripts and tool results, older copies, file history,
 session-env directory, and debug log. They go to the system trash (the macOS
 Trash, the Windows Recycle Bin, or the freedesktop.org trash on Linux), so a
-mistake can be undone; `--purge` deletes them for good. Without flags it
-removes:
+mistake can be undone; `--purge` deletes them for good. Windows deletes an item
+too big for the Recycle Bin, or on a drive without one, for good, without
+asking. Without flags it removes:
 
 1. Empty sessions, which never got a prompt.
 2. Older copies `session mv` left, keeping the newest.
 3. Leftovers: subagent and file-history directories whose transcript is gone.
+
+A session is empty only when its transcript holds nothing but records claudes
+knows Claude Code writes about a session, such as its mode and title. A record
+type claudes does not know, a record with a message, or a line that does not
+parse keeps the session, since Claude Code adds and renames record types.
 
 `--empty`, `--copies`, `--leftovers`, `--trivial`, `--gone` (the session's
 directory no longer exists), and `--older-than 90d` pick exactly those kinds
@@ -210,8 +216,9 @@ instead. A trivial session changed no file and made no tool call, and either
 only ran slash commands, such as `/login`, or got one prompt, such as a quick
 health check. A session named with `/rename`, one an agent team's lead started,
 and one with file history are never trivial. To tell, claudes reads each
-transcript up to 2 MB in full; a bigger one is never trivial. Targets remove
-exactly the sessions named. `--dry-run` shows the plan and what it frees.
+transcript up to 2 MB in full; a bigger one is never trivial, and neither is one
+with a record type claudes does not know or a line that does not parse. Targets
+remove exactly the sessions named. `--dry-run` shows the plan and what it frees.
 
 `--sidecars` keeps every session and trims its sidecar directory instead, which
 is often most of a big session (`session du --top 10` shows how much). It takes
@@ -253,12 +260,17 @@ It refuses:
 1. A running session, except the one running claudes: copy that one, then exit
    it and run the printed command.
 2. When it cannot tell which sessions run, unless you pass `--force`.
-3. When `DIR` already holds a copy, which may have newer work.
+3. When `DIR` already holds a copy, which may have newer work, or a subagent
+   directory of the session.
 4. When recent sessions live in project directories claudes would not name that
    way, so it would copy to the wrong one. `--force` goes ahead.
 5. When `claude agents` lists something claudes does not recognize, before it
    removes a job (see [Compatibility](reference.md#compatibility)). `--force`
    goes ahead, and also lets `session resume --bg` start one.
+
+It copies into a temporary directory first and renames the copy into place, so a
+copy that fails partway leaves nothing behind, and running `mv` again starts
+over.
 
 `--resume` (`-r`) resumes the copy at once, and `--rm` deletes the original once
 every file of the copy matches it byte for byte. `--rm` refuses the session
@@ -297,9 +309,12 @@ best first. A session must match every word. Each word matches in any case at
 the start of a word, so `lock` matches `locks`, `locking`, `fileLock`, and
 `/src/lock.go`, but not `block`. A word starts after a character that is not a
 letter or a digit, such as a space, a slash, or an underscore, and at an
-upper-case letter after a lower-case one. A word that starts with punctuation,
-such as `.go`, matches anywhere. Quote words to match them as a phrase. It reads
-every transcript in full, and looks in four places, which rank in this order:
+upper-case letter after a lower-case one. Chinese, Japanese, Korean, Thai, and
+the other scripts written without spaces between words start a word at every
+character, so `東京` matches in `私は東京に行きました`. A word that starts with
+punctuation, such as `.go`, matches anywhere. Quote words to match them as a
+phrase. It reads every transcript in full, and looks in four places, which rank
+in this order:
 
 1. The session's name.
 2. The prompts you typed.

@@ -55,6 +55,10 @@ func WriteFrom(path string, r io.Reader, perm fs.FileMode) error {
 	return rename(temp.Name(), path)
 }
 
+// RenameNoReplace renames from, a file or a directory, to to, and fails with
+// an error that matches fs.ErrExist when to exists, rather than replace it.
+func RenameNoReplace(from, to string) error { return renameNoReplace(from, to) }
+
 // Lock is a lock directory next to the file it guards.
 type Lock struct {
 	// Path is the lock directory, such as pins.json.lock.

@@ -144,6 +144,10 @@ heredoc, and never run it through Prettier.
 13. **Every path a table shows goes through `dirCell`, and every table through
     `app.writeTable`.** A path that skips them wraps every row, and
     `TestTablesPutPathsThroughDirCell` fails.
+14. **A transcript record type claudes does not know keeps the session out of
+    `session gc`'s empty and trivial kinds.** When Claude Code adds a type that
+    holds no conversation, add it to `bookkeeping` in
+    `internal/transcripts/transcripts.go`, or such sessions pile up.
 
 ## Maintaining this file
 

@@ -289,6 +289,58 @@ func TestSearchMatchesWordsAtTheirStart(t *testing.T) {
 	}
 }
 
+func TestSearchMatchesInsideTextWrittenWithoutSpaces(t *testing.T) {
+	for _, tc := range []struct{ text, word string }{
+		{"私は東京に行きました", "東京"},
+		{"東京タワーに行く", "タワー"},
+		{"ソウルの서울에서", "서울"},
+		{"ฉันไปกรุงเทพเมื่อวาน", "กรุงเทพ"},
+		{"東京Tokyo", "tokyo"},
+		{`東京Tokyo`, "tokyo"},
+	} {
+		s := searchSession(t, "s1", "", time.Hour, prompt(tc.text))
+		if got := ids(t, []Session{s}, Query{Words: []string{tc.word}}); len(got) != 1 {
+			t.Errorf("%q did not match in %q", tc.word, tc.text)
+		}
+	}
+}
+
+func TestSearchMatchesWordStartsAfterOtherLetters(t *testing.T) {
+	for text, want := range map[string]bool{
+		"größelock":  false,
+		"naïvelock":  false,
+		"Ålock":      false,
+		"daß lock":   true,
+		"→lock":      true,
+		"café·lock":  true,
+		"über-lock":  true,
+		"ünlockable": false,
+	} {
+		s := searchSession(t, "s1", "", time.Hour, prompt(text))
+		if got := len(ids(t, []Session{s}, Query{Words: []string{"lock"}})) == 1; got != want {
+			t.Errorf("lock in %q: matched %v, want %v", text, got, want)
+		}
+	}
+}
+
+func TestSearchMatchesWordStartsInTheName(t *testing.T) {
+	for name, want := range map[string]bool{
+		"fileLock tuning": true,
+		"lock race":       true,
+		"the deadlock":    false,
+		"東京lock":          true,
+	} {
+		s := searchSession(t, "s1", name, time.Hour, prompt("nothing to see"))
+		results, err := Search([]Session{s}, Query{Words: []string{"lock"}, Now: searchNow})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := len(results) == 1; got != want {
+			t.Errorf("lock in the name %q: matched %v, want %v", name, got, want)
+		}
+	}
+}
+
 func TestSearchRanksWordsInOneRecordAboveScatteredOnes(t *testing.T) {
 	list := []Session{
 		searchSession(t, "scattered", "", time.Hour,

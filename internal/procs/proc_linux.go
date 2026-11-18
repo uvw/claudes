@@ -10,7 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // clockTicks is how many ticks a second /proc counts process start times in.
@@ -18,35 +21,40 @@ import (
 // architecture Go supports.
 const clockTicks = 100
 
-// bootTime is when the system booted, worked out once from /proc/uptime, so
-// every start time claudes computes in one run uses the same base and two
-// lookups of one process agree exactly.
+// bootTime is when the system booted, worked out once, so every start time
+// claudes computes in one run uses the same base and two lookups of one
+// process agree exactly. The kernel counts start times on CLOCK_BOOTTIME and
+// rounds them down to the tick. Reading that clock in nanoseconds right after
+// the wall clock puts the base at or before the real boot, so a start time is
+// no later than the real one until the wall clock drifts (listSlack).
 var bootTime = sync.OnceValues(func() (time.Time, error) {
-	data, err := os.ReadFile("/proc/uptime")
-	if err != nil {
-		return time.Time{}, err
+	now := time.Now()
+	var up unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &up); err != nil {
+		return time.Time{}, fmt.Errorf("cannot read the time since boot: %w", err)
 	}
-	up, _, _ := strings.Cut(string(data), " ")
-	seconds, err := strconv.ParseFloat(up, 64)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("cannot read /proc/uptime: %q", data)
-	}
-	return time.Now().Add(-time.Duration(seconds * float64(time.Second))).Truncate(10 * time.Millisecond), nil
+	// Round(0) drops the monotonic reading, which leaves out time asleep, so
+	// start times compare by the wall clock alone.
+	return now.Add(-time.Duration(up.Nano())).Round(0), nil
 })
+
+// gone reports whether reading a process's files under /proc failed because
+// the process exited: before the open, or between the open and the read.
+func gone(err error) bool { return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ESRCH) }
 
 // lookup returns the process's command line and start time, or "" when no
 // process has that PID, from /proc. Its start time is exact to the clock
 // tick, where ps gives whole seconds.
 func lookup(pid int) (string, time.Time, error) {
 	_, started, err := stat(pid)
-	if errors.Is(err, fs.ErrNotExist) {
+	if gone(err) {
 		return "", time.Time{}, nil
 	}
 	if err != nil {
 		return "", time.Time{}, err
 	}
 	data, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(pid), "cmdline"))
-	if errors.Is(err, fs.ErrNotExist) {
+	if gone(err) {
 		return "", time.Time{}, nil
 	}
 	if err != nil {

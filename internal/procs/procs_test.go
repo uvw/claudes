@@ -171,6 +171,16 @@ func start(t *testing.T, name, mode string, args ...string) helper {
 		<-exited
 	}
 	t.Cleanup(kill)
+	// Start returns once exec is past the point of no return, which on Linux
+	// is before the new command line is readable.
+	for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+		if _, ok := Started(cmd.Process.Pid); ok {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%s never showed up as running", name)
+		}
+	}
 	return helper{cmd.Process.Pid, out, kill, exited}
 }
 
@@ -316,6 +326,21 @@ func TestRunningNoticesAReusedPID(t *testing.T) {
 	h.kill()
 	if Running(h.pid, started) {
 		t.Fatal("a process that exited still counts")
+	}
+}
+
+func TestStartedIsWhenTheProcessStarted(t *testing.T) {
+	before := time.Now()
+	h := start(t, "claude", "sleep")
+	after := time.Now()
+	started, ok := Started(h.pid)
+	if !ok {
+		t.Fatal("the process is not running")
+	}
+	// ps gives whole seconds, so a start can read up to a second early.
+	earliest, latest := before.Add(-time.Second), after.Add(listSlack)
+	if started.Before(earliest) || started.After(latest) {
+		t.Fatalf("started %v, want between %v and %v", started, earliest, latest)
 	}
 }
 

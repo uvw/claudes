@@ -46,7 +46,8 @@ Next, in order:
 
 2. **`claudes session gc` moving to the Recycle Bin.**
    - **What:** `internal/trash/trash_windows.go` calls `SHFileOperationW` with
-     `FOF_ALLOWUNDO`. It compiles and vets, but has never run on Windows.
+     `FOF_ALLOWUNDO`. CI checks that it takes a file and a directory away, but
+     nobody has checked that the Recycle Bin holds them and puts them back.
    - **Verify:** in any project directory under
      `%USERPROFILE%\.claude\projects`, make a scratch directory named by a
      session id that has no transcript, such as

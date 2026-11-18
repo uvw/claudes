@@ -1,7 +1,11 @@
 package procs
 
 import (
+	"io/fs"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -20,6 +24,50 @@ func TestParseStatCountsFromTheLastParenthesis(t *testing.T) {
 		if _, _, err := parseStat([]byte(bad)); err == nil {
 			t.Errorf("read %q", bad)
 		}
+	}
+}
+
+func TestGoneCountsAProcessThatExitedMidRead(t *testing.T) {
+	for _, err := range []error{
+		&fs.PathError{Op: "open", Path: "/proc/4242/stat", Err: syscall.ENOENT},
+		&fs.PathError{Op: "read", Path: "/proc/4242/cmdline", Err: syscall.ESRCH},
+	} {
+		if !gone(err) {
+			t.Errorf("%v: not gone", err)
+		}
+	}
+	if gone(&fs.PathError{Op: "open", Path: "/proc/4242/stat", Err: syscall.EACCES}) {
+		t.Error("a process claudes may not read counts as gone")
+	}
+}
+
+func TestRunningVersionOfAPrunedVersion(t *testing.T) {
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(self)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(t.TempDir(), "claude", "versions", "2.1.300")
+	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bin, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bin)
+	cmd.Env = append(os.Environ(), helperEnv+"=sleep")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cmd.Process.Kill(); cmd.Wait() })
+	if err := os.Remove(bin); err != nil {
+		t.Fatal(err)
+	}
+	if got := RunningVersion(cmd.Process.Pid); got != "2.1.300" {
+		t.Fatalf("version %q, want 2.1.300", got)
 	}
 }
 

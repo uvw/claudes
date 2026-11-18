@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/uvw/claudes/internal/safefile"
 )
 
 // toFreedesktop moves path into the trash at dir, as the freedesktop.org
@@ -48,13 +50,13 @@ func toFreedesktop(path, dir string, now time.Time) error {
 			werr = cerr
 		}
 		if werr == nil {
-			dest := filepath.Join(files, name)
-			if _, err := os.Lstat(dest); err == nil {
+			werr = safefile.RenameNoReplace(abs, filepath.Join(files, name))
+			if werr == nil {
+				return nil
+			}
+			if errors.Is(werr, fs.ErrExist) {
 				os.Remove(infoPath)
 				continue
-			}
-			if werr = os.Rename(abs, dest); werr == nil {
-				return nil
 			}
 		}
 		os.Remove(infoPath)

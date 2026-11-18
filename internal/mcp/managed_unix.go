@@ -1,11 +1,9 @@
-//go:build unix
+//go:build unix && !darwin
 
 package mcp
 
-// managedFiles are where macOS and Linux keep managed-mcp.json.
+// managedFiles are where Linux, and Claude Code on any other Unix, keep
+// managed-mcp.json.
 func managedFiles() []string {
-	return []string{
-		"/Library/Application Support/ClaudeCode/managed-mcp.json",
-		"/etc/claude-code/managed-mcp.json",
-	}
+	return []string{"/etc/claude-code/managed-mcp.json"}
 }

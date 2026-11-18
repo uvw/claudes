@@ -1,7 +1,8 @@
 // Package transcripts reads the session transcripts Claude Code keeps under
 // ~/.claude/projects, one directory per working directory, and copies one to
 // another directory. Their format is not a stable Claude Code interface: records
-// claudes does not recognize are skipped.
+// claudes does not recognize are skipped, though one keeps a session from
+// counting as empty or trivial.
 package transcripts
 
 import (
@@ -13,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -62,7 +64,8 @@ type Session struct {
 	Copies []string `json:"copies"`
 	Size   int64    `json:"size"`
 	// Empty is a session that never got a prompt: its transcript, short
-	// enough to read whole, has no user or assistant record.
+	// enough to read whole, holds only record types claudes knows to be
+	// bookkeeping.
 	Empty bool `json:"empty"`
 	// fits is whether the transcript's own records place it in its project
 	// directory, or Claude Code relocated it, so no recorded move applies.
@@ -183,7 +186,8 @@ func moveKey(path, sessionID string) string {
 
 // move is the directory a copy belongs to, and the options of the background
 // job session mv removed for it. A move with no options is written as the
-// directory alone, which claudes versions without options still read.
+// directory alone, as claudes versions without options wrote it. Those
+// versions reject the whole file once any entry holds options.
 type move struct {
 	Dir     string   `json:"dir"`
 	Options []string `json:"options,omitempty"`
@@ -226,42 +230,45 @@ func (st Store) loadMoves() (map[string]move, error) {
 
 // recordMove notes that the copy at path belongs to dir.
 func (st Store) recordMove(path, sessionID string, m move) error {
-	if st.Moves == "" {
-		return nil
-	}
-	// A moves file claudes cannot read is kept, rather than replaced by one
-	// that would lose every other move.
-	moves, err := st.loadMoves()
-	if err != nil {
-		return err
-	}
-	moves[moveKey(path, sessionID)] = m
-	data, err := json.MarshalIndent(moves, "", "  ")
-	if err != nil {
-		return err
-	}
-	return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
+	return st.updateMoves(func(moves map[string]move) bool {
+		moves[moveKey(path, sessionID)] = m
+		return true
+	})
 }
 
 // ForgetMove drops the record of the copy at path, once that copy is gone.
 func (st Store) ForgetMove(path, sessionID string) error {
+	return st.updateMoves(func(moves map[string]move) bool {
+		key := moveKey(path, sessionID)
+		_, ok := moves[key]
+		delete(moves, key)
+		return ok
+	})
+}
+
+// updateMoves changes the moves file under a lock, so two claudes runs at
+// once cannot lose each other's moves. change reports whether it changed
+// anything. A moves file claudes cannot read is kept, rather than replaced by
+// one that would lose every other move.
+func (st Store) updateMoves(change func(map[string]move) bool) error {
 	if st.Moves == "" {
 		return nil
 	}
-	moves, err := st.loadMoves()
-	if err != nil {
-		return err
-	}
-	key := moveKey(path, sessionID)
-	if _, ok := moves[key]; !ok {
-		return nil
-	}
-	delete(moves, key)
-	data, err := json.MarshalIndent(moves, "", "  ")
-	if err != nil {
-		return err
-	}
-	return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
+	lock := safefile.Lock{Path: st.Moves + ".lock", Stale: 10 * time.Second, Attempts: 50, Delay: 10 * time.Millisecond}
+	return lock.Do(func() error {
+		moves, err := st.loadMoves()
+		if err != nil {
+			return err
+		}
+		if !change(moves) {
+			return nil
+		}
+		data, err := json.MarshalIndent(moves, "", "  ")
+		if err != nil {
+			return err
+		}
+		return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
+	})
 }
 
 // headSize and tailSize bound what Read takes from each end of a transcript.
@@ -286,6 +293,50 @@ type record struct {
 	LastPrompt  string `json:"lastPrompt"`
 	// RelocatedCwd is where Claude Code moved the session to.
 	RelocatedCwd string `json:"relocatedCwd"`
+	// Message is whether the record carries a message, which a user, an
+	// assistant, or an API request record does.
+	Message present `json:"message"`
+}
+
+// present is whether a JSON field is there, without keeping its value.
+type present bool
+
+func (p *present) UnmarshalJSON([]byte) error { *p = true; return nil }
+
+// bookkeeping are the record types Claude Code writes about a session rather
+// than as its conversation, which a session that never got a prompt can hold.
+var bookkeeping = setOf("agent-name", "agent-setting", "ai-title", "artifact-autoreact-ledger",
+	"artifact-comment-monitor", "atis-latch", "attachment", "continued-in", "cost-state", "custom-title",
+	"file-history-delta", "file-history-snapshot", "frame-link", "last-prompt", "mode", "permission-mode",
+	"pr-link", "queue-operation", "relocated", "session-owner", "system", "tools-used", "worktree-state")
+
+// known are the record types claudes recognizes: bookkeeping, the
+// conversation, and the API requests made for it.
+var known = setOf(append(slices.Collect(maps.Keys(bookkeeping)),
+	"user", "assistant", "api-request", "api-request-blob", "api-request-shape")...)
+
+func setOf(names ...string) map[string]bool {
+	m := make(map[string]bool, len(names))
+	for _, n := range names {
+		m[n] = true
+	}
+	return m
+}
+
+// empty reports whether a transcript holds nothing but bookkeeping. It takes
+// positive evidence: Claude Code adds and renames record types, so a type
+// claudes does not know, a record with a message, or a line that does not
+// parse could be conversation, and the transcript is not empty.
+func empty(rs []record, clean bool) bool {
+	if !clean {
+		return false
+	}
+	for _, r := range rs {
+		if bool(r.Message) || !bookkeeping[r.Type] {
+			return false
+		}
+	}
+	return true
 }
 
 // summarize reads one transcript from its first 64 KB and its last 256 KB.
@@ -314,10 +365,12 @@ func summarize(path string) (Session, error) {
 		}
 	}
 	var sum summary
-	for _, r := range records(head, false) {
+	headRecords, clean := records(head, false)
+	for _, r := range headRecords {
 		sum.take(r)
 	}
-	for _, r := range records(tail, true) {
+	tailRecords, _ := records(tail, true)
+	for _, r := range tailRecords {
 		sum.take(r)
 	}
 	if sum.cwd == "" && info.Size() > headSize {
@@ -329,7 +382,8 @@ func summarize(path string) (Session, error) {
 		rd := bufio.NewReader(f)
 		for {
 			line, err := rd.ReadBytes('\n')
-			for _, r := range records(line, false) {
+			rs, _ := records(line, false)
+			for _, r := range rs {
 				sum.take(r)
 			}
 			if err != nil {
@@ -350,7 +404,7 @@ func summarize(path string) (Session, error) {
 	s.Cwd = sum.folder(project)
 	s.fits = sum.relocated != "" || strings.EqualFold(Folder(s.Cwd), project)
 	s.Branch, s.Version, s.LastPrompt, s.Started = sum.branch, sum.version, sum.lastPrompt, sum.started
-	s.Empty = !sum.conversation && info.Size() <= headSize
+	s.Empty = info.Size() <= headSize && empty(headRecords, clean)
 	return s, nil
 }
 
@@ -361,8 +415,6 @@ type summary struct {
 	branch, version, lastPrompt         string
 	customTitle, agentName, aiTitle     string
 	started                             time.Time
-	// conversation is whether any record is a user or assistant message.
-	conversation bool
 }
 
 func (m *summary) take(r record) {
@@ -379,7 +431,6 @@ func (m *summary) take(r record) {
 	m.customTitle = cmp.Or(r.CustomTitle, m.customTitle)
 	m.agentName = cmp.Or(r.AgentName, m.agentName)
 	m.aiTitle = cmp.Or(r.AITitle, m.aiTitle)
-	m.conversation = m.conversation || r.Type == "user" || r.Type == "assistant"
 }
 
 // directory is the session's directory: where Claude Code relocated it, or else the
@@ -398,21 +449,25 @@ func (m *summary) folder(project string) string {
 }
 
 // records parses the JSON lines in data. With partial, the first line may be
-// cut off, so it is skipped; a cut-off or unreadable line is skipped anyway.
-func records(data []byte, partial bool) []record {
+// cut off, so it is skipped; a cut-off or unreadable line is skipped anyway,
+// and clean is whether every line that is not blank parsed.
+func records(data []byte, partial bool) (out []record, clean bool) {
 	if partial {
 		if i := bytes.IndexByte(data, '\n'); i >= 0 {
 			data = data[i+1:]
 		}
 	}
-	var out []record
+	clean = true
 	for line := range bytes.SplitSeq(data, []byte{'\n'}) {
 		var r record
-		if json.Unmarshal(line, &r) == nil {
+		switch {
+		case json.Unmarshal(line, &r) == nil:
 			out = append(out, r)
+		case len(bytes.TrimSpace(line)) > 0:
+			clean = false
 		}
 	}
-	return out
+	return out, clean
 }
 
 // Copy copies s's transcript, and its directory of subagent transcripts and tool
@@ -434,22 +489,58 @@ func (st Store) Copy(s Session, dir string, options []string) (string, error) {
 		return "", fmt.Errorf("%s already lives under %s", s.Label(), dir)
 	}
 	target := filepath.Join(dest, filepath.Base(s.Path))
-	if _, err := os.Stat(target); err == nil {
+	if _, err := os.Lstat(target); err == nil {
 		return "", fmt.Errorf("%s already has a copy at %s, which may hold work the original lacks. Remove it first to replace it", s.Label(), target)
 	}
-	if err := copyFile(s.Path, target); err != nil {
+	sidecar, sidecarTarget := Sidecar(s), filepath.Join(dest, filepath.Base(Sidecar(s)))
+	if info, err := os.Stat(sidecar); err != nil || !info.IsDir() {
+		sidecar = ""
+	} else if _, err := os.Lstat(sidecarTarget); err == nil {
+		return "", fmt.Errorf("%s already has a subagent directory at %s, with no transcript beside it. Remove it first to copy the session there", s.Label(), sidecarTarget)
+	}
+	if err := stage(s.Path, sidecar, target, sidecarTarget); err != nil {
 		return "", err
 	}
 	if err := st.recordMove(target, s.SessionID, move{Dir: dir, Options: options}); err != nil {
-		return "", fmt.Errorf("copied, but cannot record where it belongs: %w", err)
-	}
-	sidecar := Sidecar(s)
-	if info, err := os.Stat(sidecar); err == nil && info.IsDir() {
-		if err := copyTree(sidecar, filepath.Join(dest, filepath.Base(sidecar))); err != nil {
-			return "", err
+		if sidecar != "" {
+			os.RemoveAll(sidecarTarget)
 		}
+		os.Remove(target)
+		return "", fmt.Errorf("removed the copy, since claudes cannot record where it belongs: %w", err)
 	}
 	return dest, nil
+}
+
+// stage copies a transcript, and its sidecar unless that is "", into a
+// temporary directory beside target, then renames them into place, the
+// sidecar first. So a failure leaves no part of a copy behind, and a re-run
+// does not find one in its way.
+func stage(transcript, sidecar, target, sidecarTarget string) error {
+	tmp, err := os.MkdirTemp(filepath.Dir(target), ".claudes-mv-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+	staged := filepath.Join(tmp, filepath.Base(target))
+	if err := copyFile(transcript, staged); err != nil {
+		return err
+	}
+	if sidecar != "" {
+		stagedSidecar := filepath.Join(tmp, filepath.Base(sidecarTarget))
+		if err := copyTree(sidecar, stagedSidecar); err != nil {
+			return err
+		}
+		if err := safefile.RenameNoReplace(stagedSidecar, sidecarTarget); err != nil {
+			return err
+		}
+	}
+	if err := safefile.RenameNoReplace(staged, target); err != nil {
+		if sidecar != "" {
+			os.RemoveAll(sidecarTarget)
+		}
+		return err
+	}
+	return nil
 }
 
 // RemoveOriginal deletes s's transcript and its directory of subagent

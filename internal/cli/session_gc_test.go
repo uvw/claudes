@@ -305,6 +305,9 @@ func TestSessionGcTrivialTakesSessionsThatDidNothing(t *testing.T) {
 			`{"type":"user","message":{"content":"<teammate-message teammate_id=\"lead\">go</teammate-message>"}}`, prompt("ping")),
 		"no prompt it could read": h.sessionOf(t, "unread", work, week, reply),
 		"active today":            h.sessionOf(t, "today", work, time.Hour, prompt("ping")),
+		"a record type claudes does not know": h.sessionOf(t, "drift", work, week, prompt("ping"),
+			`{"type":"assistant-turn","message":{"content":[{"type":"tool_use","name":"Edit","input":{}}]}}`),
+		"a line that does not parse": h.sessionOf(t, "cut", work, week, prompt("ping"), `{"type":"assistant","mess`),
 	}
 	history := h.sessionOf(t, "history", work, week, prompt("ping"))
 	kept["file history"] = history
