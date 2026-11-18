@@ -758,7 +758,7 @@ func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
 
 	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+(NOTE|DOING))?$`)
 	name := regexp.MustCompile(regexp.QuoteMeta(strings.TrimSpace(long[:maxName-1])+"…") + `(\s\s+\S+)?$`)
-	for _, args := range [][]string{{"ls"}, {"ls", "--wide"}, {"session", "ls"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
+	for _, args := range [][]string{{"ls"}, {"ls", "--wide"}, {"session", "ls"}, {"session", "ls", "--wide"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
 		h.out.Reset()
 		h.ok(t, args...)
 		var headed, short bool

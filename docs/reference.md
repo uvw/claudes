@@ -26,10 +26,11 @@ A few cases differ:
    table of id, directory, and name.
 3. `logs -o json` prints the transcript records themselves, one per line.
 
-Text tables and plans cut a name longer than 40 characters, and `session ls` a
-git branch longer than 24, with `…`. A branch loses its middle and keeps its
-first name, so `feat/ledger-rounding-for-every-currency` reads
-`feat/…for-every-currency`. JSON, YAML, and `session show` keep both whole.
+Text tables and plans cut a name longer than 40 characters, and
+`session ls --wide` a git branch longer than 24, with `…`. A branch loses its
+middle and keeps its first name, so `feat/ledger-rounding-for-every-currency`
+reads `feat/…for-every-currency`. JSON, YAML, and `session show` keep both
+whole.
 
 ### Table widths
 
@@ -48,7 +49,7 @@ before it is down to its floor:
    `session triage`, which ends the line, down to 10 columns.
 2. The directory, down to 20.
 3. The name, down to 12, cut at its end.
-4. The branch, down to 12, cut in its middle.
+4. The branch in `session ls --wide`, down to 12, cut in its middle.
 
 A wide window shows the whole path, and a narrow one shortens it. A line still
 wider than the window once every column is at its floor wraps. Elsewhere, such
