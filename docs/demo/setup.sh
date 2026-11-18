@@ -37,11 +37,23 @@ $(session db-migration 72ac5f15 - 1800)
 ]}
 EOF
 printf '[\n  "8b7e1d02"\n]' >"$CLAUDE_CONFIG_DIR/jobs/pins.json"
-for id in 3f2a9c41 8b7e1d02 c41d7e93 5e9b2a64 72ac5f15; do
-  mkdir -p "$CLAUDE_CONFIG_DIR/jobs/$id"
-  printf '{"cliVersion":"2.1.325"}' >"$CLAUDE_CONFIG_DIR/jobs/$id/state.json"
-done
-printf '{"cliVersion":"2.1.322"}' >"$CLAUDE_CONFIG_DIR/jobs/c41d7e93/state.json"
+# job ID VERSION SUBAGENTS writes a job's state.json with SUBAGENTS running.
+job() {
+  local fan=() i
+  for ((i = 0; i < $3; i++)); do
+    fan+=("{\"id\":\"a$(printf '%016x' "$i")\",\"kind\":\"agent\",\"label\":\"subagent\",\"startedAt\":1}")
+  done
+  mkdir -p "$CLAUDE_CONFIG_DIR/jobs/$1"
+  printf '{"cliVersion":"%s","inFlight":{"tasks":%d,"kinds":[]},"fan":[%s]}' "$2" "$3" "$(
+    IFS=,
+    echo "${fan[*]}"
+  )" >"$CLAUDE_CONFIG_DIR/jobs/$1/state.json"
+}
+job 3f2a9c41 2.1.325 3
+job 8b7e1d02 2.1.325 0
+job c41d7e93 2.1.322 1
+job 5e9b2a64 2.1.325 0
+job 72ac5f15 2.1.325 0
 
 # transcript NAME ID DIR KB DAYS_AGO writes a transcript of about KB
 # kilobytes, last active DAYS_AGO days ago. An empty NAME writes a session that

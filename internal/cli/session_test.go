@@ -564,20 +564,21 @@ func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
 	h.transcriptAs(t, live.SessionID, long, live.Cwd, 2*time.Hour)
 	h.agents.snapshots = [][]claude.Session{{live}}
 
-	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+NOTE)?$`)
-	for _, args := range [][]string{{"ls"}, {"session", "ls"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
+	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+(NOTE|DOING))?$`)
+	name := regexp.MustCompile(regexp.QuoteMeta(strings.TrimSpace(long[:maxName-1])+"…") + `(\s\s+\S+)?$`)
+	for _, args := range [][]string{{"ls"}, {"ls", "--wide"}, {"session", "ls"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
 		h.out.Reset()
 		h.ok(t, args...)
-		var headed, cut bool
+		var headed, short bool
 		for line := range strings.Lines(h.out.String()) {
 			line = strings.TrimSpace(line)
 			headed = headed || header.MatchString(line)
 			if strings.Contains(line, long[:20]) {
-				cut = strings.HasSuffix(line, strings.TrimSpace(long[:maxName-1])+"…")
+				short = name.MatchString(line)
 			}
 		}
-		if !headed || !cut {
-			t.Errorf("%v: want ID first, then DIR and a name cut to %d characters last:\n%s", args, maxName, h.out)
+		if !headed || !short {
+			t.Errorf("%v: want ID first, then DIR, a name cut to %d characters, and at most a note:\n%s", args, maxName, h.out)
 		}
 	}
 }

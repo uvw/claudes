@@ -162,7 +162,7 @@ func TestJSONHasEveryKeyForEverySession(t *testing.T) {
 	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 3 {
 		t.Fatalf("rows %v, err %v", rows, err)
 	}
-	keys := []string{"id", "sessionId", "name", "cwd", "kind", "state", "status", "pid", "startedAt", "pinned", "version", "outdated", "teammates"}
+	keys := []string{"id", "sessionId", "name", "cwd", "kind", "state", "status", "pid", "startedAt", "pinned", "version", "outdated", "teammates", "subagents", "shells", "tokens", "prs", "doing"}
 	for _, r := range rows {
 		if len(r) != len(keys) {
 			t.Errorf("%v has %d keys, want %d", r, len(r), len(keys))
