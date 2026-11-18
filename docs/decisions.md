@@ -40,6 +40,7 @@ current.
 | [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
 | [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                       | Short flags mean one thing, and safeguards stay long                       |
 | [31](#31-every-tool-pin-is-updated-or-checked-each-week)                            | Every tool pin is updated or checked each week                             |
+| [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
 
 ## 1. Go, in one static binary
 
@@ -623,3 +624,26 @@ Weighed: `tool` lines in the root `go.mod`, which would add the tools'
 dependencies to the module claudes ships; `go run pkg@version`, which Dependabot
 cannot see; and one file listing every pin, which each workflow would have to
 read and keep in step with.
+
+## 33. Windows replaces a file with POSIX rename semantics first
+
+On Windows, an atomic write renames its temp file over the target with
+`FILE_RENAME_FLAG_POSIX_SEMANTICS`. That replaces the target while other
+processes have it open, as long as each opened it with delete sharing. Node and
+Bun, which run Claude Code, share delete. Go's `os.Open`, which claudes reads
+with, does not. When the POSIX rename fails for any reason, claudes falls back
+to `os.Rename`, which is `MoveFileEx` and cannot replace an open file. Either
+way, a target that stays held gets retries for a little over a second.
+
+Why: agent view reads `pins.json` while claudes writes it, and a plain rename
+waits until agent view closes the file. POSIX semantics need Windows 10 1607 or
+later and a file system that has them, such as NTFS. Older builds, FAT, and
+exFAT answer with errors such as invalid parameter, not supported, or invalid
+function, and network shares may too. Falling back on any error covers a code
+that list misses. Readers still see the old file or the new one: the rename is
+one step, and a reader that has the old file open keeps reading it.
+
+Weighed: POSIX semantics alone, which fail where the file system lacks them;
+`FILE_RENAME_FLAG_IGNORE_READONLY_ATTRIBUTE`, which would overwrite a file the
+owner made read-only and needs Windows 10 1809; and Go's `os.Root.Rename`, which
+makes the same two attempts but needs an `os.Root` opened for every write.
