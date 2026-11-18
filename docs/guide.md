@@ -389,8 +389,9 @@ URL, because they can carry tokens.
 
 The files claudes reads are not a stable Claude Code interface. A field it
 cannot read shows `-`, and a file it cannot read gets a warning while the rest
-of the list still prints. claudes does not show claude.ai connectors, servers
-passed with `--mcp-config`, or the allow and deny lists in managed settings.
+of the list still prints. claudes does not show claude.ai connectors or servers
+passed with `--mcp-config`, and does not apply the `allowedMcpServers` and
+`deniedMcpServers` settings.
 
 ### MCP profiles
 

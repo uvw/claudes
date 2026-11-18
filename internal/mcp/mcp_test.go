@@ -319,6 +319,26 @@ func TestAWorktreeUsesItsMainRepositorysEntry(t *testing.T) {
 	same(t, f.servers(module), []string{"helper user on stdio"})
 }
 
+func TestALinkIsFollowedBeforeTheRepositoryIsFound(t *testing.T) {
+	f := newFixture(t)
+	main := f.dir("repo")
+	f.write(filepath.Join(main, ".git", "HEAD"), "ref: refs/heads/main\n")
+	inside := f.dir("repo", "jobs", "scratch")
+	link := filepath.Join(f.root, "link")
+	if err := os.Symlink(filepath.Join(main, "jobs"), link); err != nil {
+		t.Skipf("cannot make a link here: %v", err)
+	}
+	f.claudeJSON(map[string]any{
+		"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}},
+		"projects": map[string]any{
+			filepath.ToSlash(main):                           map[string]any{"disabledMcpServers": []string{"helper"}},
+			filepath.ToSlash(filepath.Join(link, "scratch")): map[string]any{},
+		},
+	})
+	same(t, f.servers(filepath.Join(link, "scratch")), []string{"helper user off stdio"})
+	same(t, f.servers(inside), []string{"helper user off stdio"})
+}
+
 func TestOutsideARepositoryTheDirectoryIsItsOwnEntry(t *testing.T) {
 	f := newFixture(t)
 	dir := f.dir("plain")

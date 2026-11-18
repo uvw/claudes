@@ -207,6 +207,10 @@ func (c claudeConfig) project(dir string) map[string]json.RawMessage {
 	for key, raw := range projects {
 		byDir[configKey(key)] = raw
 	}
+	// Claude Code follows links before it looks for the repository.
+	if real, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = real
+	}
 	for _, d := range []string{gitRoot(dir), dir} {
 		if raw, ok := byDir[configKey(d)]; ok && d != "" {
 			return objectOf(raw)
