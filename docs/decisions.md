@@ -43,6 +43,7 @@ current.
 | [32](#32-session-search-scans-every-transcript-with-no-index)                       | session search scans every transcript, with no index                       |
 | [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
 | [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
+| [35](#35-session-search-masks-secrets-in-what-it-prints)                            | session search masks secrets in what it prints                             |
 
 ## 1. Go, in one static binary
 
@@ -602,10 +603,11 @@ A flag people type often gets a one-letter form, and each letter means the same
 thing on every command: `-n` is always a dry run, `-u` only sessions on an older
 Claude Code, `-i` a directory to look in, `-l` how recent (the last 7 days),
 `-b` the background, `-r` resume, and `-e` a regular expression, as in grep.
-`-t` is how many to show: the last events in `logs`, and the biggest sessions in
-`session du`. A flag that overrides a safeguard never gets one: `--force`,
-`--purge`, `--pinned`, `--interactive`, `--interactive-bg`, `--rm`, and
-`--forget`. A test walks every command and enforces both rules.
+`-t` is how many to show: the last events in `logs`, the biggest sessions in
+`session du`, and the best matches in `session search`. A flag that overrides a
+safeguard never gets one: `--force`, `--purge`, `--pinned`, `--interactive`,
+`--interactive-bg`, `--rm`, `--forget`, and `--no-redact`. A test walks every
+command and enforces both rules.
 
 Why: claudes is typed in a hurry, after an update or before a reboot, so the
 common flags should be short. A letter that changes meaning between commands
@@ -720,3 +722,32 @@ tokens claudes cannot recognize, such as one inside a path; an off-list per
 profile, which would let every new server in; and building `mcp on`, `mcp off`,
 and launch profiles in the same change, before the live tests that show how
 Claude Code picks up a change while it runs.
+
+## 35. session search masks secrets in what it prints
+
+`session search` masks token-shaped text in the session names and snippets it
+prints, in text and in `-o json`: provider key prefixes such as `sk-` and
+`ghp_`, `Authorization` credentials, the values of names that end in KEY, TOKEN,
+SECRET, PASSWORD, or PASSWD, passwords in URLs, and private key blocks. Each
+prints as `[redacted]`, and a name stays, so `GITHUB_TOKEN=[redacted]`. Matching
+reads the text as written, so a word inside a masked value still finds its
+session. `--no-redact` prints everything, and has no short form (decision 30).
+`internal/transcripts/redact.go` holds the rules.
+
+Why: what search prints lands in terminals, logs, and agent transcripts, and the
+agent skill tells agents to run it. `--ran curl` would otherwise copy an
+`Authorization: Bearer` header or an `export TOKEN=` line into a new transcript.
+`mcp ls` keeps secrets out by printing only names (decision 34), but search
+exists to print what was said, so it masks the secrets it can recognize instead.
+Masking changes only what is printed, and never stops a command or asks first,
+so it is on by default, unlike the safeguards of decision 6. Each field is
+masked in full before its snippet is cut, so a secret the cut splits is still
+found. A rule runs only on text that holds its hint, such as `://` or `key`, and
+only for the few records a session keeps as its best. A search in which every
+record matches and holds those hints takes about 2% longer.
+
+Weighed: printing text as it is, which copies secrets into transcripts; masking
+only with a flag, which agents would not pass; masking only the snippet after
+the cut, which misses a secret whose start the cut drops; and a generic
+high-entropy rule, which would also mask git hashes and UUIDs. A secret of a
+shape the rules do not know still prints.

@@ -117,7 +117,7 @@ func TestSessionSearchJSON(t *testing.T) {
 	}
 }
 
-func TestSessionSearchLimit(t *testing.T) {
+func TestSessionSearchTop(t *testing.T) {
 	h := newHarness(t)
 	for i, name := range []string{"one", "two", "three"} {
 		h.said(t, name, h.folder(name), time.Duration(i+1)*time.Hour, typed("zebra"))
@@ -134,17 +134,77 @@ func TestSessionSearchLimit(t *testing.T) {
 		}
 		return n
 	}
-	if n := rows("--limit", "2"); n != 2 {
-		t.Fatalf("--limit 2 printed %d rows:\n%s", n, h.out)
+	if n := rows("--top", "2"); n != 2 {
+		t.Fatalf("--top 2 printed %d rows:\n%s", n, h.out)
 	}
-	assertContains(t, h.out.String(), "1 more matched; --limit 0 shows them all.")
-	if n := rows("--limit", "0"); n != 3 || strings.Contains(h.out.String(), "more matched") {
-		t.Fatalf("--limit 0 printed %d rows:\n%s", n, h.out)
+	assertContains(t, h.out.String(), "1 more matched; --top 0 shows them all.")
+	if n := rows("-t", "1"); n != 1 {
+		t.Fatalf("-t 1 printed %d rows:\n%s", n, h.out)
+	}
+	if n := rows("--top", "0"); n != 3 || strings.Contains(h.out.String(), "more matched") {
+		t.Fatalf("--top 0 printed %d rows:\n%s", n, h.out)
 	}
 	if n := rows(); n != 3 {
 		t.Fatalf("the default printed %d rows:\n%s", n, h.out)
 	}
-	h.fails(t, "session", "search", "zebra", "--limit", "-1")
+	h.err.Reset()
+	h.fails(t, "session", "search", "zebra", "--top", "-1")
+	assertContains(t, h.err.String(), "--top takes 0 or more, not -1")
+	h.fails(t, "session", "search", "zebra", "--limit", "2")
+}
+
+// fakeToken is a made-up token, put together when the tests run so a secret
+// scanner reading this file finds none.
+var fakeToken = "gh" + "p_" + strings.Repeat("Zq8xW3vN5mK7", 3)
+
+func TestSessionSearchMasksSecrets(t *testing.T) {
+	h := newHarness(t)
+	h.said(t, "zebra "+fakeToken, h.folder("work"), time.Hour,
+		ran("curl -H 'Authorization: Bearer "+fakeToken+"' https://zebra.example.com"),
+		typed("export ZEBRA_TOKEN="+fakeToken[4:]))
+
+	for _, args := range [][]string{
+		{"session", "search", "--ran", "curl"},
+		{"session", "search", "zebra"},
+		{"session", "search", "zebra", "-o", "json"},
+		{"session", "search", fakeToken[4:16], "-o", "json"},
+	} {
+		h.out.Reset()
+		h.ok(t, args...)
+		if strings.Contains(h.out.String(), fakeToken[4:16]) || !strings.Contains(h.out.String(), "[redacted]") {
+			t.Errorf("%q printed:\n%s", args, h.out)
+		}
+	}
+	h.out.Reset()
+	h.ok(t, "session", "search", "--ran", "curl", "-o", "json")
+	assertContains(t, h.out.String(), "Bash: curl -H 'Authorization: Bearer [redacted]' https://zebra.example.com")
+	assertContains(t, h.out.String(), `"name": "zebra [redacted]"`)
+
+	h.out.Reset()
+	h.ok(t, "session", "search", "zebra", "--no-redact", "-o", "json")
+	if strings.Contains(h.out.String(), "[redacted]") || !strings.Contains(h.out.String(), fakeToken) {
+		t.Errorf("--no-redact printed:\n%s", h.out)
+	}
+}
+
+// The help is wrapped at 80 columns, each line as full as the next word lets
+// it be.
+func TestSessionSearchHelpFitsEightyColumns(t *testing.T) {
+	cmd, _, err := newHarness(t).app.rootCommand().Find([]string{"session", "search"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(cmd.Long, "\n")
+	for i, line := range lines {
+		if len(line) > 80 {
+			t.Errorf("line %d is %d columns: %q", i+1, len(line), line)
+		}
+		if line != "" && i+1 < len(lines) && lines[i+1] != "" {
+			if next, _, _ := strings.Cut(lines[i+1], " "); len(line)+1+len(next) <= 80 {
+				t.Errorf("line %d breaks before %q, which fits: %q", i+1, next, line)
+			}
+		}
+	}
 }
 
 func TestSessionSearchFilters(t *testing.T) {

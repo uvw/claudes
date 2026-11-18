@@ -159,7 +159,10 @@ leftover has `path`, `sessionId`, `kind`, `size`, and `modified`.
 Each match has `where`, which is `name`, `you` for your prompts, `claude` for
 Claude's replies, `tool` for its tool calls, or `output` for what the tools
 returned, and `snippet`, the match in context on one line. Each place gives its
-three best records at most.
+three best records at most. The name and each snippet have their secrets masked
+as `[redacted]`, unless `--no-redact` is given;
+[Searching past sessions](guide.md#searching-past-sessions) lists what is
+masked.
 
 #### Triage
 

@@ -41,6 +41,9 @@ type Query struct {
 	Touched string
 	// Now is when recency is measured from.
 	Now time.Time
+	// Raw keeps secrets in the snippets. Without it, Redact masks them.
+	// Either way, the terms match the text as written.
+	Raw bool
 }
 
 // Match is one place a query matched.
@@ -171,10 +174,11 @@ type matcher struct {
 	// needles are what a line must hold one of to be parsed, or nil when
 	// every line must be.
 	needles []*needle
+	raw     bool
 }
 
 func compile(q Query) (*matcher, error) {
-	m := &matcher{}
+	m := &matcher{raw: q.Raw}
 	switch q.Who {
 	case "":
 		m.places = [places]bool{inName: true, inYou: true, inClaude: true, inTool: true, inOutput: q.Tools}
@@ -491,7 +495,11 @@ func (m *matcher) look(f *found, place int, label string, fields ...field) {
 		}
 		kept = slices.Delete(kept, worst, worst+1)
 	}
-	s := snippet(fields[atField].text, at[0], at[1])
+	text, start, end := fields[atField].text, at[0], at[1]
+	if !m.raw {
+		text, start, end = redactAround(text, start, end)
+	}
+	s := snippet(text, start, end)
 	if label != "" {
 		s = label + ": " + s
 	}

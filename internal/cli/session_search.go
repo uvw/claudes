@@ -25,9 +25,9 @@ type searchHit struct {
 
 type searchFlags struct {
 	pattern, who, ran, touched, branch, in string
-	tools                                  bool
+	tools, noRedact                        bool
 	since                                  days
-	limit                                  int
+	top                                    int
 }
 
 func (app *App) sessionSearchCommand() *cobra.Command {
@@ -52,14 +52,19 @@ prompt above a reply, and a reply above a tool call. More matches and recent
 activity rank a session a little higher.
 
 -e takes a regular expression in Go's RE2 syntax: Perl's, without lookaround or
-backreferences. It matches anywhere, and is case-sensitive unless it starts
-with (?i). --ran matches part of the commands of the Bash tool, and --touched
-part of the paths of the files Claude edited or wrote. -e, --ran, and --touched
-each work without QUERY.
+backreferences. It matches anywhere, and is case-sensitive unless it starts with
+(?i). --ran matches part of the commands of the Bash tool, and --touched part of
+the paths of the files Claude edited or wrote. -e, --ran, and --touched each
+work without QUERY.
 
-Each line shows the best match, from the closest record. -o json gives each
-session's matches. Resume
-one with claudes session resume ID.`,
+Each line shows the best match, from the closest record, and -o json gives each
+session's matches. Resume one with claudes session resume ID.
+
+What it prints has secrets masked: provider keys such as sk-... and ghp_...,
+Authorization credentials, the values of names that end in KEY, TOKEN, SECRET,
+PASSWORD, or PASSWD, passwords in URLs, and private keys. So GITHUB_TOKEN=...
+prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
+--no-redact prints it as is.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hits, more, err := app.search(args, f)
 			if err != nil {
@@ -82,7 +87,7 @@ one with claudes session resume ID.`,
 				return err
 			}
 			if more > 0 {
-				app.say("\n%d more matched; --limit 0 shows them all.", more)
+				app.say("\n%d more matched; --top 0 shows them all.", more)
 			}
 			app.say("\nResume the first with:\n  claudes session resume %s", hits[0].ID)
 			return nil
@@ -99,21 +104,22 @@ one with claudes session resume ID.`,
 	cmd.Flags().StringVarP(&f.in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().VarP(&f.since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
-	cmd.Flags().IntVar(&f.limit, "limit", 20, "show at most this many sessions; 0 shows all")
+	cmd.Flags().IntVarP(&f.top, "top", "t", 20, "show the N best sessions; 0 shows all")
+	cmd.Flags().BoolVar(&f.noRedact, "no-redact", false, "print secrets instead of masking them")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }
 
 // search returns the best sessions that match, and how many more matched
-// beyond --limit.
+// beyond --top.
 func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) {
 	switch {
 	case len(words) == 0 && f.pattern == "" && f.ran == "" && f.touched == "":
 		return nil, 0, errors.New("name something to search for: QUERY, -e PATTERN, --ran, or --touched")
 	case f.who != "" && f.who != "you" && f.who != "claude":
 		return nil, 0, fmt.Errorf("--who takes you or claude, not %q", f.who)
-	case f.limit < 0:
-		return nil, 0, fmt.Errorf("--limit takes 0 or more, not %d", f.limit)
+	case f.top < 0:
+		return nil, 0, fmt.Errorf("--top takes 0 or more, not %d", f.top)
 	}
 	list, err := app.Transcripts.List()
 	if err != nil {
@@ -134,6 +140,7 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 	}
 	results, err := transcripts.Search(sessions, transcripts.Query{
 		Words: words, Pattern: f.pattern, Who: f.who, Tools: f.tools, Ran: f.ran, Touched: f.touched, Now: app.Now(),
+		Raw: f.noRedact,
 	})
 	if err != nil {
 		if f.pattern != "" {
@@ -142,12 +149,16 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 		return nil, 0, err
 	}
 	more := 0
-	if f.limit > 0 && len(results) > f.limit {
-		results, more = results[:f.limit], len(results)-f.limit
+	if f.top > 0 && len(results) > f.top {
+		results, more = results[:f.top], len(results)-f.top
 	}
 	hits := make([]searchHit, len(results))
 	for i, r := range results {
-		hits[i] = searchHit{ID: r.ID(), SessionID: r.SessionID, Name: r.Name, Cwd: r.Cwd, Score: r.Score, LastActive: r.LastActive, Matches: r.Matches}
+		name := r.Name
+		if !f.noRedact {
+			name = transcripts.Redact(name)
+		}
+		hits[i] = searchHit{ID: r.ID(), SessionID: r.SessionID, Name: name, Cwd: r.Cwd, Score: r.Score, LastActive: r.LastActive, Matches: r.Matches}
 	}
 	return hits, more, nil
 }

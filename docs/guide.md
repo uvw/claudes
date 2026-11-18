@@ -334,9 +334,9 @@ that, the place counts: both words in a reply still beat them scattered over
 prompts. More matches and recent activity rank a session a little higher.
 
 Each line shows the best match in context, from the best record, and `-o json`
-gives each session's best records. It shows 20 sessions; `--limit N` changes
-that, and `--limit 0` shows them all. Resume one with `session resume ID`. These
-flags narrow the search:
+gives each session's best records. It shows 20 sessions; `--top N` (`-t`)
+changes that, and `--top 0` shows them all. Resume one with `session resume ID`.
+These flags narrow the search:
 
 1. `--who you` or `--who claude` matches QUERY only in your prompts or only in
    Claude's replies.
@@ -349,6 +349,24 @@ flags narrow the search:
    start of a word, and is case-sensitive unless it starts with `(?i)`.
 4. `--in PATH` (`-i`), `--since AGE` (`-l`), and `--branch NAME` narrow the
    sessions searched, as in `session ls`.
+
+Search masks secrets in what it prints, in text and in `-o json`: the session's
+name and every snippet. Each secret prints as `[redacted]`:
+
+1. Provider keys, such as `sk-…`, `sk-ant-…`, `ghp_…`, `gho_…`, `github_pat_…`,
+   `xoxb-…`, `AKIA…`, `AIza…`, and `glpat-…`.
+2. The credential after `Authorization: Bearer`, `Basic`, or `token`.
+3. The value of a name that ends in `KEY`, `TOKEN`, `SECRET`, `PASSWORD`, or
+   `PASSWD`, as in `export GITHUB_TOKEN=…`, `--password=…`, or `"api_key": "…"`.
+   The name stays, so it prints `GITHUB_TOKEN=[redacted]`. A value shorter than
+   six characters stays, and so does one that names a secret, such as
+   `$GITHUB_TOKEN` or `<token>`.
+4. The user and password in a URL, as in `https://user:pass@host`.
+5. The body of a private key block.
+
+Matching still reads the text as written, so a word inside a masked value finds
+its session. Masking goes by shape, so a secret of a shape it does not know
+still prints. `--no-redact` prints everything as it was written.
 
 ## Agent teams
 
