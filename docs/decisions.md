@@ -38,6 +38,7 @@ current.
 | [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)          | session gc moves to the trash, and never touches a session in use          |
 | [28](#28-session-triage-sorts-and-the-agent-judges)                                 | session triage sorts, and the agent judges                                 |
 | [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
+| [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                       | Short flags mean one thing, and safeguards stay long                       |
 
 ## 1. Go, in one static binary
 
@@ -555,3 +556,24 @@ claudes safe to run against live work, which is the job it exists for.
 Weighed: an adapter layer that would let claudes drive other agents' sessions;
 and scheduling or chaining sessions, such as starting one when another finishes,
 which is orchestration under another name.
+
+## 30. Short flags mean one thing, and safeguards stay long
+
+A flag people type often gets a one-letter form, and each letter means the same
+thing on every command: `-n` is always a dry run, `-u` only sessions on an older
+Claude Code, `-i` a directory to look in, `-l` how recent (the last 7 days),
+`-b` the background, and `-r` resume. `-t` is how many to show: the last events
+in `logs`, and the biggest sessions in `session du`. A flag that overrides a
+safeguard never gets one: `--force`, `--purge`, `--pinned`, `--interactive`,
+`--interactive-bg`, `--rm`, and `--forget`. A test walks every command and
+enforces both rules.
+
+Why: claudes is typed in a hurry, after an update or before a reboot, so the
+common flags should be short. A letter that changes meaning between commands
+turns muscle memory into a mistake. An override is the one flag whose typing
+should take a moment, and `-f` already means follow.
+
+Weighed: a short form for every flag, which runs out of letters and spends them
+on flags almost nobody types; `-f` for `--force`, as many tools do, which
+clashes with `logs -f`; and a default for bare `--top`, which would make
+`--top 5` read the 5 as a session.

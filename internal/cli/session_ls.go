@@ -63,10 +63,10 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 			return style.Table(app.Out, table)
 		},
 	}
-	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this directory or below it")
+	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().StringVar(&sortBy, "sort", "active", "order by active, newest first, or by size, biggest first")
 	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions([]cobra.Completion{"active", "size"}, cobra.ShellCompDirectiveNoFileComp))
-	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
 	out.add(cmd, app.Config.Output.Format)
 	return cmd

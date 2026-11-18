@@ -54,7 +54,7 @@ that is safe.
 | `--ping-text TEXT`  | `restart`, `resume`                | The prompt to send; implies `--ping`                              |
 | `--interactive`     | `restart`, `pause`                 | Also stop interactive sessions, and print their resume commands   |
 | `--interactive-bg`  | `restart`, `resume`                | Resume interactive sessions in the background, not print commands |
-| `--outdated`        | `restart`                          | Only sessions on an older Claude Code                             |
+| `-u`, `--outdated`  | `restart`                          | Only sessions on an older Claude Code                             |
 | `--pinned`          | `restart`, `pause`, `gc`           | Without targets, take pinned sessions too                         |
 | `--forget`          | `resume`                           | Drop the named sessions from the park list                        |
 | `--older-than AGE`  | `gc`                               | Without targets, only sessions older than AGE; 7d                 |
@@ -146,10 +146,11 @@ prints its command until then; `claudes resume --forget NAME` drops it.
 `claudes session` reads the transcripts Claude Code keeps under
 `~/.claude/projects`, so it finds every session, not only those agent view
 lists. `claudes s` and `claudes sessions` are short for it. `session ls` takes
-`--in PATH` for sessions run in a directory and below it, and `--since 7d` for
-recent ones. `session where --one` fails unless exactly one session matches, for
-scripts. `session resume` refuses a session that is still running, since
-resuming it would start a copy; `--bg` resumes in the background.
+`--in PATH` (`-i`) for sessions run in a directory and below it, and
+`--since 7d` (`-l`, for "last") for recent ones. `session where --one` fails
+unless exactly one session matches, for scripts. `session resume` refuses a
+session that is still running, since resuming it would start a copy; `--bg`
+(`-b`) resumes in the background.
 
 `session ls` shows the space each session takes on disk: its transcript, its
 subagent transcripts and tool results, older copies `session mv` left, and
@@ -159,9 +160,9 @@ size down. `session show` also reads the whole transcript to count the prompts,
 slash commands, tool calls, and file edits, and says where the name came from:
 `/rename`, agent view, or Claude Code's own title. `session du` (or `df`) adds
 it all up by project directory, biggest first, and counts leftovers: subagent
-and file-history directories whose transcript is gone. `--top 10` also lists the
-10 sessions that take the most space, with the share their sidecar directory of
-tool results and subagent transcripts takes.
+and file-history directories whose transcript is gone. `--top 10` (`-t 10`) also
+lists the 10 sessions that take the most space, with the share their sidecar
+directory of tool results and subagent transcripts takes.
 
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,
@@ -227,9 +228,9 @@ It refuses:
 4. When recent sessions live in project directories claudes would not name that
    way, so it would copy to the wrong one. `--force` goes ahead.
 
-`--resume` resumes the copy at once, and `--rm` deletes the original once every
-file of the copy matches it byte for byte. `--rm` refuses the session running
-claudes, which writes to its transcript until it exits.
+`--resume` (`-r`) resumes the copy at once, and `--rm` deletes the original once
+every file of the copy matches it byte for byte. `--rm` refuses the session
+running claudes, which writes to its transcript until it exits.
 
 A copy's transcript still names the old directory until it is first resumed from
 the new one, so claudes records each move in `moves.json`. `session where`,
@@ -272,9 +273,9 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
 `claudes logs NAME` prints a background session's recent screen, as
 `claude logs` does. `-f` follows the session's transcript instead: each prompt,
 reply, tool call, and turn's end prints as one line as it happens, until Ctrl-C,
-and the session keeps running. `--tail N` starts with the last N events, 10 by
-default with `-f`, or prints them and exits without `-f`. Both work for
-interactive and finished sessions too.
+and the session keeps running. `--tail N` (`-t N`) starts with the last N
+events, 10 by default with `-f`, or prints them and exits without `-f`. Both
+work for interactive and finished sessions too.
 
 ```console
 $ claudes logs -f api --tail 2

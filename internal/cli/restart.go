@@ -36,7 +36,7 @@ because stopping it ends this command.`,
 	f.addInteractive(cmd, "also stop interactive sessions and print their resume commands",
 		"also stop interactive sessions and resume them in the background")
 	app.addForce(cmd, forceUsage)
-	cmd.Flags().BoolVar(&f.outdated, "outdated", false, "only sessions behind the installed Claude Code")
+	cmd.Flags().BoolVarP(&f.outdated, "outdated", "u", false, "only sessions behind the installed Claude Code")
 	f.addPinned(cmd, "without targets, restart pinned sessions too")
 	return cmd
 }

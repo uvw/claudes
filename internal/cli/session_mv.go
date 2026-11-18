@@ -39,7 +39,7 @@ exit it and resume it from DIR. --resume resumes the copy in this terminal.`,
 			return app.moveSession(cmd.Context(), args[0], args[1], resume, rm)
 		},
 	}
-	cmd.Flags().BoolVar(&resume, "resume", false, "resume the session from DIR once it is copied")
+	cmd.Flags().BoolVarP(&resume, "resume", "r", false, "resume the session from DIR once it is copied")
 	cmd.Flags().BoolVar(&rm, "rm", false, "delete the original once the copy matches it")
 	app.addForce(cmd, "copy although claudes cannot tell whether the session runs, or Claude Code may name project directories differently now")
 	return cmd

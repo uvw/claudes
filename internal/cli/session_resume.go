@@ -44,7 +44,7 @@ still running is refused: resuming it would start a copy.`,
 			return app.resumePast(cmd.Context(), p, prompt, bg)
 		},
 	}
-	cmd.Flags().BoolVar(&bg, "bg", false, "resume in the background, as claude --bg does")
+	cmd.Flags().BoolVarP(&bg, "bg", "b", false, "resume in the background, as claude --bg does")
 	return cmd
 }
 
