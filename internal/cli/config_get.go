@@ -15,7 +15,7 @@ func (app *App) configGetCommand() *cobra.Command {
 		Use:               "get [KEY]",
 		Short:             "Print one setting, or every setting with what it does",
 		Args:              cobra.MaximumNArgs(1),
-		ValidArgsFunction: completeKeys,
+		ValidArgsFunction: app.completeKeys,
 		RunE: func(_ *cobra.Command, args []string) error {
 			cfg, err := app.loadConfig()
 			if err != nil {

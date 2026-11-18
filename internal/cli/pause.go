@@ -40,18 +40,18 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 	if err != nil {
 		return err
 	}
-	if len(sel.chosen) == 0 {
+	if len(sel.Chosen) == 0 {
 		app.say("No running sessions to pause.")
 		app.printLeftOut(sel, "paused")
 		return nil
 	}
-	rows := make([]render.PlanRow, 0, len(sel.chosen))
-	for _, s := range sel.chosen {
+	rows := make([]render.PlanRow, 0, len(sel.Chosen))
+	for _, s := range sel.Chosen {
 		note := ""
-		if app.isHost(s) {
+		if app.host().Is(s) {
 			note = "this session: paused last"
 		}
-		note = joinNotes(note, app.teamNote(s))
+		note = render.JoinNotes(note, app.teamNote(s))
 		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Pausing", rows)
@@ -63,8 +63,8 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 	}
 
 	stamp := app.Now().UTC().Format(time.RFC3339)
-	added := make([]park.Entry, 0, len(sel.chosen))
-	for _, s := range sel.chosen {
+	added := make([]park.Entry, 0, len(sel.Chosen))
+	for _, s := range sel.Chosen {
 		added = append(added, park.FromSession(s, app.midTurn(s), stamp))
 	}
 	// The list goes to disk before anything stops, so a crash cannot lose it.
@@ -72,7 +72,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 		return err
 	}
 
-	others, host := app.splitHost(sel.chosen)
+	others, host := app.host().Split(sel.Chosen)
 	hand := context.WithoutCancel(ctx)
 	var failures []render.Failure
 	for i, s := range others {
@@ -95,7 +95,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 		}
 		app.progress("paused", s, "")
 	}
-	if parked := app.countParked(sel.chosen); parked > 0 {
+	if parked := app.countParked(sel.Chosen); parked > 0 {
 		app.say("\nParked %d session(s) in %s.", parked, app.Park.Path)
 		app.say("Bring them back with: claudes resume")
 	}

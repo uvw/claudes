@@ -19,10 +19,10 @@ adds what an agent needs on top of them.
 | Calendar words such as today and week     | `internal/calendar`, `internal/cli/app_flags.go`            |
 | What the commands share                   | `internal/cli/app_*.go`                                     |
 | Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
-| Which sessions a bulk command picks       | `internal/cli/app_selection.go`                             |
+| Which sessions a bulk command picks       | `internal/selection`, `internal/cli/app_selection.go`       |
 | Stopping, parking, and relaunching        | `internal/cli/app_relaunch.go`                              |
 | Ping, stop, logs, and attach              | `internal/cli/{ping,stop,logs,attach}.go`, `app_handoff.go` |
-| ls and where                              | `internal/cli/ls.go`, `internal/cli/where.go`               |
+| ls and where                              | `internal/listing`, `internal/cli/ls.go`, `where.go`        |
 | gc                                        | `internal/cli/gc.go`                                        |
 | The calls to the `claude` command line    | `internal/claude/client.go`                                 |
 | Reading `~/.claude.json`                  | `internal/claude/config.go`                                 |
@@ -36,7 +36,7 @@ adds what an agent needs on top of them.
 | `claudes session`, `cd`, and `init`       | `internal/cli/session*.go`, `{cd,init}.go`                  |
 | Reading and copying transcripts           | `internal/transcripts`                                      |
 | How `session search` matches and ranks    | `internal/transcripts/search.go`                            |
-| Disk use and removing past sessions       | `internal/cli/session_{du,gc,triage}.go`                    |
+| Past sessions: gc, triage, du, and show   | `internal/history`, `internal/cli/session_*.go`             |
 | Moving files to the system trash          | `internal/trash`, one file per platform                     |
 | Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`                   |
 | MCP servers, profiles, and `claudes mcp`  | `internal/mcp`, `internal/cli/mcp*.go`                      |

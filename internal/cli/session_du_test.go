@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -25,7 +26,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{}}
 
 	h.ok(t, "session", "du", "-o", "json")
-	var report duReport
+	var report history.Usage
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestSessionDuAddsUpByFolderWithLeftovers(t *testing.T) {
 
 	h.out.Reset()
 	h.ok(t, "session", "du", "--in", other, "-o", "json")
-	report = duReport{}
+	report = history.Usage{}
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +70,7 @@ func TestSessionDuTopListsTheBiggestSessionsWithTheirSidecarShare(t *testing.T) 
 	h.agents.snapshots = [][]claude.Session{{}}
 
 	h.ok(t, "session", "du", "--top", "2", "-o", "json")
-	var report duReport
+	var report history.Usage
 	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}

@@ -15,22 +15,6 @@ import (
 	"github.com/uvw/claudes/internal/shell"
 )
 
-// mcpList is what mcp ls prints with -o json or yaml.
-type mcpList struct {
-	Dir string `json:"dir"`
-	// Profile is --profile, or "".
-	Profile string      `json:"profile"`
-	Servers []mcpServer `json:"servers"`
-}
-
-type mcpServer struct {
-	mcp.Server
-	// Profiles are the config.yaml profiles that keep the server on.
-	Profiles []string `json:"profiles"`
-	// ProfileState is the server's state under --profile, or "".
-	ProfileState string `json:"profileState"`
-}
-
 func (app *App) mcpLsCommand() *cobra.Command {
 	var in, profile string
 	var out render.Format
@@ -51,8 +35,8 @@ keeps on only the servers it lists. It changes nothing.`,
 				return errors.New("name a session or pass --in, not both")
 			}
 			profiles := app.Config.MCP.Profiles
-			if _, ok := profiles[profile]; profile != "" && !ok {
-				return noProfile(profile, slices.Sorted(maps.Keys(profiles)))
+			if err := mcp.CheckProfile(profiles, profile); err != nil {
+				return err
 			}
 			var dir string
 			switch {
@@ -72,22 +56,7 @@ keeps on only the servers it lists. It changes nothing.`,
 			for _, err := range problems {
 				app.warn("claudes: cannot read every MCP setting: %v", err)
 			}
-			list := mcpList{Dir: dir, Profile: profile, Servers: make([]mcpServer, 0, len(servers))}
-			for _, s := range servers {
-				row := mcpServer{Server: s, Profiles: []string{}}
-				for _, name := range slices.Sorted(maps.Keys(profiles)) {
-					if slices.Contains(profiles[name], s.Name) {
-						row.Profiles = append(row.Profiles, name)
-					}
-				}
-				if profile != "" {
-					row.ProfileState = mcp.Off
-					if slices.Contains(profiles[profile], s.Name) {
-						row.ProfileState = mcp.On
-					}
-				}
-				list.Servers = append(list.Servers, row)
-			}
+			list := mcp.NewListing(dir, profile, servers, profiles)
 			if out != render.Text {
 				return out.Encode(app.Out, list)
 			}
@@ -103,7 +72,7 @@ keeps on only the servers it lists. It changes nothing.`,
 	return cmd
 }
 
-func (app *App) printMCP(list mcpList) error {
+func (app *App) printMCP(list mcp.Listing) error {
 	before, after := "MCP servers in ", ":"
 	switch {
 	case len(list.Servers) == 0:
@@ -140,11 +109,4 @@ func (app *App) mcpState(s string) string {
 		return app.colors.Magenta(s)
 	}
 	return app.colors.Faint(s)
-}
-
-func noProfile(name string, have []string) error {
-	if len(have) == 0 {
-		return fmt.Errorf("no MCP profile %q: config.yaml has no mcp.profiles yet", name)
-	}
-	return fmt.Errorf("no MCP profile %q. Profiles: %s", name, strings.Join(have, ", "))
 }

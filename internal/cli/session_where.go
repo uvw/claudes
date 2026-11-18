@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
@@ -31,13 +32,13 @@ session's id, directory, and name.
 			if err != nil {
 				return err
 			}
-			var picked []pastSession
+			var picked []history.Session
 			if one && len(args) == 1 {
-				p, err := pickPast(args[0], list)
+				p, err := history.Pick(args[0], list)
 				if err != nil {
 					return err
 				}
-				picked = []pastSession{p}
+				picked = []history.Session{p}
 			} else if picked, err = target.Match(args, list); err != nil {
 				return err
 			}

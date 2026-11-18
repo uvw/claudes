@@ -85,6 +85,9 @@ func TestSessionsParsesTheAgentsJSON(t *testing.T) {
 	if !tty.Interactive() || tty.JobID != "" || tty.Label() != "16cf5295" {
 		t.Fatalf("tty %+v", tty)
 	}
+	if db.Mode() != "bg" || tty.Mode() != "tty" {
+		t.Errorf("modes %q and %q, want bg and tty", db.Mode(), tty.Mode())
+	}
 }
 
 func TestSessionsLeavesOutARecordWithoutASessionID(t *testing.T) {

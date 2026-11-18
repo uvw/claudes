@@ -67,7 +67,7 @@ func TestTeamLsShowsTeamsAtWork(t *testing.T) {
 
 	h.out.Reset()
 	h.ok(t, "team", "ls", "lead", "-o", "json")
-	var rows []teamRow
+	var rows []teams.Row
 	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 || len(rows[0].Tasks) != 2 || !rows[0].Running {
 		t.Fatalf("rows %+v, err %v", rows, err)
 	}

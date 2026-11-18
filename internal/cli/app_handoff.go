@@ -8,6 +8,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
@@ -33,7 +34,7 @@ func (app *App) handOff(ctx context.Context, name, token string, finished bool) 
 
 // resumePast resumes p in its own directory: in the background with bg, or in
 // this terminal otherwise, which ends claudes.
-func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg bool) error {
+func (app *App) resumePast(ctx context.Context, p history.Session, prompt string, bg bool) error {
 	if !paths.IsDir(p.Cwd) {
 		return fmt.Errorf("%s ran in %s, which is gone. Move it with claudes session mv first", p.Label(), p.Cwd)
 	}

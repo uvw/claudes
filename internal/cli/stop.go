@@ -8,6 +8,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -31,11 +32,11 @@ seconds, and on Windows they are killed at once. claude --resume brings it back.
 			if err != nil {
 				return err
 			}
-			if err := requireRunning(picked); err != nil {
+			if err := selection.RequireRunning(picked); err != nil {
 				return err
 			}
 			app.warnTeams(picked)
-			others, host := app.splitHost(picked)
+			others, host := app.host().Split(picked)
 			hand := context.WithoutCancel(ctx)
 			var failures []render.Failure
 			var manual []claude.Session

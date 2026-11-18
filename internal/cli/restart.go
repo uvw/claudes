@@ -53,7 +53,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 	if err != nil {
 		return err
 	}
-	if len(sel.chosen) == 0 {
+	if len(sel.Chosen) == 0 {
 		if f.outdated {
 			app.say("No running session is on an older Claude Code than the one installed.")
 		} else {
@@ -63,23 +63,23 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		return nil
 	}
 	promptFor := func(s claude.Session) string {
-		if app.isHost(s) || (s.Interactive() && !f.interactiveBG) || !app.midTurn(s) {
+		if app.host().Is(s) || (s.Interactive() && !f.interactiveBG) || !app.midTurn(s) {
 			return ""
 		}
 		return text
 	}
-	rows := make([]render.PlanRow, 0, len(sel.chosen))
-	for _, s := range sel.chosen {
+	rows := make([]render.PlanRow, 0, len(sel.Chosen))
+	for _, s := range sel.Chosen {
 		note := ""
 		switch {
-		case app.isHost(s):
+		case app.host().Is(s):
 			note = "this session: restarted last, not pinged"
 		case promptFor(s) != "":
 			note = "will be pinged"
 		case app.midTurn(s) && !s.Interactive():
 			note = render.Dash(s.Activity()) + ": its turn ends, and --ping would carry it on"
 		}
-		note = joinNotes(note, app.teamNote(s))
+		note = render.JoinNotes(note, app.teamNote(s))
 		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Restarting", rows)
@@ -90,7 +90,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		return err
 	}
 
-	others, host := app.splitHost(sel.chosen)
+	others, host := app.host().Split(sel.Chosen)
 	// The first Ctrl-C ends the loop between sessions; the session in hand
 	// finishes under hand, which the Ctrl-C does not cancel.
 	hand := context.WithoutCancel(ctx)

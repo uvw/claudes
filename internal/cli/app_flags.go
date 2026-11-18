@@ -175,7 +175,7 @@ func (c *choiceFlag) String() string { return c.value }
 
 func (c *choiceFlag) Set(s string) error {
 	if !slices.Contains(c.of, s) {
-		return fmt.Errorf("must be %s, not %q", orList(c.of), s)
+		return fmt.Errorf("must be %s, not %q", c.choices(), s)
 	}
 	c.value = s
 	return nil
@@ -183,12 +183,12 @@ func (c *choiceFlag) Set(s string) error {
 
 func (c *choiceFlag) Type() string { return "string" }
 
-// orList joins words as "a or b", or "a, b, or c".
-func orList(words []string) string {
-	if len(words) < 3 {
-		return strings.Join(words, " or ")
+// choices joins the words c takes as "a or b", or "a, b, or c".
+func (c *choiceFlag) choices() string {
+	if len(c.of) < 3 {
+		return strings.Join(c.of, " or ")
 	}
-	return strings.Join(words[:len(words)-1], ", ") + ", or " + words[len(words)-1]
+	return strings.Join(c.of[:len(c.of)-1], ", ") + ", or " + c.of[len(c.of)-1]
 }
 
 // waitTimeout is the default of --timeout: wait.timeout from the config, or 30

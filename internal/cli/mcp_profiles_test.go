@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/uvw/claudes/internal/mcp"
 )
 
 func TestMCPProfilesListsThemAndWarnsAboutUnknownNames(t *testing.T) {
@@ -28,7 +30,7 @@ func TestMCPProfilesListsThemAndWarnsAboutUnknownNames(t *testing.T) {
 
 	h.out.Reset()
 	h.ok(t, "mcp", "profiles", "-o", "json")
-	var got []mcpProfile
+	var got []mcp.Profile
 	if err := json.Unmarshal(h.out.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}

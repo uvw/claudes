@@ -98,6 +98,17 @@ func (r PlanRow) Entry() Entry {
 	return Entry{ID: r.ID, Name: r.Name, Cwd: r.Cwd, Result: r.Label, Note: cmp.Or(r.Note, r.Size)}
 }
 
+// JoinNotes joins the notes of a plan row that are not empty with semicolons.
+func JoinNotes(notes ...string) string {
+	var kept []string
+	for _, n := range notes {
+		if n != "" {
+			kept = append(kept, n)
+		}
+	}
+	return strings.Join(kept, "; ")
+}
+
 // PlanTable is rows as a table, headed by labelHeader over their labels. Like
 // every table, it starts with the id and ends with the directory, the name,
 // and any note; a column no row fills is left out.

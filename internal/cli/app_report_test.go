@@ -226,8 +226,7 @@ func TestEverySubjectCarriesItsDirectory(t *testing.T) {
 		"claude.Session": claude.Session{SessionID: "11111111-aaaa", Cwd: dir},
 		"park.Entry":     park.Entry{SessionID: "22222222-bbbb", Name: "api", Cwd: dir},
 		"resumable":      resumable{Entry: park.Entry{SessionID: "33333333-cccc", Name: "api", Cwd: dir}},
-		"leftover":       leftover{teams.Folder{Path: dir, Name: "session-44444444"}},
-		"gcItem":         gcItem{sessionID: "55555555-dddd", name: "api", why: kindTrivial, dir: dir},
+		"teams.Leftover": teams.Leftover{Path: dir, Name: "session-44444444"},
 	}
 	for name, s := range subjects {
 		if e := render.EntryOf(s); e.Cwd != dir || e.ID == "" || e.Name == "" {

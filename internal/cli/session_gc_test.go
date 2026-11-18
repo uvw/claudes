@@ -13,6 +13,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -256,14 +257,14 @@ func TestSessionGcRefusesAPathOutsideClaudesFolder(t *testing.T) {
 	h := newHarness(t)
 	outside := filepath.Join(t.TempDir(), sessionID("x"))
 	writeFile(t, filepath.Join(outside, "f"), "keep me")
-	it := gcItem{sessionID: sessionID("x"), name: "x", paths: []string{outside}}
-	if err := h.app.Transcripts.Remove(it.sessionID, it.paths, os.RemoveAll); err == nil || !exists(outside) {
+	it := history.Item{SessionID: sessionID("x"), Name: "x", Paths: []string{outside}}
+	if err := h.app.Transcripts.Remove(it.SessionID, it.Paths, os.RemoveAll); err == nil || !exists(outside) {
 		t.Fatalf("removed %s: %v", outside, err)
 	}
 	inside := filepath.Join(h.root, "projects", "-w", "not-the-session")
 	writeFile(t, filepath.Join(inside, "f"), "keep me")
-	it.paths = []string{inside}
-	if err := h.app.Transcripts.Remove(it.sessionID, it.paths, os.RemoveAll); err == nil || !exists(inside) {
+	it.Paths = []string{inside}
+	if err := h.app.Transcripts.Remove(it.SessionID, it.Paths, os.RemoveAll); err == nil || !exists(inside) {
 		t.Fatalf("removed %s: %v", inside, err)
 	}
 }
@@ -447,12 +448,12 @@ func TestSessionGcSkipsASessionThatChangedSinceThePlan(t *testing.T) {
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list %+v, err %v", list, err)
 	}
-	it := h.app.wholeSession(list[0], "empty")
+	it := history.Whole(h.app.Transcripts, list[0], history.KindEmpty)
 	if err := os.Chtimes(list[0].Path, h.now, h.now); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := h.app.gcRemove(t.Context(), []gcItem{it}, false); err != nil {
+	if err := h.app.gcRemove(t.Context(), []history.Item{it}, false); err != nil {
 		t.Fatal(err)
 	}
 	if len(h.trashed) != 0 || !exists(list[0].Path) {
@@ -483,7 +484,7 @@ func TestSessionGcKeepsAnOlderCopyThatChangedInTheLastDay(t *testing.T) {
 	}
 	h.aged(t, oldCopy, 2*time.Hour)
 
-	items, err := h.app.gcPick(list, map[string]string{}, gcFlags{copies: true})
+	items, err := history.Collect(h.app.Transcripts, list, map[string]string{}, history.Kinds{Copies: true}, h.app.Now())
 	if err != nil || len(items) != 0 {
 		t.Fatalf("picked %+v, err %v", items, err)
 	}

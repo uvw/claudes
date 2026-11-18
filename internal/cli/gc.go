@@ -5,43 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/target"
-	"github.com/uvw/claudes/internal/teams"
 )
-
-var finishedStates = []string{"done", "stopped", "failed"}
-
-// isFinished reports whether gc may remove s: a background session that is
-// done, stopped, or failed, with no process.
-func isFinished(s claude.Session) bool {
-	return !s.Running() && s.JobID != "" && slices.Contains(finishedStates, s.State)
-}
-
-// requireFinished refuses a named session gc may not remove.
-func requireFinished(sessions []claude.Session) error {
-	for _, s := range sessions {
-		switch {
-		case s.Interactive():
-			return exit.Refusal(fmt.Errorf("%s is an interactive session: gc removes only finished background sessions", s.Label()))
-		case s.Running():
-			return exit.Refusal(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
-		case !isFinished(s):
-			return exit.Refusal(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), render.Dash(s.State)))
-		}
-	}
-	return nil
-}
 
 func (app *App) gcCommand() *cobra.Command {
 	olderThan := app.daysFlag(7 * 24 * time.Hour)
@@ -76,11 +50,11 @@ the system trash; --purge deletes them for good.`,
 			if err != nil {
 				return err
 			}
-			finished := slices.DeleteFunc(slices.Clone(sessions), func(s claude.Session) bool { return !isFinished(s) })
+			finished := slices.DeleteFunc(slices.Clone(sessions), func(s claude.Session) bool { return !selection.IsFinished(s) })
 			var picked []claude.Session
 			if len(args) > 0 {
 				if picked, err = target.Resolve(args, sessions); err == nil {
-					err = requireFinished(picked)
+					err = selection.RequireFinished(picked)
 				}
 			} else {
 				picked, err = app.oldFinished(finished, app.Now().Add(-olderThan.d), withPinned)
@@ -160,21 +134,6 @@ func (app *App) lastActive(s claude.Session) time.Time {
 	return s.Started()
 }
 
-// leftover is a team or task-list directory gc --teams removes.
-type leftover struct{ teams.Folder }
-
-func (l leftover) ID() string { return strings.TrimPrefix(l.Name, "session-") }
-
-// Dir is the leftover directory itself.
-func (l leftover) Dir() string { return l.Path }
-
-func (l leftover) Label() string {
-	if filepath.Base(filepath.Dir(l.Path)) == "teams" {
-		return "team"
-	}
-	return "task list"
-}
-
 // gcTeamsOpts are the flags of gc --teams.
 type gcTeamsOpts struct {
 	olderThan         time.Duration
@@ -222,9 +181,8 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 		return nil
 	}
 	rows := make([]render.PlanRow, 0, len(folders))
-	for _, f := range folders {
-		l := leftover{f}
-		rows = append(rows, render.PlanRow{ID: l.ID(), Name: l.Label(), Cwd: f.Path, Note: "last changed " + render.Ago(app.Now(), f.Modified)})
+	for _, l := range folders {
+		rows = append(rows, render.PlanRow{ID: l.ID(), Name: l.Label(), Cwd: l.Path, Note: "last changed " + render.Ago(app.Now(), l.Modified)})
 	}
 	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
 	if proceed, err := app.gate(o.plan, "Remove these team dirs and task lists?"); !proceed {
@@ -235,13 +193,12 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 		verb = "deleted"
 	}
 	var failures []render.Failure
-	for i, f := range folders {
+	for i, l := range folders {
 		if ctx.Err() != nil {
-			notReached(app, leftovers(folders[i:]))
+			notReached(app, folders[i:])
 			break
 		}
-		l := leftover{f}
-		if err := app.Teams.Remove(f, app.remover(o.purge)); err != nil {
+		if err := app.Teams.Remove(l, app.remover(o.purge)); err != nil {
 			failures = append(failures, render.Failure{Label: l.Label() + " " + l.ID(), Reason: err.Error(), Of: l})
 			app.progressFailed(l)
 			continue
@@ -249,12 +206,4 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 		app.progress(verb, l, "")
 	}
 	return app.reportFailures(failures)
-}
-
-func leftovers(folders []teams.Folder) []leftover {
-	out := make([]leftover, len(folders))
-	for i, f := range folders {
-		out[i] = leftover{f}
-	}
-	return out
 }

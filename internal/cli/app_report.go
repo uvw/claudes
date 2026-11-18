@@ -10,6 +10,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -102,21 +103,21 @@ func printCommands[T manualRef](app *App, heading, why string, refs []T) {
 }
 
 // printLeftOut names the sessions a bulk command did not act on, and why.
-func (app *App) printLeftOut(sel selection, verb string) {
+func (app *App) printLeftOut(sel selection.Selection, verb string) {
 	why := "(--interactive stops them)"
-	if sel.outdated {
+	if sel.Outdated {
 		why = "(--outdated never picks them)"
 	}
 	printCommands(app, "Interactive sessions were left alone "+why+". "+
-		"Each one resumes with this command, run in its terminal:", "interactive", sel.leftAlone)
+		"Each one resumes with this command, run in its terminal:", "interactive", sel.LeftAlone)
 	for _, group := range []struct {
 		format, why string
 		sessions    []claude.Session
 	}{
-		{"Pinned, not %s: %s. Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.", "pinned", sel.pinned},
-		{"Leading an agent team, not %s: %s. Its teammates would stop with it and cannot be resumed. To include it anyway, name it with every other session you want.", "leads a team", sel.leads},
-		{"Skipped, not %s: %s.", "skipped", sel.skipped},
-		{"Not %s, because claude agents gave no job id: %s.", "no job id", sel.noJob},
+		{"Pinned, not %s: %s. Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.", "pinned", sel.Pinned},
+		{"Leading an agent team, not %s: %s. Its teammates would stop with it and cannot be resumed. To include it anyway, name it with every other session you want.", "leads a team", sel.Leads},
+		{"Skipped, not %s: %s.", "skipped", sel.Skipped},
+		{"Not %s, because claude agents gave no job id: %s.", "no job id", sel.NoJob},
 	} {
 		if len(group.sessions) > 0 {
 			app.say("")
