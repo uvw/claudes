@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
@@ -27,7 +26,7 @@ func (app *App) handOff(ctx context.Context, name, token string, finished bool) 
 	}
 	s := picked[0]
 	if s.JobID == "" {
-		return exit.Refusal(fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name))
+		return refusal(fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name))
 	}
 	return app.Exec("claude", name, s.JobID)
 }

@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/install"
+	"github.com/uvw/claudes/internal/files"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/skills"
 )
 
@@ -26,11 +29,11 @@ Running it again updates the skill to this version of claudes.`,
 			target := dir
 			if target == "" {
 				var err error
-				if target, err = install.ClaudeSkillsDir(); err != nil {
+				if target, err = claudeSkillsDir(); err != nil {
 					return err
 				}
 			}
-			path, err := install.Skill(target, skills.Claudes)
+			path, err := installSkill(target, skills.Claudes)
 			if err != nil {
 				return err
 			}
@@ -41,4 +44,21 @@ Running it again updates the skill to this version of claudes.`,
 	cmd.Flags().BoolVar(&doInstall, "install", false, "install the skill for Claude Code")
 	cmd.Flags().StringVar(&dir, "dir", "", "install the skill under this skills directory instead")
 	return cmd
+}
+
+// claudeSkillsDir is Claude Code's personal skills directory, under
+// paths.ClaudeHome.
+func claudeSkillsDir() (string, error) {
+	home, err := paths.ClaudeHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "skills"), nil
+}
+
+// installSkill writes SKILL.md into dir/claudes and returns its path. It
+// replaces an older copy, so running it again updates the skill.
+func installSkill(dir string, content []byte) (string, error) {
+	path := filepath.Join(dir, "claudes", "SKILL.md")
+	return path, files.WriteFileAll(path, content, 0o644)
 }

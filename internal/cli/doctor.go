@@ -11,7 +11,6 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -68,7 +67,7 @@ Exits 1 when a check fails.`,
 			if failed > 0 {
 				app.warn("")
 				app.errorLine("%d check(s) failed.", failed)
-				return exit.ErrReported
+				return errReported
 			}
 			return nil
 		},

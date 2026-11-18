@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 )
 
 func bg(job, name string) claude.Session {
@@ -72,13 +71,13 @@ func TestNamedTakesExactlyTheTargets(t *testing.T) {
 	if err != nil || !slices.Equal(labels(sel.Chosen), []string{"api"}) || !slices.Equal(labels(sel.Skipped), []string{"docs"}) {
 		t.Fatalf("chose %q, skipped %q, err %v", labels(sel.Chosen), labels(sel.Skipped), err)
 	}
-	if _, err := Named([]string{"shell"}, sessions, nil, false); exit.Code(err) != exit.Refused {
+	if _, err := Named([]string{"shell"}, sessions, nil, false); !isRefused(err) {
 		t.Errorf("an interactive session without --interactive: %v", err)
 	}
 	if sel, err := Named([]string{"shell"}, sessions, nil, true); err != nil || len(sel.Chosen) != 1 {
 		t.Errorf("an interactive session with --interactive: %v", err)
 	}
-	if _, err := Named([]string{"old"}, sessions, nil, false); exit.Code(err) != exit.Refused {
+	if _, err := Named([]string{"old"}, sessions, nil, false); !isRefused(err) {
 		t.Errorf("a stopped session: %v", err)
 	}
 	if _, err := Named([]string{"nobody"}, sessions, nil, false); err == nil {
@@ -131,11 +130,12 @@ func TestFinishedAndRunning(t *testing.T) {
 		t.Errorf("done: %v", err)
 	}
 	for _, s := range []claude.Session{idle, running, term} {
-		if err := RequireFinished([]claude.Session{s}); exit.Code(err) != exit.Refused {
+		if err := RequireFinished([]claude.Session{s}); !isRefused(err) {
 			t.Errorf("%s: %v", s.Label(), err)
 		}
 	}
-	if err := RequireRunning([]claude.Session{running, done}); exit.Code(err) != exit.Refused || errors.Unwrap(err) == nil {
+	if err := RequireRunning([]claude.Session{running, done}); !isRefused(err) || errors.Unwrap(err) == nil ||
+		err.Error() != errors.Unwrap(err).Error() {
 		t.Errorf("a finished session passes RequireRunning: %v", err)
 	}
 	if !RunningIn([]claude.Session{done, running}, func(s claude.Session) bool { return s.JobID == "cccccccc" }) ||
@@ -167,4 +167,9 @@ func TestTrueFirst(t *testing.T) {
 	if TrueFirst(true, false) != -1 || TrueFirst(false, true) != 1 || TrueFirst(true, true) != 0 {
 		t.Error("TrueFirst")
 	}
+}
+
+func isRefused(err error) bool {
+	var refused *RefusedError
+	return errors.As(err, &refused)
 }
