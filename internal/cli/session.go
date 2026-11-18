@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"path/filepath"
@@ -12,6 +13,16 @@ import (
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
 )
+
+// sessionRef is how the JSON of session du and session triage names a session.
+type sessionRef struct {
+	ID        string `json:"id"`
+	SessionID string `json:"sessionId"`
+	Name      string `json:"name"`
+}
+
+// Label is the session's name, or its short id when it has none.
+func (r sessionRef) Label() string { return cmp.Or(r.Name, r.ID) }
 
 // pastSession is a session as claudes session shows it: what its transcript
 // says, and whether it runs now.
@@ -35,6 +46,11 @@ func readActivity(p *pastSession, force bool) {
 	if a, err := transcripts.ReadActivity(p.Path); err == nil {
 		p.Activity = &a
 	}
+}
+
+// refOf is p's sessionRef.
+func refOf(p pastSession) sessionRef {
+	return sessionRef{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name}
 }
 
 func (app *App) sessionCommand() *cobra.Command {
@@ -81,7 +97,7 @@ func (app *App) pastSessions(ctx context.Context) ([]pastSession, error) {
 			p.Running = true
 			// claude agents names an unnamed session by its job id.
 			if s.Name != s.JobID && s.Name != "" && s.Name != p.Name {
-				p.Name, p.NameSource = s.Name, "agent"
+				p.Name, p.NameSource = s.Name, transcripts.NameAgent
 			}
 		}
 		out = append(out, p)

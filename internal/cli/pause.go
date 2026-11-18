@@ -53,7 +53,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 		rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: dash(s.Activity()), cwd: s.Cwd, note: note})
 	}
 	app.printPlan("Pausing", rows)
-	if proceed, err := app.gate(f, "Pause these sessions?"); !proceed {
+	if proceed, err := app.gate(f.planFlags, "Pause these sessions?"); !proceed {
 		if err == nil {
 			app.printLeftOut(sel, "paused")
 		}

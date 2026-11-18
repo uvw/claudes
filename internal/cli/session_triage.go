@@ -23,9 +23,7 @@ const reviewToolCalls = 20
 
 // triageItem is one session or directory in the triage plan.
 type triageItem struct {
-	ID         string    `json:"id"`
-	SessionID  string    `json:"sessionId"`
-	Name       string    `json:"name"`
+	sessionRef
 	NameSource string    `json:"nameSource"`
 	Cwd        string    `json:"cwd"`
 	Size       int64     `json:"size"`
@@ -99,11 +97,11 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 	}
 	removed := map[string]bool{}
 	for _, it := range items {
-		t := triageItem{ID: it.ID(), SessionID: it.sessionID, Name: it.name, Cwd: it.dir, Size: it.size, Why: it.why}
-		if p, ok := byID[it.sessionID]; ok && (it.why == "empty" || it.why == "trivial") {
+		t := triageItem{sessionRef: sessionRef{ID: it.ID(), SessionID: it.sessionID, Name: it.name}, Cwd: it.dir, Size: it.size, Why: string(it.why)}
+		if p, ok := byID[it.sessionID]; ok && (it.why == kindEmpty || it.why == kindTrivial) {
 			removed[it.sessionID] = true
 			readActivity(&p, false)
-			t = triageOf(p, it.why)
+			t = triageOf(p, string(it.why))
 			t.Size = it.size
 		}
 		report.Remove = append(report.Remove, t)
@@ -139,7 +137,7 @@ func keepWhy(p pastSession) string {
 	switch {
 	case a == nil:
 		return "bigger than " + style.Size(transcripts.ActivityLimit)
-	case p.NameSource == "custom":
+	case p.NameSource == transcripts.NameCustom:
 		return "named with /rename"
 	case a.Teammate:
 		return "started by an agent team"
@@ -156,7 +154,7 @@ func keepWhy(p pastSession) string {
 }
 
 func triageOf(p pastSession, why string) triageItem {
-	return triageItem{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name, NameSource: p.NameSource, Cwd: p.Cwd,
+	return triageItem{sessionRef: refOf(p), NameSource: p.NameSource, Cwd: p.Cwd,
 		Size: p.Disk.Total, LastActive: p.LastActive, Why: why, LastPrompt: p.LastPrompt, Activity: p.Activity}
 }
 
@@ -165,7 +163,7 @@ func (app *App) printTriage(r triageReport) error {
 		app.say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
 		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
-			table = append(table, []string{dash(t.ID), t.Why, style.Size(t.Size), dirCell(t.Cwd), nameCell(cmp.Or(t.Name, t.ID))})
+			table = append(table, []string{dash(t.ID), t.Why, style.Size(t.Size), dirCell(t.Cwd), nameCell(t.Label())})
 		}
 		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
@@ -176,7 +174,7 @@ func (app *App) printTriage(r triageReport) error {
 		app.say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), style.Size(triageSize(r.Review)))
 		table := [][]string{{"ID", "TOOLS", "SIZE", "NAME", "FIRST PROMPT"}}
 		for _, t := range r.Review {
-			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(cmp.Or(t.Name, t.ID)),
+			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(t.Label()),
 				shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
 		}
 		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
@@ -211,16 +209,19 @@ func triageSize(items []triageItem) int64 {
 // gcCommandFor is the session gc command that removes exactly the kinds in
 // items. Without trivial sessions, that is session gc's default.
 func gcCommandFor(items []triageItem) string {
-	kinds := map[string]bool{}
+	kinds := map[gcKind]bool{}
 	for _, t := range items {
-		kinds[t.Why] = true
+		kinds[gcKind(t.Why)] = true
 	}
 	cmd := "claudes session gc"
-	if !kinds["trivial"] {
+	if !kinds[kindTrivial] {
 		return cmd
 	}
-	for _, k := range []struct{ why, flag string }{
-		{"empty", "--empty"}, {"trivial", "--trivial"}, {"copy", "--copies"}, {"leftover", "--leftovers"},
+	for _, k := range []struct {
+		why  gcKind
+		flag string
+	}{
+		{kindEmpty, "--empty"}, {kindTrivial, "--trivial"}, {kindCopy, "--copies"}, {kindLeftover, "--leftovers"},
 	} {
 		if kinds[k.why] {
 			cmd += " " + k.flag

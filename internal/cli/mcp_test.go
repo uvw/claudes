@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/uvw/claudes/internal/claude"
 )
 
 // secrets are what a server entry can carry that claudes must never print.
@@ -144,6 +146,24 @@ func TestMCPLsTakesASessionOrADirectory(t *testing.T) {
 	assertContains(t, h.err.String(), "not both")
 	h.exits(t, exitNoMatch, "mcp", "ls", "nobody")
 	h.fails(t, "mcp", "ls", "--in", filepath.Join(docs, "missing"))
+}
+
+// mcp ls --in and session mv DIR resolve a directory the same way, and say so
+// when it does not exist rather than print stat's error.
+func TestMCPLsAndSessionMvSayADirectoryDoesNotExist(t *testing.T) {
+	h := newHarness(t)
+	missing := filepath.Join(h.folder("docs"), "missing")
+	h.transcript(t, "api-work", h.folder("api"), time.Hour)
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.fails(t, "mcp", "ls", "--in", missing)
+	assertContains(t, h.err.String(), missing+" does not exist")
+	if strings.Contains(h.err.String(), "stat ") {
+		t.Fatalf("printed stat's error: %s", h.err)
+	}
+	h.err.Reset()
+	h.fails(t, "session", "mv", "api-work", missing)
+	assertContains(t, h.err.String(), missing+" does not exist. Create or clone it first")
 }
 
 func TestMCPLsSaysWhenThereAreNone(t *testing.T) {

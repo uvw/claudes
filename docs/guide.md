@@ -69,24 +69,24 @@ writing. A session with no process runs no subagents or shells, whatever its
 
 ### Common flags
 
-| Flag                | Commands                           | Effect                                                            |
-| ------------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| `-n`, `--dry-run`   | `restart`, `pause`, `resume`, `gc` | Show the plan and change nothing                                  |
-| `-c`, `--confirm`   | `restart`, `pause`, `resume`       | Ask y/N before changing anything                                  |
-| `-s`, `--skip NAME` | `restart`, `pause`, `resume`       | Leave out a session, matched like a target                        |
-| `-w`, `--wait`      | `restart`, `pause`                 | Wait for busy sessions to go idle first                           |
-| `--timeout AGE`     | `restart`, `pause`                 | With `--wait`, give up after this long; 30m by default            |
-| `-p`, `--ping`      | `restart`, `resume`                | Prompt sessions that were mid-turn so they carry on               |
-| `--ping-text TEXT`  | `restart`, `resume`                | The prompt to send; implies `--ping`                              |
-| `--interactive`     | `restart`, `pause`                 | Also stop interactive sessions, and print their resume commands   |
-| `--interactive-bg`  | `restart`, `resume`                | Resume interactive sessions in the background, not print commands |
-| `-u`, `--outdated`  | `restart`                          | Only sessions on an older Claude Code                             |
-| `--pinned`          | `restart`, `pause`, `gc`           | Without targets, take pinned sessions too                         |
-| `--forget`          | `resume`                           | Drop the named sessions from the park list                        |
-| `--older-than AGE`  | `gc`                               | Without targets, only sessions older than AGE; 7d                 |
-| `--force`           | commands that change sessions      | Act although a compatibility check failed                         |
-| `-o`, `--output`    | every command that lists or acts   | Print `text`, `json`, or `yaml`                                   |
-| `-v`, `--verbose`   | every command                      | Log each `claude` call and step to stderr                         |
+| Flag                | Commands                                         | Effect                                                            |
+| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
+| `-n`, `--dry-run`   | `restart`, `pause`, `resume`, `gc`, `session gc` | Show the plan and change nothing                                  |
+| `-c`, `--confirm`   | `restart`, `pause`, `resume`, `gc`, `session gc` | Ask y/N before changing anything                                  |
+| `-s`, `--skip NAME` | `restart`, `pause`, `resume`                     | Leave out a session, matched like a target                        |
+| `-w`, `--wait`      | `restart`, `pause`                               | Wait for busy sessions to go idle first                           |
+| `--timeout AGE`     | `restart`, `pause`                               | With `--wait`, give up after this long; 30m by default            |
+| `-p`, `--ping`      | `restart`, `resume`                              | Prompt sessions that were mid-turn so they carry on               |
+| `--ping-text TEXT`  | `restart`, `resume`                              | The prompt to send; implies `--ping`                              |
+| `--interactive`     | `restart`, `pause`                               | Also stop interactive sessions, and print their resume commands   |
+| `--interactive-bg`  | `restart`, `resume`                              | Resume interactive sessions in the background, not print commands |
+| `-u`, `--outdated`  | `restart`                                        | Only sessions on an older Claude Code                             |
+| `--pinned`          | `restart`, `pause`, `gc`                         | Without targets, take pinned sessions too                         |
+| `--forget`          | `resume`                                         | Drop the named sessions from the park list                        |
+| `--older-than AGE`  | `gc`                                             | Without targets, only sessions older than AGE; 7d                 |
+| `--force`           | commands that change sessions                    | Act although a compatibility check failed                         |
+| `-o`, `--output`    | every command that lists or acts                 | Print `text`, `json`, or `yaml`                                   |
+| `-v`, `--verbose`   | every command                                    | Log each `claude` call and step to stderr                         |
 
 `--older-than` and `--since` take days, such as `7d`, as well as `12h` or `30m`.
 `--timeout` and `wait.timeout` take `30m` or `1h30m`, not days.
@@ -218,7 +218,8 @@ health check. A session named with `/rename`, one an agent team's lead started,
 and one with file history are never trivial. To tell, claudes reads each
 transcript up to 2 MB in full; a bigger one is never trivial, and neither is one
 with a record type claudes does not know or a line that does not parse. Targets
-remove exactly the sessions named. `--dry-run` shows the plan and what it frees.
+remove exactly the sessions named. `--dry-run` shows the plan and what it frees,
+and `--confirm` asks y/N before it removes anything.
 
 `--sidecars` keeps every session and trims its sidecar directory instead, which
 is often most of a big session (`session du --top 10` shows how much). It takes

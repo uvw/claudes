@@ -11,8 +11,7 @@ import (
 
 // lifecycleFlags are the flags of restart, pause, and resume.
 type lifecycleFlags struct {
-	dryRun        bool
-	confirm       bool
+	planFlags
 	skip          []string
 	wait          bool
 	timeout       time.Duration
@@ -30,8 +29,7 @@ type lifecycleFlags struct {
 }
 
 func (f *lifecycleFlags) addCommon(cmd *cobra.Command, completeSkip cobra.CompletionFunc) {
-	addDryRun(cmd, &f.dryRun)
-	cmd.Flags().BoolVarP(&f.confirm, "confirm", "c", false, "ask y/N before changing anything")
+	f.planFlags.add(cmd)
 	cmd.Flags().StringArrayVarP(&f.skip, "skip", "s", nil, "leave out a session, matched like a target (repeatable)")
 	cmd.RegisterFlagCompletionFunc("skip", completeSkip)
 }
@@ -75,8 +73,13 @@ func (f *lifecycleFlags) text() string {
 	return ""
 }
 
-func addDryRun(cmd *cobra.Command, dryRun *bool) {
-	cmd.Flags().BoolVarP(dryRun, "dry-run", "n", false, "show the plan and change nothing")
+// planFlags are --dry-run and --confirm, the safeguards of every command that
+// prints its plan before it acts.
+type planFlags struct{ dryRun, confirm bool }
+
+func (f *planFlags) add(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&f.dryRun, "dry-run", "n", false, "show the plan and change nothing")
+	cmd.Flags().BoolVarP(&f.confirm, "confirm", "c", false, "ask y/N before changing anything")
 }
 
 // forceUsage is --force's help on the commands that act on sessions.

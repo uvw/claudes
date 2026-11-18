@@ -49,8 +49,8 @@ type Session struct {
 	// Name is the name given with /rename, or agent view's name, or the title
 	// Claude Code wrote for it, in that order.
 	Name string `json:"name"`
-	// NameSource is where Name came from: custom for /rename, agent for agent
-	// view, ai for Claude Code's title, or "" when it has none.
+	// NameSource is where Name came from: NameCustom, NameAgent, or NameAI,
+	// or "" when it has none.
 	NameSource string    `json:"nameSource"`
 	Cwd        string    `json:"cwd"`
 	Branch     string    `json:"branch"`
@@ -72,6 +72,16 @@ type Session struct {
 	fits    bool
 	options []string
 }
+
+// The values of Session.NameSource: where a session's name came from.
+const (
+	// NameCustom is a name given with /rename.
+	NameCustom = "custom"
+	// NameAgent is agent view's name for a background session.
+	NameAgent = "agent"
+	// NameAI is the title Claude Code wrote for the session.
+	NameAI = "ai"
+)
 
 // JobOptions are the options of the background job session mv removed when
 // it moved the session, for the job claude --bg --resume starts in its place.
@@ -394,11 +404,11 @@ func summarize(path string) (Session, error) {
 	s.SessionID = cmp.Or(sum.sessionID, strings.TrimSuffix(filepath.Base(path), ".jsonl"))
 	switch {
 	case sum.customTitle != "":
-		s.Name, s.NameSource = sum.customTitle, "custom"
+		s.Name, s.NameSource = sum.customTitle, NameCustom
 	case sum.agentName != "":
-		s.Name, s.NameSource = sum.agentName, "agent"
+		s.Name, s.NameSource = sum.agentName, NameAgent
 	case sum.aiTitle != "":
-		s.Name, s.NameSource = sum.aiTitle, "ai"
+		s.Name, s.NameSource = sum.aiTitle, NameAI
 	}
 	project := filepath.Base(filepath.Dir(path))
 	s.Cwd = sum.dir(project)

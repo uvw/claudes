@@ -25,12 +25,10 @@ type duDir struct {
 
 // duSession is one of the sessions that take the most space.
 type duSession struct {
-	ID        string           `json:"id"`
-	SessionID string           `json:"sessionId"`
-	Name      string           `json:"name"`
-	Cwd       string           `json:"cwd"`
-	Running   bool             `json:"running"`
-	Disk      transcripts.Disk `json:"disk"`
+	sessionRef
+	Cwd     string           `json:"cwd"`
+	Running bool             `json:"running"`
+	Disk    transcripts.Disk `json:"disk"`
 }
 
 type duReport struct {
@@ -120,7 +118,7 @@ session.`,
 					share = strconv.FormatInt(s.Disk.Sidecar*100/s.Disk.Total, 10) + "%"
 				}
 				table = append(table, []string{s.ID, style.Size(s.Disk.Total), style.Size(s.Disk.Sidecar), share,
-					dirCell(s.Cwd), nameCell(cmp.Or(s.Name, s.ID))})
+					dirCell(s.Cwd), nameCell(s.Label())})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -142,7 +140,7 @@ func duTop(list []pastSession, n int) []duSession {
 	sorted := slices.Clone(list)
 	slices.SortStableFunc(sorted, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
 	for _, p := range sorted[:min(n, len(sorted))] {
-		out = append(out, duSession{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name, Cwd: p.Cwd, Running: p.Running, Disk: p.Disk})
+		out = append(out, duSession{sessionRef: refOf(p), Cwd: p.Cwd, Running: p.Running, Disk: p.Disk})
 	}
 	return out
 }

@@ -43,7 +43,8 @@ func requireFinished(sessions []claude.Session) error {
 
 func (app *App) gcCommand() *cobra.Command {
 	var olderThan days
-	var dryRun, withTeams, withPinned bool
+	var plan planFlags
+	var withTeams, withPinned bool
 	olderThan.d = 7 * 24 * time.Hour
 	cmd := &cobra.Command{
 		Use:   "gc [TARGET...]",
@@ -64,7 +65,7 @@ longer run and have not changed for longer than --older-than.`,
 				if len(args) > 0 {
 					return errors.New("gc --teams takes no targets")
 				}
-				return app.gcTeams(ctx, olderThan.d, dryRun, withPinned)
+				return app.gcTeams(ctx, olderThan.d, plan, withPinned)
 			}
 			sessions, err := app.listed(ctx, true)
 			if err != nil {
@@ -91,9 +92,8 @@ longer run and have not changed for longer than --older-than.`,
 				rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: s.State, cwd: s.Cwd, note: "last active " + ago(app.Now(), app.lastActive(s))})
 			}
 			app.printPlanOf("Removing", "session(s)", "STATE", rows)
-			if dryRun {
-				app.say("\nDry run: nothing was changed.")
-				return nil
+			if proceed, err := app.gate(plan, "Remove these sessions from the list?"); !proceed {
+				return err
 			}
 			hand := context.WithoutCancel(ctx)
 			var failures []failure
@@ -115,7 +115,7 @@ longer run and have not changed for longer than --older-than.`,
 	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d or 12h")
 	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team directories and task lists instead of sessions")
 	cmd.Flags().BoolVar(&withPinned, "pinned", false, "without targets, remove pinned sessions too")
-	addDryRun(cmd, &dryRun)
+	plan.add(cmd)
 	app.addForce(cmd, forceUsage)
 	return cmd
 }
@@ -169,7 +169,7 @@ func (l leftover) Label() string {
 // gcTeams removes the team directories and task lists of sessions that no longer
 // run and that have not changed since olderThan ago, keeping a pinned
 // session's unless withPinned.
-func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, withPinned bool) error {
+func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planFlags, withPinned bool) error {
 	sessions, err := app.listed(ctx, true)
 	if err != nil {
 		return err
@@ -211,9 +211,8 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, wi
 		rows = append(rows, planRow{id: l.ID(), name: l.Label(), cwd: f.Path, note: "last changed " + ago(app.Now(), f.Modified)})
 	}
 	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
-	if dryRun {
-		app.say("\nDry run: nothing was changed.")
-		return nil
+	if proceed, err := app.gate(plan, "Remove these team dirs and task lists?"); !proceed {
+		return err
 	}
 	var failures []failure
 	for i, f := range folders {

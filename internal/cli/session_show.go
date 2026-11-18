@@ -72,11 +72,11 @@ func nameWithSource(name, source string) string {
 	switch {
 	case name == "":
 		return ""
-	case source == "custom":
+	case source == transcripts.NameCustom:
 		return name + " (set with /rename)"
-	case source == "agent":
+	case source == transcripts.NameAgent:
 		return name + " (from agent view)"
-	case source == "ai":
+	case source == transcripts.NameAI:
 		return name + " (Claude Code's title)"
 	}
 	return name

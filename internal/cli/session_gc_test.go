@@ -495,3 +495,24 @@ func TestSessionGcGoneSkipsADirectoryItCannotCheck(t *testing.T) {
 	}
 	assertContains(t, h.out.String(), "Nothing to clean up.")
 }
+
+func TestSessionGcConfirmAsksFirst(t *testing.T) {
+	h := newHarness(t)
+	id := h.emptyTranscript(t, "empty", h.folder("work"), 7*24*time.Hour)
+	path := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(h.folder("work")), id+".jsonl")
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.app.In = strings.NewReader("n\n")
+	h.fails(t, "session", "gc", "--confirm")
+	if !exists(path) || len(h.trashed) != 0 {
+		t.Fatalf("session gc --confirm removed what it was told not to: %q", h.trashed)
+	}
+	assertContains(t, h.out.String(), "Move these to the trash? [y/N]")
+
+	h.app.In = strings.NewReader("y\n")
+	h.ok(t, "session", "gc", "--confirm", "--purge")
+	assertContains(t, h.out.String(), "Delete these for good? [y/N]")
+	if exists(path) {
+		t.Fatal("session gc --confirm kept a session after a yes")
+	}
+}

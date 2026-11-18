@@ -80,7 +80,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: dash(s.Activity()), cwd: s.Cwd, note: note})
 	}
 	app.printPlan("Restarting", rows)
-	if proceed, err := app.gate(f, "Restart these sessions?"); !proceed {
+	if proceed, err := app.gate(f.planFlags, "Restart these sessions?"); !proceed {
 		if err == nil {
 			app.printLeftOut(sel, "restarted")
 		}

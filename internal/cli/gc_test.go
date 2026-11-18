@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -96,4 +97,31 @@ func TestOlderThanShowsItsDefaultInDays(t *testing.T) {
 	if s := (&days{d: 90 * time.Minute}).String(); s != "1h30m0s" {
 		t.Fatalf("90m: %q", s)
 	}
+}
+
+// --confirm asks before gc and gc --teams change anything, as it does on
+// restart, and an answer of no changes nothing.
+func TestGCConfirmAsksFirst(t *testing.T) {
+	h := newHarness(t)
+	old := stopped(h.bg("old", ""))
+	old.StartedAt = h.now.Add(-10 * 24 * time.Hour).UnixMilli()
+	h.agents.snapshots = [][]claude.Session{{}}
+	h.agents.finished = []claude.Session{old}
+	p := filepath.Join(h.app.Teams.Tasks, teams.Name(old.SessionID), "1.json")
+	writeFile(t, p, "{}")
+	h.aged(t, filepath.Dir(p), 30*24*time.Hour)
+
+	h.app.In = strings.NewReader("n\n")
+	h.fails(t, "gc", "--confirm")
+	h.app.In = strings.NewReader("n\n")
+	h.fails(t, "gc", "--teams", "--confirm")
+	assertCalls(t, h)
+	if !exists(p) {
+		t.Fatal("gc --teams --confirm removed a task list it was told not to")
+	}
+
+	h.app.In = strings.NewReader("y\n")
+	h.ok(t, "gc", "--confirm")
+	assertCalls(t, h, "rm "+old.JobID)
+	assertContains(t, h.out.String(), "Remove these sessions from the list? [y/N]")
 }

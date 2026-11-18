@@ -23,15 +23,28 @@ import (
 // picked without being named: one that changed since may be starting.
 const gcFloor = 24 * time.Hour
 
+// gcKind is why session gc removes an item.
+type gcKind string
+
+const (
+	kindEmpty    gcKind = "empty"
+	kindTrivial  gcKind = "trivial"
+	kindGone     gcKind = "gone"
+	kindOld      gcKind = "old"
+	kindCopy     gcKind = "copy"
+	kindSidecar  gcKind = "sidecar"
+	kindLeftover gcKind = "leftover"
+	kindNamed    gcKind = "named"
+)
+
 // gcItem is what session gc removes in one go: a whole session, an older copy
 // of one, or a leftover directory.
 type gcItem struct {
 	sessionID, name string
-	// why is empty, trivial, gone, old, copy, sidecar, leftover, or named.
-	why   string
-	dir   string
-	paths []string
-	size  int64
+	why             gcKind
+	dir             string
+	paths           []string
+	size            int64
 	// transcript and changed are the transcript the item was planned from and
 	// when it last changed then, so a session that came back to life since is
 	// left alone. A leftover has neither.
@@ -44,7 +57,7 @@ type gcItem struct {
 // leftover must not offer it.
 func (g gcItem) ID() string {
 	switch g.why {
-	case "copy", "sidecar", "leftover":
+	case kindCopy, kindSidecar, kindLeftover:
 		return ""
 	}
 	return claude.ShortID(g.sessionID)
@@ -55,7 +68,8 @@ func (g gcItem) Label() string { return g.name }
 type gcFlags struct {
 	olderThan                                         days
 	empty, trivial, gone, copies, leftovers, sidecars bool
-	dryRun, purge                                     bool
+	planFlags
+	purge bool
 }
 
 func (app *App) sessionGcCommand() *cobra.Command {
@@ -108,7 +122,7 @@ Targets remove exactly those sessions, whatever kind they are.`,
 	cmd.Flags().Var(&f.olderThan, "older-than", "sessions last active longer ago than this, such as 90d")
 	cmd.Flags().Lookup("older-than").DefValue = ""
 	cmd.Flags().BoolVar(&f.purge, "purge", false, "delete for good instead of moving to the trash")
-	addDryRun(cmd, &f.dryRun)
+	f.planFlags.add(cmd)
 	return cmd
 }
 
@@ -141,7 +155,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 			if why, ok := keep[p.SessionID]; ok {
 				return refused(fmt.Errorf("%s %s, so session gc leaves it alone", p.Label(), why))
 			}
-			items = append(items, app.wholeSession(p, "named"))
+			items = append(items, app.wholeSession(p, kindNamed))
 		}
 	} else {
 		if items, err = app.gcPick(list, keep, f); err != nil {
@@ -156,7 +170,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 	var total int64
 	rows := make([]planRow, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, planRow{id: it.ID(), name: it.name, label: it.why, cwd: it.dir, size: style.Size(it.size)})
+		rows = append(rows, planRow{id: it.ID(), name: it.name, label: string(it.why), cwd: it.dir, size: style.Size(it.size)})
 		total += it.size
 	}
 	app.printPlanOf("Removing", "session(s) and dir(s)", "WHY", rows)
@@ -165,9 +179,12 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		where = "Deletes them for good."
 	}
 	app.say("\nFrees %s. %s", style.Size(total), where)
-	if f.dryRun {
-		app.say("\nDry run: nothing was changed.")
-		return nil
+	question := "Move these to the trash?"
+	if f.purge {
+		question = "Delete these for good?"
+	}
+	if proceed, err := app.gate(f.planFlags, question); !proceed {
+		return err
 	}
 	return app.gcRemove(ctx, items, f.purge)
 }
@@ -223,23 +240,23 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 		whole := len(items)
 		switch {
 		case f.empty && p.Empty:
-			items = append(items, app.wholeSession(p, "empty"))
+			items = append(items, app.wholeSession(p, kindEmpty))
 		case f.trivial && trivial(p):
-			items = append(items, app.wholeSession(p, "trivial"))
+			items = append(items, app.wholeSession(p, kindTrivial))
 		case f.gone && dirGone(p.Cwd):
-			items = append(items, app.wholeSession(p, "gone"))
+			items = append(items, app.wholeSession(p, kindGone))
 		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
-			items = append(items, app.wholeSession(p, "old"))
+			items = append(items, app.wholeSession(p, kindOld))
 		case f.copies:
 			for _, c := range p.Copies {
 				if changed := modTime(c); !changed.IsZero() && changed.Before(recent) {
 					paths := transcripts.CopyFiles(c)
-					items = append(items, gcItem{sessionID: p.SessionID, name: p.Label() + " (older copy)", why: "copy",
+					items = append(items, gcItem{sessionID: p.SessionID, name: p.Label() + " (older copy)", why: kindCopy,
 						dir: filepath.Dir(c), paths: paths, size: sizeOf(paths), transcript: c, changed: changed})
 				}
 			}
 		}
-		removed := len(items) > whole && items[whole].why != "copy"
+		removed := len(items) > whole && items[whole].why != kindCopy
 		if f.sidecars && !removed {
 			old := f.olderThan.d > 0 && p.LastActive.Before(now.Add(-f.olderThan.d))
 			if it, ok := sidecarItem(p, old); ok {
@@ -263,7 +280,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			continue
 		}
 		items = append(items, gcItem{sessionID: l.SessionID, name: l.Kind + " " + claude.ShortID(l.SessionID),
-			why: "leftover", dir: l.Path, paths: []string{l.Path}, size: l.Size})
+			why: kindLeftover, dir: l.Path, paths: []string{l.Path}, size: l.Size})
 	}
 	return items, nil
 }
@@ -286,7 +303,7 @@ func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
 	if len(paths) == 0 {
 		return gcItem{}, false
 	}
-	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: "sidecar", dir: cmp.Or(p.Cwd, sidecar),
+	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: kindSidecar, dir: cmp.Or(p.Cwd, sidecar),
 		paths: paths, size: sizeOf(paths), transcript: p.Path, changed: modTime(p.Path)}, true
 }
 
@@ -296,13 +313,13 @@ func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
 // could not read all of is never trivial.
 func trivial(p pastSession) bool {
 	a := p.Activity
-	if a == nil || !a.Complete() || p.Empty || a.Edits > 0 || a.ToolCalls > 0 || a.Teammate || p.NameSource == "custom" || p.Disk.FileHistory > 0 {
+	if a == nil || !a.Complete() || p.Empty || a.Edits > 0 || a.ToolCalls > 0 || a.Teammate || p.NameSource == transcripts.NameCustom || p.Disk.FileHistory > 0 {
 		return false
 	}
 	return a.Prompts == 1 || a.Prompts == 0 && a.Commands > 0
 }
 
-func (app *App) wholeSession(p pastSession, why string) gcItem {
+func (app *App) wholeSession(p pastSession, why gcKind) gcItem {
 	return gcItem{sessionID: p.SessionID, name: p.Label(), why: why, dir: cmp.Or(p.Cwd, filepath.Dir(p.Path)),
 		paths: app.Transcripts.SessionFiles(p.Session), size: p.Disk.Total + app.extraSize(p.Session),
 		transcript: p.Path, changed: modTime(p.Path)}
@@ -345,7 +362,7 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			notReached(app, items[i:])
 			break
 		}
-		if live[it.sessionID] && it.why != "leftover" {
+		if live[it.sessionID] && it.why != kindLeftover {
 			app.progress("skipped", it, " (it started running)")
 			continue
 		}
@@ -358,7 +375,7 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			app.progressFailed(it)
 			continue
 		}
-		if it.why == "copy" {
+		if it.why == kindCopy {
 			if err := app.Transcripts.ForgetMove(it.transcript, it.sessionID); err != nil {
 				app.warn("claudes: removed %s, but cannot update moves.json: %v", it.transcript, err)
 			}
