@@ -6,6 +6,9 @@
 # goreleaser output: generated.
 dist/
 
+# The Markdown tools' npm packages: vendored.
+tools/node_modules/
+
 # Agent worktrees: copies of this checkout.
 .claude/worktrees/
 

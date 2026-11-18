@@ -54,8 +54,9 @@ Say "directory", "dir" in column headers and placeholders such as `DIR`, or
 "path" for a full path, in docs, help, messages, and code comments alike. Never
 say "folder".
 
-Prettier wraps Markdown at 80 columns. Run `npx prettier --write` on a doc after
-editing it rather than wrapping by hand.
+Prettier wraps Markdown at 80 columns. Run
+`tools/node_modules/.bin/prettier --write` on a doc after editing it rather than
+wrapping by hand.
 
 ## Checks
 
@@ -64,24 +65,43 @@ Run all of these before you commit, and keep them clean, with zero warnings:
 ```sh
 gofmt -l .
 go mod tidy -diff
+go -C tools mod tidy -diff
 go vet ./...
 GOOS=windows go vet ./...
 go test -race ./...
-go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+go tool -modfile=tools/go.mod staticcheck ./...
 golangci-lint run ./...
-go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+go tool -modfile=tools/go.mod govulncheck ./...
 go run hack/notices.go --check
 goreleaser build --snapshot --clean
-npx --yes prettier@3.9.10 --check .
-npx --yes markdownlint-cli2@0.24.1 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local"
+npm ci --prefix tools --ignore-scripts
+tools/node_modules/.bin/prettier --check .
+tools/node_modules/.bin/markdownlint-cli2 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#tools/node_modules"
 ```
 
-`gofmt -l` and `go mod tidy -diff` must print nothing. `goreleaser build` needs
-[goreleaser](https://goreleaser.com/install/) and builds every release target.
-`hack/notices.go` needs [go-licenses](https://github.com/google/go-licenses) on
-`PATH`, or its path in `$GO_LICENSES`. It also fails on a license outside its
-allowlist. After a dependency change, run it without `--check` to rewrite
-`docs/third-party-notices.txt`.
+Both `go mod tidy -diff` commands and `gofmt -l` must print nothing.
+
+Every tool the checks run has a pinned version, and each pin is updated or
+checked each week (decision 31):
+
+1. staticcheck, govulncheck, and go-licenses are `tool` lines in `tools/go.mod`,
+   a module of its own, so their dependencies stay out of the `go.mod` claudes
+   ships, its notices, and the govulncheck scan. `go tool -modfile=tools/go.mod`
+   builds each from that module and runs it on this one. PowerShell splits the
+   flag at the dot, so quote it there: `"-modfile=tools/go.mod"`. Dependabot
+   updates them.
+2. Prettier and markdownlint-cli2 are in `tools/package.json`, and `npm ci`
+   installs the versions `tools/package-lock.json` locks. Dependabot updates
+   them.
+3. goreleaser, golangci-lint, syft, zizmor, gitleaks, and komac stay pinned in
+   the workflows. The weekly Tool pins workflow
+   (`.github/workflows/tool-pins.yaml`) keeps an issue labeled `tool-pins` open
+   while any of them is behind its latest release.
+
+`goreleaser build` needs [goreleaser](https://goreleaser.com/install/) and
+builds every release target. `hack/notices.go` builds go-licenses from
+`tools/go.mod`, and fails on a license outside its allowlist. After a dependency
+change, run it without `--check` to rewrite `docs/third-party-notices.txt`.
 
 [golangci-lint](https://golangci-lint.run/welcome/install/) needs v2.15.0 or
 later, the first to read Go 1.27's packages. Run it with `GOOS=darwin` and

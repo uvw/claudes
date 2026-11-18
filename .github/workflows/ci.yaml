@@ -26,11 +26,6 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  STATICCHECK: honnef.co/go/tools/cmd/staticcheck@v0.8.2
-  GOVULNCHECK: golang.org/x/vuln/cmd/govulncheck@v1.9.0
-  GOLICENSES: github.com/google/go-licenses/v2@v2.0.1
-  PRETTIER: prettier@3.9.10
-  MARKDOWNLINT: markdownlint-cli2@0.24.1
   COVERAGE_FLOOR: "80"
 
 jobs:
@@ -63,11 +58,16 @@ jobs:
           # macOS also builds the release binary, which uses no cache, so a
           # poisoned cache cannot reach it.
           cache: ${{ runner.os != 'macOS' }}
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
       - name: gofmt
         if: runner.os != 'Windows'
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - name: go.mod and go.sum are tidy
         run: go mod tidy -diff
+      - name: tools/go.mod and tools/go.sum are tidy
+        run: go -C tools mod tidy -diff
       - run: go mod verify
       - run: go vet ./...
       - name: Tests, with the race detector and coverage
@@ -76,9 +76,11 @@ jobs:
       - name: Coverage floor
         if: runner.os == 'Linux'
         run: bash .github/workflows/hack/coverage.sh "$COVERAGE_FLOOR" coverage.out
-      - run: go run ${{ env.STATICCHECK }} ./...
+      # PowerShell splits -modfile=tools/go.mod at the dot.
+      - shell: bash
+        run: go tool -modfile=tools/go.mod staticcheck ./...
       - if: runner.os == 'Linux'
-        run: go run ${{ env.GOVULNCHECK }} ./...
+        run: go tool -modfile=tools/go.mod govulncheck ./...
       # macOS runners can take most of an hour to arrive, so the macOS release
       # build smoke runs here, in the one macOS job, instead of in the smoke
       # job.
@@ -174,7 +176,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      - run: go install ${{ env.GOLICENSES }}
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
       - name: Allowed licenses, and docs/third-party-notices.txt is current
         run: go run hack/notices.go --check
 
@@ -187,8 +191,9 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
           persist-credentials: false
-      - run: npx --yes ${{ env.PRETTIER }} --check .
-      - run: npx --yes ${{ env.MARKDOWNLINT }} "**/*.md" "#dist" "#.claude/worktrees" "#docs/local"
+      - run: npm ci --prefix tools --ignore-scripts
+      - run: tools/node_modules/.bin/prettier --check .
+      - run: tools/node_modules/.bin/markdownlint-cli2 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#tools/node_modules"
 
   # Pull requests squash-merge, so the title becomes the commit on main that
   # release-please reads for the version and the changelog.

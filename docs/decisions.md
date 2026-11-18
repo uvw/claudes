@@ -39,6 +39,7 @@ current.
 | [28](#28-session-triage-sorts-and-the-agent-judges)                                 | session triage sorts, and the agent judges                                 |
 | [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
 | [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                       | Short flags mean one thing, and safeguards stay long                       |
+| [31](#31-every-tool-pin-is-updated-or-checked-each-week)                            | Every tool pin is updated or checked each week                             |
 
 ## 1. Go, in one static binary
 
@@ -587,3 +588,25 @@ Weighed: a short form for every flag, which runs out of letters and spends them
 on flags almost nobody types; `-f` for `--force`, as many tools do, which
 clashes with `logs -f`; and a default for bare `--top`, which would make
 `--top 5` read the 5 as a session.
+
+## 31. Every tool pin is updated or checked each week
+
+The Go tools the checks run (staticcheck, govulncheck, and go-licenses) are
+`tool` lines in `tools/go.mod`, a module of their own, run with
+`go tool -modfile=tools/go.mod`. Prettier and markdownlint-cli2 are exact
+versions in `tools/package.json`, with a committed lockfile. Dependabot updates
+both each week. The tools the workflows hand to an action or download themselves
+(goreleaser, golangci-lint, syft, zizmor, gitleaks, and komac) stay pinned in
+the workflows and their scripts. The weekly Tool pins workflow keeps one issue
+open that lists each one behind its latest release, and closes it when none are.
+
+Why: a pin nobody updates goes stale without a word, and a stale scanner misses
+what a newer one finds. A module of their own keeps the tools' dependencies out
+of the `go.mod` claudes ships, its third-party notices, and the govulncheck scan
+of the code users run. The workflow reads each version from the file that pins
+it, so every version is written in one place.
+
+Weighed: `tool` lines in the root `go.mod`, which would add the tools'
+dependencies to the module claudes ships; `go run pkg@version`, which Dependabot
+cannot see; and one file listing every pin, which each workflow would have to
+read and keep in step with.

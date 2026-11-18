@@ -21,6 +21,39 @@ updates:
       gomod:
         patterns: ["*"]
 
+  # The tools the checks run. They never reach the shipped binary, so their
+  # updates make no release.
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    # go.mod marks a tool's module indirect, and Dependabot skips indirect
+    # modules unless they are named. A tool's own dependencies move only as far
+    # as its update requires.
+    allow:
+      - dependency-name: github.com/google/go-licenses/v2
+      - dependency-name: golang.org/x/vuln
+      - dependency-name: honnef.co/go/tools
+    commit-message:
+      prefix: ci
+    groups:
+      go-tools:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      npm-tools:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

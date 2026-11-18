@@ -7,11 +7,13 @@
 # the workflow's own token it starts none, and the pull request's checks wait
 # for a maintainer's approval (docs/releasing.md).
 #
+# Needs Prettier from tools/package.json: npm ci --prefix tools.
+#
 # Env: TOKEN (pushes), GH_TOKEN (gh), GITHUB_REPOSITORY, and the commit's
 #      author as GIT_AUTHOR_* and GIT_COMMITTER_*.
 set -euo pipefail
 
-prettier=prettier@3.9.10
+prettier=$PWD/tools/node_modules/.bin/prettier
 : "${TOKEN:?}" "${GITHUB_REPOSITORY:?}"
 
 branch=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --label "autorelease: pending" \
@@ -27,7 +29,7 @@ git worktree add --quiet --detach "$work" FETCH_HEAD
 cd "$work"
 # The branch can predate the change that stopped .prettierignore from listing
 # the changelog, and Prettier skips an ignored file without a word.
-npx --yes "$prettier" --ignore-path /dev/null --write docs/changelog.md
+"$prettier" --ignore-path /dev/null --write docs/changelog.md
 if git diff --quiet -- docs/changelog.md; then
   echo "docs/changelog.md in $branch is already formatted"
   exit 0
