@@ -122,8 +122,9 @@ type App struct {
 	// Config is config.yaml, read from ConfigPath. Flags always win over it.
 	Config     config.Config
 	ConfigPath string
-	// Interrupt returns a context that the first Ctrl-C cancels, and the
-	// function that restores the default, so a second Ctrl-C ends claudes.
+	// Interrupt returns a context that the first Ctrl-C, or on Unix SIGTERM or
+	// SIGHUP, cancels, and the function that restores the default, so a second
+	// one ends claudes.
 	Interrupt func(context.Context) (context.Context, context.CancelFunc)
 	// Width is how many columns the terminal Out writes to has, or 0 when Out
 	// is not a terminal.
@@ -176,17 +177,15 @@ func newApp() *App {
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
 		Edit:           editFile,
-		Interrupt: func(ctx context.Context) (context.Context, context.CancelFunc) {
-			return signal.NotifyContext(ctx, os.Interrupt)
-		},
-		Which:       exec.LookPath,
-		Chdir:       os.Chdir,
-		HTTP:        &http.Client{Timeout: 5 * time.Minute},
-		ReleasesURL: selfupdate.Releases,
-		Executable:  os.Executable,
-		HostID:      os.Getenv("CLAUDE_CODE_SESSION_ID"),
-		HostJob:     hostJob(os.Getenv("CLAUDE_JOB_DIR")),
-		Environ:     os.Environ,
+		Interrupt:      interruptContext,
+		Which:          exec.LookPath,
+		Chdir:          os.Chdir,
+		HTTP:           &http.Client{Timeout: 5 * time.Minute},
+		ReleasesURL:    selfupdate.Releases,
+		Executable:     os.Executable,
+		HostID:         os.Getenv("CLAUDE_CODE_SESSION_ID"),
+		HostJob:        hostJob(os.Getenv("CLAUDE_JOB_DIR")),
+		Environ:        os.Environ,
 	}
 	app.Provenance = app.ghProvenance
 	app.Width = func() int { return style.TerminalWidth(app.Out) }
@@ -473,6 +472,11 @@ same as Ctrl+T in agent view.`,
 		".InheritedFlags.FlagUsages", ".InheritedFlags.FlagUsagesWrapped 80",
 	).Replace(root.UsageTemplate()))
 	return root
+}
+
+// interruptContext is Interrupt: ctx, cancelled by the first of stopSignals.
+func interruptContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx, stopSignals...)
 }
 
 func sleep(ctx context.Context, d time.Duration) error {
