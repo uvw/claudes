@@ -60,6 +60,10 @@ wanted() {
 }
 
 command -v gh >/dev/null 2>&1 || die "the GitHub CLI (gh) is not installed"
+# GitHub refuses a token whose name another of your tokens has, so each name
+# carries the day it was made, and a renewed token sits beside the old one
+# until you revoke it.
+today=$(date +%Y-%m-%d)
 gh auth status >/dev/null 2>&1 || die "gh is not signed in: run gh auth login"
 existing=$(gh secret list -R "$repo" --env "$env" --json name -q '.[].name') ||
   die "cannot list the secrets of the $env environment on $repo; create it first (docs/releasing.md)"
@@ -84,7 +88,7 @@ if wanted RELEASE_PLEASE_TOKEN; then
   say "   The page opens with the name, owner, expiry, and Contents and Pull requests"
   say "   set to write. Under Repository access, choose \"Only select repositories\""
   say "   and pick $repo, then Generate token and copy it."
-  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+release-please&description=release-please+opens+the+claudes+release+pull+request&target_name=uvw&expires_in=366&contents=write&pull_requests=write"
+  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+release-please+$today&description=release-please+opens+the+claudes+release+pull+request&target_name=uvw&expires_in=366&contents=write&pull_requests=write"
   read_token "release-please"
   push=$(GH_TOKEN=$token gh api "repos/$repo" -q .permissions.push 2>/dev/null) || push=
   [[ $push == true ]] || die "that token cannot write to $repo; check its repository access and Contents permission"
@@ -100,7 +104,7 @@ if wanted HOMEBREW_TAP_TOKEN; then
   say "   The page opens with the name, owner, expiry, and Contents: write filled in."
   say "   Under Repository access, choose \"Only select repositories\" and pick"
   say "   $tap, then Generate token and copy it."
-  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+homebrew-tap&description=Release+workflow+pushes+the+claudes+formula+to+$tap&target_name=uvw&expires_in=366&contents=write"
+  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+homebrew-tap+$today&description=Release+workflow+pushes+the+claudes+formula+to+$tap&target_name=uvw&expires_in=366&contents=write"
   read_token "Homebrew tap"
   push=$(GH_TOKEN=$token gh api "repos/$tap" -q .permissions.push 2>/dev/null) || push=
   [[ $push == true ]] || die "that token cannot push to $tap; check its repository access and Contents permission"
@@ -114,7 +118,7 @@ if wanted WINGET_TOKEN; then
   say "   winget's tools open pull requests on microsoft/winget-pkgs from your fork,"
   say "   which only a classic token can do. Check that public_repo and workflow"
   say "   are ticked, set an expiry, then Generate token and copy it."
-  open_url "https://github.com/settings/tokens/new?scopes=public_repo,workflow&description=claudes+winget+releases"
+  open_url "https://github.com/settings/tokens/new?scopes=public_repo,workflow&description=claudes+winget+releases+$today"
   read_token "winget"
   scopes=$(GH_TOKEN=$token gh api -i user 2>/dev/null | tr -d '\r' | sed -n 's/^[Xx]-[Oo][Aa]uth-[Ss]copes: //p') || scopes=
   [[ ",${scopes// /}," == *,public_repo,* ]] || die "that token lacks the public_repo scope (it has: ${scopes:-none})"
