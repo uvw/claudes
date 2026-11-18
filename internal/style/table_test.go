@@ -29,6 +29,21 @@ func TestBranchKeepsItsPrefixAndItsEnd(t *testing.T) {
 	}
 }
 
+// A directory that Middle cuts well short of MinDir, as a Windows temporary
+// path can be, frees room the line needs before the last column gets any.
+func TestFitSpendsUnusedRoomOnTheLineFirst(t *testing.T) {
+	path := filepath.FromSlash("~/abcdefghijklmnop/qrstuvwxyz0123456789/x")
+	doing := strings.Repeat("checking the build ", 5)
+	for _, tc := range []struct{ width, doing int }{{10, MinLast}, {20, MinLast + 3}} {
+		rows := [][]string{{"DIR", "DOING"}, {path, doing}}
+		Fit(rows, Layout{Width: tc.width, Dirs: DirsMiddle, Columns: []Column{lastColumn(1, 0), dirColumn(0)}}, func(s string) string { return s })
+		// cut drops the space before its …, so a cell can end a column short.
+		if w := Width(rows[1][1]); w > tc.doing || w < tc.doing-1 {
+			t.Errorf("width %d: DOING %q is %d columns, want %d", tc.width, rows[1][1], w, tc.doing)
+		}
+	}
+}
+
 // fitRow fits a row of ID, BRANCH, DIR, and NAME to width, cutting DIR, then
 // NAME, then BRANCH, and returns how wide each column is and the line.
 func fitRow(width int, dirs string) (branch, dir, name, line int) {

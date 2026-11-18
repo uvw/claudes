@@ -84,7 +84,8 @@ type Layout struct {
 // them, and paints each directory below the header. Off a terminal, it cuts
 // each column to its Max. On one, while the line is too wide, it cuts each
 // column in turn down to its Min before it cuts the next. Room a cut leaves
-// unused, as when a directory keeps whole names, goes to the columns cut
+// unused, as when a directory keeps whole names, first shortens a line still
+// too wide with every column at its Min, and the rest goes to the columns cut
 // before it.
 func Fit(rows [][]string, l Layout, paint func(string) string) {
 	if len(rows) == 0 {
@@ -96,8 +97,9 @@ func Fit(rows [][]string, l Layout, paint func(string) string) {
 	for i, c := range cols {
 		limits[i] = c.Max
 	}
+	over := 0
 	if l.Width > 0 {
-		over := l.Margin + 2*(len(widths)-1) - l.Width
+		over = l.Margin + 2*(len(widths)-1) - l.Width
 		for _, w := range widths {
 			over += w
 		}
@@ -113,10 +115,7 @@ func Fit(rows [][]string, l Layout, paint func(string) string) {
 	spare := 0
 	for i := len(cols) - 1; i >= 0; i-- {
 		c := cols[i]
-		limit := limits[i]
-		if l.Width > 0 {
-			limit += spare
-		}
+		limit := limits[i] + spare
 		for _, row := range rows[1:] {
 			if c.Index < len(row) {
 				row[c.Index] = shorten(row[c.Index], limit, c.Cut, l.Dirs)
@@ -124,6 +123,8 @@ func Fit(rows [][]string, l Layout, paint func(string) string) {
 		}
 		if l.Width > 0 {
 			spare = max(limit-columnWidth(rows, c.Index), 0)
+			paid := min(spare, max(over, 0))
+			spare, over = spare-paid, over-paid
 		}
 	}
 	for _, c := range cols {
