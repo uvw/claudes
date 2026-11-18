@@ -1,4 +1,4 @@
-# claudes
+# Claudes
 
 **A pocketknife for your Claude Code sessions.**
 
