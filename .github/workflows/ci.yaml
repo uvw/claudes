@@ -215,6 +215,9 @@ jobs:
       - run: tools/node_modules/.bin/prettier --check .
       # .markdownlint-cli2.yaml lists the files.
       - run: tools/node_modules/.bin/markdownlint-cli2
+      # The release notes are Markdown, checked with these same tools.
+      - name: The release notes scripts pass their tests
+        run: bash .github/workflows/hack/release-notes.sh test
 
   # zizmor and gitleaks fail this workflow on a finding, so a finding blocks
   # the merge. The weekly Security workflow also sends zizmor's findings to

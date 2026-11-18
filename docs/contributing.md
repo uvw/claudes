@@ -114,6 +114,7 @@ gitleaks git --redact .
 npm ci --prefix tools --ignore-scripts
 tools/node_modules/.bin/prettier --check .
 tools/node_modules/.bin/markdownlint-cli2
+bash .github/workflows/hack/release-notes.sh test
 ```
 
 Both `go mod tidy -diff` commands and `gofmt -l` must print nothing. The quotes

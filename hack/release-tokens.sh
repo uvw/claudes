@@ -6,6 +6,7 @@
 #                         checks start without a maintainer's approval
 #   HOMEBREW_TAP_TOKEN    pushes the formula to uvw/homebrew-tap
 #   WINGET_TOKEN          opens winget-pkgs pull requests from uvw/winget-pkgs
+#   COPILOT_TOKEN         lets Copilot CLI write the release notes
 #
 # It also creates the tap and the fork when they are missing. GitHub creates
 # tokens only in the browser, so the script opens each token page with its
@@ -124,6 +125,21 @@ if wanted WINGET_TOKEN; then
   [[ ",${scopes// /}," == *,public_repo,* ]] || die "that token lacks the public_repo scope (it has: ${scopes:-none})"
   printf '%s' "$token" | gh secret set WINGET_TOKEN -R "$repo" --env "$env"
   say "   saved WINGET_TOKEN in the $env environment on $repo"
+fi
+
+say ""
+say "5. COPILOT_TOKEN: a fine-grained token that can make Copilot requests"
+if wanted COPILOT_TOKEN; then
+  say "   The page opens with the name, owner, expiry, and the account permission"
+  say "   Copilot Requests filled in. It needs no repository access. Generate the"
+  say "   token and copy it. Each run spends Copilot AI credits from this account"
+  say "   (docs/releasing.md, \"Release notes\")."
+  open_url "https://github.com/settings/personal-access-tokens/new?name=claudes+release+notes+$today&description=Copilot+CLI+writes+the+claudes+release+notes&target_name=uvw&expires_in=366&copilot_requests=write"
+  read_token "Copilot"
+  # Checking the Copilot Requests permission would spend a request.
+  GH_TOKEN=$token gh api user >/dev/null 2>&1 || die "GitHub does not accept that token"
+  printf '%s' "$token" | gh secret set COPILOT_TOKEN -R "$repo" --env "$env"
+  say "   saved COPILOT_TOKEN in the $env environment on $repo"
 fi
 unset token
 

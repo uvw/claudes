@@ -20,7 +20,9 @@ step.
    1.0. release-please writes the entry with long lines, so the same workflow
    then formats `docs/changelog.md` in that pull request with Prettier
    (`.github/workflows/hack/format-changelog.sh`), in a job with no token that
-   can push. A later job pushes the result with `RELEASE_PLEASE_TOKEN`, so the
+   can push. When `COPILOT_TOKEN` is set, another job writes the
+   [release notes](#release-notes). A later job pushes both in one commit with
+   `RELEASE_PLEASE_TOKEN` (`.github/workflows/hack/release-pr-push.sh`), so the
    pull request's checks start without approval.
 3. Merging that pull request makes release-please create the `vX.Y.Z` tag and a
    draft release with the changelog as its notes. It then calls
@@ -38,12 +40,74 @@ step.
       `.github/workflows/hack/smoke.sh`, which checks that `--version` reports
       the tag, then installed with their install script.
    5. **Attest:** build provenance for every file in `checksums.txt`.
-   6. **Publish:** uploads the assets to the draft, checks the tag again, and
-      publishes it.
+   6. **Publish:** uploads the assets to the draft, puts the release notes above
+      the changelog list when there are any, checks the tag again, and publishes
+      it.
 
 Publishing comes last, so a release is never out without its provenance.
 Releases are immutable once published, so a broken release is fixed by releasing
 the next version, never by editing it.
+
+## Release notes
+
+Copilot CLI writes notes people can read above the changelog list: a TL;DR, what
+the release is about, and what changed in how commands act. It runs on every
+push to `main` while a release pull request is open, and needs no step per
+release.
+
+1. The `release-notes` job in `release-please.yaml` gathers the release pull
+   request's changelog entry and the title and body of each pull request merged
+   since the last release, with the workflow's read-only token.
+2. Copilot CLI writes `docs/release-notes/vX.Y.Z.md` from them, guided by
+   `.github/release-notes/prompt.md`. Edit that file to change how the notes
+   read.
+3. The job checks the file, formats it with Prettier, and lints it with
+   markdownlint. The push job checks it again and commits it to the release pull
+   request beside the formatted changelog.
+4. At publish, `release.yaml` puts the notes at the top of the release, then an
+   "All changes" heading and the list release-please wrote.
+
+`.github/workflows/hack/release-notes.sh` does each step, and
+`release-notes.sh test` runs them on the fixtures in
+`.github/release-notes/testdata`, with no Copilot call. CI runs that test.
+
+Pull request bodies can come from anyone, so the workflow treats them as
+untrusted:
+
+1. The prompt marks them as data, never instructions, between markers a body
+   cannot fake.
+2. The job that runs Copilot holds only `COPILOT_TOKEN` and a read-only
+   `GITHUB_TOKEN`, and gathers everything before Copilot starts.
+3. Copilot sees one tool, `create`, which may write only the notes, in an empty
+   directory with no MCP servers and no shell.
+4. The check refuses anything but one file of Markdown under 16 KiB, with no
+   HTML, images, @-mentions, title heading, or links outside this repository. A
+   refused file is never pushed.
+5. The push job accepts only `docs/changelog.md` and the notes for the release
+   pull request's version.
+
+Notes are optional, and never hold up a release. Without the `COPILOT_TOKEN`
+secret the job skips itself with a notice. A failed run does not fail the
+workflow, and the formatted changelog still goes out. Without a notes file at
+the tag, or with one that fails its check, the release keeps release-please's
+list alone, as before.
+
+`COPILOT_TOKEN` is a secret of the `release` environment: a fine-grained token
+of the repository owner's account with the account permission "Copilot Requests"
+and no repository access. `hack/release-tokens.sh COPILOT_TOKEN` sets it up.
+
+The model is `claude-sonnet-5.5` unless the repository variable
+`RELEASE_NOTES_MODEL` names another, so changing it needs no code change:
+
+```bash
+gh variable set RELEASE_NOTES_MODEL --body claude-sonnet-5.5 -R uvw/claudes
+```
+
+Copilot CLI is pinned in `.github/release-notes/package.json`, and Dependabot
+updates it weekly. A run takes about 10 to 15 Copilot AI credits, with one run
+on each merge to `main`. Copilot CLI makes no more model calls once a run has
+used 30 credits (`--max-ai-credits`), the least it accepts. The job log shows
+what a run used.
 
 ## Cutting a release
 
@@ -51,8 +115,12 @@ the next version, never by editing it.
 2. Read its `docs/changelog.md` diff. If a commit landed with the wrong type,
    fix it with `Release-As: X.Y.Z` in the body of an empty commit, or edit the
    pull request's changelog before merging.
-3. Merge it once CI is green: `gh pr merge --squash --auto <number>`.
-4. Watch the release: `gh run watch` on the newest "Release Please" run.
+3. Read its release notes, `docs/release-notes/vX.Y.Z.md`, when there are any.
+   Edit them in the pull request, or delete the file to release with the list
+   alone. Each merge to `main` writes them again, so edit them just before you
+   merge.
+4. Merge it once CI is green: `gh pr merge --squash --auto <number>`.
+5. Watch the release: `gh run watch` on the newest "Release Please" run.
 
 ## Checking a release
 
@@ -204,12 +272,13 @@ moving or recreating the repository.
      -f name='v*' -f type=tag
    ```
 
-   `RELEASE_PLEASE_TOKEN`, `HOMEBREW_TAP_TOKEN`, and `WINGET_TOKEN` are secrets
-   of this environment, not of the repository. `RELEASE_PLEASE_TOKEN` is a
-   fine-grained token for this repository with contents and pull requests read
-   and write. With it, release-please opens and updates the release pull request
-   as you, so its checks start without approval. `hack/release-tokens.sh` sets
-   all three, skipping any already set; name a secret to renew it, such as
+   `RELEASE_PLEASE_TOKEN`, `HOMEBREW_TAP_TOKEN`, `WINGET_TOKEN`, and
+   `COPILOT_TOKEN` are secrets of this environment, not of the repository.
+   `RELEASE_PLEASE_TOKEN` is a fine-grained token for this repository with
+   contents and pull requests read and write. With it, release-please opens and
+   updates the release pull request as you, so its checks start without
+   approval. `hack/release-tokens.sh` sets all four, skipping any already set;
+   name a secret to renew it, such as
    `hack/release-tokens.sh RELEASE_PLEASE_TOKEN`. Each token lasts a year.
 
 6. **Releases:** immutable releases are on

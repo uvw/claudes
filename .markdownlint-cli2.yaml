@@ -15,3 +15,5 @@ ignores:
   - docs/local
   # The Markdown tools' npm packages: vendored.
   - tools/node_modules
+  # Copilot CLI's npm packages, for the release notes: vendored.
+  - .github/release-notes/node_modules
