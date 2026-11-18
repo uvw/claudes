@@ -21,12 +21,10 @@ import (
 // architecture Go supports.
 const clockTicks = 100
 
-// bootTime is when the system booted, worked out once, so every start time
-// claudes computes in one run uses the same base and two lookups of one
-// process agree exactly. The kernel counts start times on CLOCK_BOOTTIME and
-// rounds them down to the tick. Reading that clock in nanoseconds right after
-// the wall clock puts the base at or before the real boot, so a start time is
-// no later than the real one until the wall clock drifts (listSlack).
+// bootTime is when the system booted, worked out once, so two lookups of one
+// process agree exactly. The kernel counts start times on CLOCK_BOOTTIME,
+// rounded down to the tick. Reading that clock just after the wall clock puts
+// the base at or before the real boot; listSlack covers drift after that.
 var bootTime = sync.OnceValues(func() (time.Time, error) {
 	now := time.Now()
 	var up unix.Timespec

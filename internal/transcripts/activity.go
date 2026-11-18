@@ -32,7 +32,7 @@ type Activity struct {
 	// came from the lead, not the user.
 	Teammate bool `json:"teammate"`
 	// unsure is whether a line did not parse or had a type claudes does not
-	// know, either of which could hide what the counts miss.
+	// know, either of which could hide a prompt or a tool call.
 	unsure bool
 }
 

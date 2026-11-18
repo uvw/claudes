@@ -62,11 +62,10 @@ func isFile(path string) bool {
 const startSlack = 2 * time.Second
 
 // listSlack is how much later than listedAt a process that started before it
-// may seem to start. Linux gives a start time on the boot clock, which claudes
-// turns into wall time with an offset it reads once. NTP slews the wall clock
-// against the boot clock by up to 500 ppm, so the offset drifts by up to 0.5 ms
-// a second after that; 100 ms covers over three minutes of it. macOS and
-// Windows read a start time at or before the real one.
+// may seem to start. On Linux a start time is the boot clock plus an offset
+// read once, and NTP slews the wall clock against the boot clock by at most
+// 500 ppm, so 100 ms covers over three minutes of drift. macOS and Windows
+// never read a start time late.
 const listSlack = 100 * time.Millisecond
 
 // checkStart refuses a process whose PID was reused, so it is not the
