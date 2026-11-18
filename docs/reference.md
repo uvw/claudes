@@ -14,7 +14,7 @@ Pick a format with `-o`:
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
 | `mcp ls`, `mcp profiles`                                    | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
-| `gc`, `pin`, `unpin`                                        | text, json, yaml | text                     |
+| `gc`, `pin`, `unpin`, `session gc`                          | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
 
 A few cases differ:
@@ -227,12 +227,12 @@ Each server has:
 
 #### Reports
 
-`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, and `unpin` print one
-report when they finish:
+`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, `unpin`, and
+`session gc` print one report when they finish:
 
 | Field        | Meaning                                                           |
 | ------------ | ----------------------------------------------------------------- |
-| `command`    | The command, such as `restart`                                    |
+| `command`    | The command, such as `restart` or `session gc`                    |
 | `dryRun`     | Whether it was a dry run                                          |
 | `plan`       | The sessions it set out to act on                                 |
 | `results`    | What happened to each                                             |
@@ -247,8 +247,10 @@ Each session in those lists has `id`, `name`, `cwd`, `result`, `note` (such as
 `will be pinged`), `command` (a resume command to run by hand), and `error`.
 `result` says what happened, such as `restarted` or `failed`, or why the session
 was left out: `pinned`, `interactive`, `leads a team`, `skipped`, or
-`no job id`. `resume --forget` reports each dropped session as `forgotten`.
-Warnings and errors go to stderr as well.
+`no job id`. `resume --forget` reports each dropped session as `forgotten`. In
+`session gc`'s plan, `result` is the kind, such as `empty` or `copy`, and `note`
+the size; each result is `trashed`, `deleted`, `skipped`, or `failed`. Warnings
+and errors go to stderr as well.
 
 ### Colors
 
