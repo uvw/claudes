@@ -218,9 +218,8 @@ func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
 	}
 }
 
-// TestEverySubjectCarriesItsDirectory checks each type a report lists, so its
-// entries give their cwd. A type of this package's with a Dir method is one,
-// and must be listed here.
+// TestEverySubjectCarriesItsDirectory checks that every type a report lists
+// gives its cwd. A type in this package with a Dir method must be listed here.
 func TestEverySubjectCarriesItsDirectory(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "work")
 	subjects := map[string]render.Subject{

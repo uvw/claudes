@@ -57,7 +57,6 @@ type Subject interface {
 	Dir() string
 }
 
-// EntryOf is the entry of s.
 func EntryOf(s Subject) Entry { return Entry{ID: s.ID(), Name: s.Label(), Cwd: s.Dir()} }
 
 // Result is the entry of s with what happened to it. note is how progress
