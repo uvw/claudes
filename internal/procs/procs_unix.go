@@ -46,7 +46,7 @@ func Terminate(pid int, sessionStarted, listedAt time.Time) error {
 // stopAll sends SIGTERM to every process in tree at once, waits up to the
 // grace period for them all, then sends SIGKILL to those left. Each signal
 // goes only to a process with its listed start time, so a reused PID is never
-// signalled. Only a failure to stop root is an error.
+// signaled. Only a failure to stop root is an error.
 func stopAll(root int, tree map[int]time.Time) error {
 	var rootErr error
 	for p, started := range tree {

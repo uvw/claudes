@@ -1,13 +1,24 @@
 # golangci-lint configuration: https://golangci-lint.run/usage/configuration/
-# The default linters (errcheck, govet, ineffassign, and unused), with the
-# exclusions below. staticcheck is left to its own step in CI and in the checks,
-# which runs the version tools/go.mod pins, on each platform's runner.
+# The default linters (errcheck, govet, ineffassign, and unused), plus
+# copyloopvar, errorlint, misspell with US spelling, nilerr, unparam, and
+# usestdlibvars, with the exclusions below. staticcheck is left to its own step
+# in CI and in the checks, which runs the version tools/go.mod pins, on each
+# platform's runner.
 version: "2"
 
 linters:
+  enable:
+    - copyloopvar
+    - errorlint
+    - misspell
+    - nilerr
+    - unparam
+    - usestdlibvars
   disable:
     - staticcheck
   settings:
+    misspell:
+      locale: US
     errcheck:
       exclude-functions:
         # Prints a table to the terminal, which has nothing to do when the write

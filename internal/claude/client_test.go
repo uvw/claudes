@@ -299,7 +299,7 @@ func TestAMissingClaudeIsReportedAsSuch(t *testing.T) {
 	}
 }
 
-func TestACancelledCallSaysSo(t *testing.T) {
+func TestACanceledCallSaysSo(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	err := (&Client{Runner: blockingRunner{}}).Respawn(ctx, "242e8b07")

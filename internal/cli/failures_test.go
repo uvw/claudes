@@ -154,7 +154,7 @@ func TestPassThroughThatCannotRunClaude(t *testing.T) {
 	assertContains(t, h.err.String(), "claudes: cannot run claude agents: executable file not found")
 }
 
-func TestSleepEndsEarlyWhenCancelled(t *testing.T) {
+func TestSleepEndsEarlyWhenCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := sleep(ctx, time.Hour); !errors.Is(err, context.Canceled) {

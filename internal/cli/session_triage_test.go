@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -197,7 +198,7 @@ func TestTriageSaysWhenItCannotReadATranscript(t *testing.T) {
 	}
 	first := p.tallyErr
 	readTally(&p, true)
-	if p.tallyErr != first {
+	if !errors.Is(p.tallyErr, first) {
 		t.Fatal("read the transcript a second time")
 	}
 }

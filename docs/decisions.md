@@ -159,7 +159,7 @@ as `attach`, have none.
 Why: a hung call would otherwise hang claudes for good, between a stop and its
 resume. A stop can be slow and still healthy, so it gets three minutes where a
 listing gets one. A background session that `claude` starts can inherit its
-output and never close it, and cancelling the call does not end that wait. So
+output and never close it, and canceling the call does not end that wait. So
 claudes stops reading five seconds after `claude` exits.
 
 Weighed: no limits, which is how the hang happened; and one short limit for
@@ -181,7 +181,7 @@ starts, and a background session runs in a spare process started minutes or
 hours ahead. So the check refuses only a process that started after the session,
 and never needs the gap to be small.
 
-Weighed: signalling the process group on macOS and Linux, which misses a child
+Weighed: signaling the process group on macOS and Linux, which misses a child
 that started a group of its own. On Windows, where claudes reads the command
 line through `NtQueryInformationProcess`: reading it from the process's memory,
 which needs more access, and asking WMI, which is slow to start. Ctrl-Break

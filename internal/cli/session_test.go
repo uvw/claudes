@@ -376,6 +376,8 @@ func TestSessionResumeBgRefusesAJobThatWouldWakeInTheOldFolder(t *testing.T) {
 
 // stoppedJob is a stopped background session with a transcript and a
 // state.json that holds options.
+//
+//nolint:unparam // Named at the call, as bg is, so the test shows the name.
 func (h *harness) stoppedJob(t *testing.T, name string, options ...string) claude.Session {
 	t.Helper()
 	s := stopped(h.bg(name, "idle"))

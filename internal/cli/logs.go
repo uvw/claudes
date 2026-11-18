@@ -106,10 +106,7 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 		return nil
 	}
 	app.endsOnInterrupt = true
-	for {
-		if app.Sleep(ctx, followEvery) != nil {
-			return nil
-		}
+	for app.Sleep(ctx, followEvery) == nil {
 		events, rewritten, err := log.Next()
 		if err != nil {
 			return err
@@ -122,6 +119,7 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 		}
 		app.printEvents(events, raw)
 	}
+	return nil
 }
 
 // oneEach keeps one event per transcript record, for -o json, which prints the

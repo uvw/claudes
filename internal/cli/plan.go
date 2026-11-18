@@ -69,7 +69,7 @@ func (app *App) gate(f planFlags, question string) (proceed bool, err error) {
 		return false, nil
 	}
 	if f.confirm && !app.confirmed("\n"+question) {
-		app.say("Cancelled.")
+		app.say("Canceled.")
 		return false, errReported
 	}
 	return true, nil

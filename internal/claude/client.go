@@ -66,11 +66,10 @@ type execRunner struct {
 // Check implements Runner. A binary that is not on PATH passes, since running
 // it fails with a clearer error.
 func (r execRunner) Check(args ...string) error {
-	path, err := exec.LookPath(r.Binary)
-	if err != nil {
-		return nil
+	if path, err := exec.LookPath(r.Binary); err == nil {
+		return checkArgs(path, args)
 	}
-	return checkArgs(path, args)
+	return nil
 }
 
 // Run implements Runner.

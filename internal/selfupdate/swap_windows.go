@@ -19,7 +19,7 @@ func swap(staged, exe string) error {
 	}
 	if err := os.Rename(staged, exe); err != nil {
 		if back := os.Rename(old, exe); back != nil {
-			return fmt.Errorf("%w; the old claudes could not be put back either, and is at %s: %v", err, old, back)
+			return fmt.Errorf("%w; the old claudes could not be put back either, and is at %s: %w", err, old, back)
 		}
 		return err
 	}

@@ -141,7 +141,8 @@ func (app *App) ghProvenance(ctx context.Context, archive string, fromGitHub boo
 		return "Build provenance not checked: the archive did not come from GitHub", nil
 	}
 	gh, err := app.Which("gh")
-	if err != nil || exec.CommandContext(ctx, gh, "auth", "status").Run() != nil {
+	signedIn := err == nil && exec.CommandContext(ctx, gh, "auth", "status").Run() == nil
+	if !signedIn {
 		return "Build provenance not checked: it needs the GitHub CLI (gh), signed in", nil
 	}
 	out, err := exec.CommandContext(ctx, gh, "attestation", "verify", archive, "--repo", "uvw/claudes").CombinedOutput()
