@@ -55,6 +55,19 @@ updates:
       npm-tools:
         patterns: ["*"]
 
+  # Copilot CLI, which writes the release notes (docs/releasing.md).
+  - package-ecosystem: npm
+    directory: /.github/release-notes
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      release-notes:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

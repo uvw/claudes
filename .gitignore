@@ -7,6 +7,8 @@
 /docs/demo/bin/
 # npm ci --prefix tools installs the Markdown tools here.
 /tools/node_modules/
+# npm ci --prefix .github/release-notes installs Copilot CLI here.
+/.github/release-notes/node_modules/
 
 # Local agent settings
 .claude/settings.local.json
