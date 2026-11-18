@@ -260,14 +260,14 @@ func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) e
 	}
 	parked := fmt.Sprintf("Still parked: run claudes resume %s, or: %s", shell.Arg(s.ID()), s.ManualCommand())
 	if err := app.waitGone(ctx, s); err != nil {
-		return fmt.Errorf("stopped, but not resumed (%v). %s", err, parked)
+		return fmt.Errorf("stopped, but not resumed (%w). %s", err, parked)
 	}
 	if err := app.resumeSession(ctx, s.SessionID, s.Cwd, prompt); errors.Is(err, errNotYetRunning) {
 		// Kept parked, so claudes resume brings it back if it never came up.
 		app.warn("claudes: %s: %v.", s.Label(), err)
 		return nil
 	} else if err != nil {
-		return fmt.Errorf("stopped, but not resumed (%v). %s", err, parked)
+		return fmt.Errorf("stopped, but not resumed (%w). %s", err, parked)
 	}
 	return app.unpark(s.SessionID)
 }
@@ -293,7 +293,7 @@ func (app *App) stopFailed(ctx context.Context, s claude.Session, stopErr error)
 		}
 		return stopErr
 	}
-	return fmt.Errorf("%v. It may be stopped: it stays parked for claudes resume", stopErr)
+	return fmt.Errorf("%w. It may be stopped: it stays parked for claudes resume", stopErr)
 }
 
 // freshFor is how old a listing may be when claudes acts on a session from

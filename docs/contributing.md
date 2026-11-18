@@ -133,7 +133,9 @@ checked each week:
    them.
 2. Prettier and markdownlint-cli2 are in `tools/package.json`, and `npm ci`
    installs the versions `tools/package-lock.json` locks. Dependabot updates
-   them.
+   them. The `overrides` entry there pins katex, which markdownlint-cli2 pulls
+   in, to a release with a security fix. Remove it once markdownlint-cli2 pulls
+   in a fixed katex on its own.
 3. goreleaser, golangci-lint, syft, zizmor, gitleaks, and komac stay pinned in
    the workflows, each written once per workflow. The weekly Tool pins workflow
    (`.github/workflows/tool-pins.yaml`) keeps an issue labeled `tool-pins` open
@@ -160,8 +162,10 @@ license changes, run it without `--check` to rewrite
 
 [golangci-lint](https://golangci-lint.run/welcome/install/) needs v2.15.0 or
 later, the first to read Go 1.27's packages. It runs once for each `GOOS`, as CI
-does, since each platform's files build only for it. `.golangci.yaml` lists what
-it leaves out, and why, including staticcheck, which runs on its own.
+does, since each platform's files build only for it. It runs the default linters
+(errcheck, govet, ineffassign, and unused), plus copyloopvar, errorlint,
+misspell with US spelling, nilerr, unparam, and usestdlibvars. `.golangci.yaml`
+lists what it leaves out, and why, including staticcheck, which runs on its own.
 [zizmor](https://docs.zizmor.sh/installation/) and
 [gitleaks](https://github.com/gitleaks/gitleaks#installing) need installing at
 the versions `.github/workflows/ci.yaml` pins. zizmor runs offline, as in CI, so

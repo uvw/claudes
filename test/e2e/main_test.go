@@ -134,6 +134,8 @@ func (w *world) bg(name, status string) fake.Session {
 }
 
 // tty adds a running interactive session, which has no job id.
+//
+//nolint:unparam // Named at the call, as bg is, so the test shows the name.
 func (w *world) tty(name string) fake.Session {
 	s := fake.Session{
 		SessionID: sessionID(name), Name: name, Cwd: w.folder(name), Kind: "interactive",

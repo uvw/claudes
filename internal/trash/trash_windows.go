@@ -57,7 +57,7 @@ func Move(path string) error {
 		return fmt.Errorf("cannot move %s to the Recycle Bin: error %#x", path, code)
 	}
 	if op.fAnyOperationsAborted != 0 {
-		return errors.New("moving " + path + " to the Recycle Bin was cancelled")
+		return errors.New("moving " + path + " to the Recycle Bin was canceled")
 	}
 	return nil
 }

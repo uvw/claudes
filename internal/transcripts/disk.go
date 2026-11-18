@@ -155,6 +155,7 @@ func treeSize(dir string) int64 {
 func treeStat(dir string) (int64, time.Time) {
 	var n int64
 	var newest time.Time
+	//nolint:nilerr // A nil return skips what cannot be read.
 	_ = filepath.WalkDir(dir, func(_ string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil

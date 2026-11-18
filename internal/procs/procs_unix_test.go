@@ -17,7 +17,7 @@ func TestStopAllSignalsOnlyAProcessWithItsListedStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !Alive(h.pid) {
-		t.Fatal("a process whose start differs from the listed one, as a reused PID's does, was signalled")
+		t.Fatal("a process whose start differs from the listed one, as a reused PID's does, was signaled")
 	}
 	if err := stopAll(h.pid, map[int]time.Time{h.pid: started}); err != nil {
 		t.Fatal(err)

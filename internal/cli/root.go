@@ -494,7 +494,7 @@ same as Ctrl+T in agent view.`,
 	return root
 }
 
-// interruptContext is Interrupt: ctx, cancelled by the first of stopSignals.
+// interruptContext is Interrupt: ctx, canceled by the first of stopSignals.
 func interruptContext(ctx context.Context) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(ctx, stopSignals...)
 }

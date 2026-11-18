@@ -71,7 +71,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 					app.warn("claudes: %s: %v.", s.Label(), err)
 					err = nil
 				} else if err != nil {
-					err = fmt.Errorf("not resumed (%v). Run: %s", err, s.ManualCommand())
+					err = fmt.Errorf("not resumed (%w). Run: %s", err, s.ManualCommand())
 				}
 				if err != nil {
 					failures = append(failures, failure{s.Label(), err.Error(), s})
