@@ -150,7 +150,7 @@ func (l Lock) hold() (release func(), err error) {
 	if err != nil {
 		// Without its time, release cannot tell this lock from a newer one,
 		// so give it up rather than hold it until it goes stale.
-		removeLock(l.Path)
+		_ = removeLock(l.Path)
 		return nil, err
 	}
 	h := &held{path: l.Path, made: info.ModTime()}
@@ -259,6 +259,6 @@ func (l Lock) isStale(path string) bool {
 // process may have broken it as stale and made its own.
 func (h *held) release() {
 	if info, err := os.Stat(h.path); err == nil && info.ModTime().Equal(h.made) {
-		removeLock(h.path)
+		_ = removeLock(h.path)
 	}
 }
