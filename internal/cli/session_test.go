@@ -440,6 +440,9 @@ func TestSessionMvLeavesAJobThatIsNotStoppedOrIsPaused(t *testing.T) {
 		{"unreadable", "claudes cannot read the options", func(h *harness, s *claude.Session) {
 			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), "{")
 		}},
+		{"no respawnFlags", "claudes cannot read the options", func(h *harness, s *claude.Session) {
+			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, s.SessionID, s.Cwd))
+		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			h := newHarness(t)

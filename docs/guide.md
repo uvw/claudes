@@ -256,6 +256,9 @@ It refuses:
 3. When `DIR` already holds a copy, which may have newer work.
 4. When recent sessions live in project directories claudes would not name that
    way, so it would copy to the wrong one. `--force` goes ahead.
+5. When `claude agents` lists something claudes does not recognize, before it
+   removes a job (see [Compatibility](reference.md#compatibility)). `--force`
+   goes ahead, and also lets `session resume --bg` start one.
 
 `--resume` (`-r`) resumes the copy at once, and `--rm` deletes the original once
 every file of the copy matches it byte for byte. `--rm` refuses the session
@@ -271,7 +274,8 @@ session in the old directory. The next `session resume --bg` starts a new job in
 1. The job is not stopped, such as one that started again after claudes listed
    it.
 2. The session is paused, since `claudes resume` wakes it where it was paused.
-3. claudes cannot read the job's saved options.
+3. claudes cannot read the job's saved options, such as a `state.json` without
+   its `respawnFlags`.
 
 Until such a job is gone, `session resume --bg` refuses the session and prints
 the `claudes gc` command that removes the job.

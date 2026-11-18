@@ -197,20 +197,22 @@ func (s Store) Folder(jobID, sessionID string) string {
 
 // Options are the command-line options Claude Code saved for a background
 // session's job, such as --model, and passes again each time it wakes the
-// job. ok is false when the job is unknown or belongs to another session.
+// job. ok is false when the job is unknown, belongs to another session, or
+// has no respawnFlags: Claude Code writes the key for every job, if only as
+// [], so a missing one means it changed the file.
 func (s Store) Options(jobID, sessionID string) (options []string, ok bool) {
 	data, err := os.ReadFile(s.statePath(jobID))
 	if err != nil {
 		return nil, false
 	}
 	var state struct {
-		SessionID    string   `json:"sessionId"`
-		RespawnFlags []string `json:"respawnFlags"`
+		SessionID    string    `json:"sessionId"`
+		RespawnFlags *[]string `json:"respawnFlags"`
 	}
-	if json.Unmarshal(data, &state) != nil || state.SessionID != sessionID {
+	if json.Unmarshal(data, &state) != nil || state.SessionID != sessionID || state.RespawnFlags == nil {
 		return nil, false
 	}
-	return state.RespawnFlags, true
+	return *state.RespawnFlags, true
 }
 
 // Version is the Claude Code version a background session last ran, read from

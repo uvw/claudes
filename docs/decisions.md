@@ -214,14 +214,16 @@ Pins come from files under `~/.claude/jobs/`, read and written only in
 its process's executable, where the native installer names each version
 (`…/claude/versions/2.1.326`), and otherwise from the job's `cliVersion` there.
 `session mv` reads a stopped job's saved options, `respawnFlags`, before it
-removes the job.
+removes the job, and keeps a job whose `state.json` has no `respawnFlags`.
 
 Why: `claude agents --json` has none of these, and pins, `restart --outdated`,
 and the new job `session resume --bg` starts after a move need them.
 `cliVersion` alone is stale after a respawn: Claude Code keeps the old value
 until the session takes a turn, so a freshly restarted idle session looked
 outdated and `--outdated` would restart it again. An npm install runs as `node`,
-whose path names no version, so it still relies on `cliVersion`.
+whose path names no version, so it still relies on `cliVersion`. Claude Code
+writes `respawnFlags` for every job, if only as `[]`, so a missing key means the
+file changed, and removing the job would lose options such as `--model`.
 
 Weighed: leaving out pins and versions. The Claude Code docs call the directory
 not a stable interface, so a Claude Code update may need claudes to follow it.
