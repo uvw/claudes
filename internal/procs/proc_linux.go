@@ -71,13 +71,14 @@ func stat(pid int) (parent int, started time.Time, err error) {
 	if err != nil {
 		return 0, time.Time{}, err
 	}
-	return parent, boot.Add(time.Duration(ticks) * time.Second / clockTicks), nil
+	// One tick at a time, so years of uptime cannot overflow.
+	return parent, boot.Add(time.Duration(ticks) * (time.Second / clockTicks)), nil
 }
 
 // parseStat reads the parent PID and the start time in clock ticks from a
 // /proc/PID/stat line. The program's name, in parentheses second, may hold
 // spaces and parentheses itself, so the fields are counted from the last ")".
-func parseStat(data []byte) (parent int, ticks uint64, err error) {
+func parseStat(data []byte) (parent int, ticks int64, err error) {
 	i := bytes.LastIndexByte(data, ')')
 	if i < 0 {
 		return 0, 0, fmt.Errorf("no program name in %q", data)
@@ -91,8 +92,11 @@ func parseStat(data []byte) (parent int, ticks uint64, err error) {
 	if parent, err = strconv.Atoi(fields[1]); err != nil {
 		return 0, 0, err
 	}
-	if ticks, err = strconv.ParseUint(fields[19], 10, 64); err != nil {
+	if ticks, err = strconv.ParseInt(fields[19], 10, 64); err != nil {
 		return 0, 0, err
+	}
+	if ticks < 0 {
+		return 0, 0, fmt.Errorf("a negative start time in %q", data)
 	}
 	return parent, ticks, nil
 }

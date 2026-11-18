@@ -12,7 +12,11 @@ func TestParseStatCountsFromTheLastParenthesis(t *testing.T) {
 	if err != nil || parent != 77 || ticks != 123456 {
 		t.Fatalf("parent %d, ticks %d, err %v", parent, ticks, err)
 	}
-	for _, bad := range []string{"4242 no name", "4242 (x) S 77", "4242 (x) S ppid 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19"} {
+	for _, bad := range []string{
+		"4242 no name", "4242 (x) S 77", "4242 (x) S ppid 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19",
+		"4242 (x) S 77 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 -5",
+		"4242 (x) S 77 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 99999999999999999999",
+	} {
 		if _, _, err := parseStat([]byte(bad)); err == nil {
 			t.Errorf("read %q", bad)
 		}
