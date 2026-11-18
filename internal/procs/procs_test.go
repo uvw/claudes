@@ -79,9 +79,10 @@ func TestIsClaudeCommand(t *testing.T) {
 		"claude --resume abc":         true,
 		"/Users/me/.local/bin/claude": true,
 
-		"node /usr/lib/node_modules/@anthropic-ai/claude-code/cli.js": true,
-		"vim /Users/me/.claude/settings.json":                         false,
-		"sh -c sleep 60; echo ~/.claude/settings":                     false,
+		"node /usr/lib/node_modules/@anthropic-ai/claude-code/cli.js":                                                      true,
+		`"C:\Program Files\nodejs\node.exe" C:\Users\me\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\cli.js`: true,
+		"vim /Users/me/.claude/settings.json":                                                                              false,
+		"sh -c sleep 60; echo ~/.claude/settings":                                                                          false,
 		"claudes restart": false,
 	} {
 		if got := isClaudeCommand(command); got != want {
@@ -132,9 +133,9 @@ type helper struct {
 	exited <-chan struct{}
 }
 
-// start runs a copy of the test binary under name in mode. It reaps the
-// process as soon as it exits, and kills it when the test ends.
-func start(t *testing.T, name, mode string) helper {
+// start runs a copy of the test binary under name in mode, with args. It reaps
+// the process as soon as it exits, and kills it when the test ends.
+func start(t *testing.T, name, mode string, args ...string) helper {
 	t.Helper()
 	self, err := os.Executable()
 	if err != nil {
@@ -151,7 +152,7 @@ func start(t *testing.T, name, mode string) helper {
 	if err := os.WriteFile(bin, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(bin)
+	cmd := exec.Command(bin, args...)
 	cmd.Env = append(os.Environ(), helperEnv+"="+mode)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -173,13 +174,27 @@ func start(t *testing.T, name, mode string) helper {
 	return helper{cmd.Process.Pid, out, kill, exited}
 }
 
+// npmPackage is Claude Code's entry point in an npm install. It uses the
+// platform's separators, so Windows checks a command line with backslashes.
+var npmPackage = filepath.Join("node_modules", "@anthropic-ai", "claude-code", "cli.js")
+
 func TestTerminateRefusesAProcessThatIsNotClaude(t *testing.T) {
-	h := start(t, "not-claude", "sleep")
-	if err := Terminate(h.pid, time.Time{}, time.Now()); err == nil || !strings.Contains(err.Error(), "not a claude process") {
-		t.Fatalf("err %v", err)
-	}
-	if !Alive(h.pid) {
-		t.Fatal("the process was killed")
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"not-claude", nil},
+		{"node", []string{filepath.Join("node_modules", "vite", "bin", "vite.js")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := start(t, tc.name, "sleep", tc.args...)
+			if err := Terminate(h.pid, time.Time{}, time.Now()); err == nil || !strings.Contains(err.Error(), "not a claude process") {
+				t.Fatalf("err %v", err)
+			}
+			if !Alive(h.pid) {
+				t.Fatal("the process was killed")
+			}
+		})
 	}
 }
 
@@ -199,30 +214,40 @@ func TestTerminateRefusesAReusedPID(t *testing.T) {
 }
 
 func TestTerminateStopsClaudeAndItsChildren(t *testing.T) {
-	h := start(t, "claude", "tree")
-	var childPID int
-	if _, err := fmt.Fscan(h.out, &childPID); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if p, err := os.FindProcess(childPID); err == nil {
-			p.Kill()
-		}
-	})
-	if err := Terminate(h.pid, time.Time{}, time.Now()); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-h.exited:
-	case <-time.After(5 * time.Second):
-		t.Fatal("claude is still running")
-	}
-	deadline := time.Now().Add(5 * time.Second)
-	for Alive(childPID) && time.Now().Before(deadline) {
-		time.Sleep(50 * time.Millisecond)
-	}
-	if Alive(childPID) {
-		t.Fatal("the child is still running")
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"claude", []string{"--resume", "abc"}},
+		{"node", []string{npmPackage, "--resume", "abc"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := start(t, tc.name, "tree", tc.args...)
+			var childPID int
+			if _, err := fmt.Fscan(h.out, &childPID); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if p, err := os.FindProcess(childPID); err == nil {
+					p.Kill()
+				}
+			})
+			if err := Terminate(h.pid, time.Time{}, time.Now()); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-h.exited:
+			case <-time.After(5 * time.Second):
+				t.Fatalf("%s is still running", tc.name)
+			}
+			deadline := time.Now().Add(5 * time.Second)
+			for Alive(childPID) && time.Now().Before(deadline) {
+				time.Sleep(50 * time.Millisecond)
+			}
+			if Alive(childPID) {
+				t.Fatal("the child is still running")
+			}
+		})
 	}
 }
 

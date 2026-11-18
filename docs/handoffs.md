@@ -56,6 +56,16 @@ Next, in order:
      Recycle Bin holds it, and "Restore" puts it back.
    - **Added:** 2026-11-16, macOS session.
 
+3. **`claudes stop` on an npm-installed Claude Code.**
+   - **What:** `checkClaude` in `internal/procs/procs_windows.go` accepts
+     `node.exe` when its command line runs `@anthropic-ai/claude-code`. CI tests
+     it on a stand-in `node.exe`; no real npm install has been stopped.
+   - **Verify:** install Claude Code with
+     `npm install -g @anthropic-ai/claude-code`, start `claude -n npm-test` in a
+     Windows Terminal tab, and send it one prompt. Run `claudes stop npm-test`:
+     the tab's session ends, with its shells.
+   - **Added:** 2026-11-17, macOS session.
+
 ## Linux only
 
 1. **`claudes session gc` moving to the freedesktop.org trash.**
