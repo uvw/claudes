@@ -36,7 +36,7 @@ adds what an agent needs on top of them.
 | Where claudes keeps its own files         | `internal/paths`, one file per platform            |
 | Atomic writes and lock directories        | `internal/safefile`                                |
 | Colors and the text tables' layout        | `internal/style`                                   |
-| Fitting directories into tables           | `internal/cli/table.go`, `internal/style/dirs.go`  |
+| Fitting directories into tables           | `internal/style`, `internal/cli/output.go`         |
 | CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`          |
 | The checks' tools and their pins          | `tools/`, `.github/workflows/hack/tool-pins.sh`    |
 | `claudes upgrade` and its downloads       | `internal/cli/upgrade.go`, `internal/selfupdate`   |

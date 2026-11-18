@@ -15,7 +15,6 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/version"
 )
@@ -200,19 +199,6 @@ func doing(r row) string {
 		return "-"
 	}
 	return shell.Printable(*r.Doing)
-}
-
-// cut shortens s to at most limit columns, ending it with … when it shortens.
-func cut(s string, limit int) string {
-	s = strings.TrimSpace(s)
-	if style.Width(s) <= limit {
-		return s
-	}
-	r := []rune(s)
-	for len(r) > 0 && style.Width(string(r))+1 > limit {
-		r = r[:len(r)-1]
-	}
-	return strings.TrimRight(string(r), " ") + "…"
 }
 
 func countCell(n *int) string {

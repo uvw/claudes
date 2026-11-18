@@ -5,10 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v4"
+
+	"github.com/uvw/claudes/internal/shell"
+	"github.com/uvw/claudes/internal/style"
 )
 
 // outputFlag is -o/--output for the commands that print sessions. It is a
@@ -73,4 +78,64 @@ func clearStyle(n *yaml.Node) {
 	for _, c := range n.Content {
 		clearStyle(c)
 	}
+}
+
+// dirCell is a table cell that shows the directory path. Every path a table
+// shows goes through it, so writeTable can shorten and fade it.
+func dirCell(path string) string { return style.DirCell(homeShort(path)) }
+
+// tableFit says how writeTable fits a table to the line.
+type tableFit struct {
+	// margin is how many columns go before each line.
+	margin int
+	// fitLast cuts the last column to what is left of the terminal's width
+	// after the directories, or to lastCap off a terminal when lastCap is not
+	// 0.
+	fitLast bool
+	lastCap int
+}
+
+// writeTable writes rows, the first being the header, as style.Table does,
+// after style.Fit fits them to Out's terminal and output.dirs.
+func (app *App) writeTable(w io.Writer, rows [][]string, fit tableFit) error {
+	style.Fit(rows, style.Layout{
+		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), FitLast: fit.fitLast, LastCap: fit.lastCap,
+	}, app.colors.Faint)
+	return style.Table(w, rows)
+}
+
+// dirIn is path as a line of text shows it, such as a heading, shortened as a
+// table shortens a directory. used is how many columns the rest of the line
+// takes.
+func (app *App) dirIn(path string, used int) string {
+	return style.ShortDir(homeShort(path), style.DirRoom(app.width(), used), app.dirs())
+}
+
+// dirs is output.dirs, or its default.
+func (app *App) dirs() string { return cmp.Or(app.Config.Output.Dirs, style.DirsMiddle) }
+
+// width is how many columns the terminal Out writes to has, or 0 when Out is
+// not a terminal.
+func (app *App) width() int {
+	if app.Width == nil {
+		return 0
+	}
+	return max(app.Width(), 0)
+}
+
+// homeShort is path, printable, with ~ for the home directory.
+func homeShort(path string) string {
+	path = shell.Printable(path)
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+	rel, ok := relWithin(home, path)
+	switch {
+	case !ok:
+		return path
+	case rel == ".":
+		return "~"
+	}
+	return "~" + string(filepath.Separator) + rel
 }
