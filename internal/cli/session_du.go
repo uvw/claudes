@@ -125,10 +125,10 @@ session.`,
 			return style.Table(app.Out, table)
 		},
 	}
-	cmd.Flags().StringVar(&in, "in", "", "only sessions run in this directory or below it")
-	cmd.Flags().Var(&since, "since", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
+	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
-	cmd.Flags().IntVar(&top, "top", 0, "also list the N sessions that take the most space")
+	cmd.Flags().IntVarP(&top, "top", "t", 0, "also list the N sessions that take the most space")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }
