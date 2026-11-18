@@ -12,14 +12,11 @@ import (
 	"github.com/uvw/claudes/internal/jobs"
 )
 
-// TestLiveClaude reads the real `claude agents --json` from PATH, and the
-// state.json of each background job it lists, with the code claudes uses.
-// The weekly Compatibility workflow runs it, through
-// .github/workflows/hack/compat-live.sh. CLAUDES_LIVE_CLAUDE=list checks the
-// list, which may be empty, and CLAUDES_LIVE_CLAUDE=job also checks the
-// state.json of a background job. A job that just started has no status and
-// leaves keys out of its state.json, so the test waits up to a minute for the
-// checks to pass before it reports what still fails.
+// TestLiveClaude reads the real `claude agents --json` and each background
+// job's state.json with the code claudes uses. CLAUDES_LIVE_CLAUDE=list allows
+// an empty list, and job needs a background job. A job that just started has
+// no status and leaves keys out of its state.json, so the checks retry for up
+// to a minute.
 func TestLiveClaude(t *testing.T) {
 	mode := os.Getenv("CLAUDES_LIVE_CLAUDE")
 	switch mode {
@@ -55,7 +52,7 @@ func TestLiveClaude(t *testing.T) {
 }
 
 // checkLive lists the real sessions and checks them and each background
-// job's state.json. wantJob makes a list without a background job a problem.
+// job's state.json. With wantJob, a list with no background job fails.
 func checkLive(ctx context.Context, t *testing.T, client *claude.Client, store jobs.Store, wantJob bool) ([]claude.Session, []string) {
 	t.Helper()
 	sessions, err := client.Sessions(ctx, true)

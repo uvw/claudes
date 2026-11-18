@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Checks the formats claudes reads from the installed Claude Code: what
-# `claude agents --json` prints, with no session and then with a background
-# job, and that job's state.json. It needs no login: the job starts and waits
-# for one.
+# Checks what claudes reads from the installed Claude Code: `claude agents
+# --json`, empty and then with a background job, and that job's state.json.
+# The job needs no login: it starts and waits for one.
 #
 # Usage: .github/workflows/hack/compat-live.sh
 # Needs go, jq, and claude on PATH. It trusts a new directory in

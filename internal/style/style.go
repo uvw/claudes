@@ -22,9 +22,9 @@ var On = Palette{on: true}
 // Detect decides whether text written to w gets colors. env is the
 // environment, as os.Environ returns it. It follows the clicolors convention
 // (https://bixense.com/clicolors/), where an empty variable counts as unset.
-// In that order, NO_COLOR turns colors off, CLICOLOR_FORCE but 0 turns them on
-// even when w is not a terminal, and CLICOLOR=0 turns them off. Otherwise w
-// gets colors when it is a terminal that shows them.
+// In that order, NO_COLOR turns colors off, CLICOLOR_FORCE, unless 0, turns
+// them on even when w is not a terminal, and CLICOLOR=0 turns them off.
+// Otherwise w gets colors when it is a terminal that shows them.
 func Detect(w io.Writer, env []string) Palette {
 	if lookup(env, "NO_COLOR") != "" {
 		return Palette{}
