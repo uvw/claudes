@@ -39,7 +39,7 @@ func checkJob(store jobs.Store, s claude.Session) []string {
 	if _, ok := store.Options(s.JobID, s.SessionID); !ok {
 		problems = append(problems, fmt.Sprintf("the state.json of %s has no respawnFlags list", who))
 	}
-	if a := store.Activity(s.JobID); a.Shells == nil || a.PRs == nil {
+	if a := store.Live(s.JobID); a.Shells == nil || a.PRs == nil {
 		problems = append(problems, fmt.Sprintf("the state.json of %s has no readable fan, inFlight, or children", who))
 	}
 	return problems
@@ -106,7 +106,7 @@ func TestTheRealStateFileParses(t *testing.T) {
 	if options, _ := store.Options(s.JobID, s.SessionID); len(options) != 0 {
 		t.Fatalf("options %q", options)
 	}
-	if a := store.Activity(s.JobID); *a.Subagents != 0 || *a.Teammates != 0 || *a.Shells != 0 || *a.PRs != 0 || a.Doing != nil || a.Tokens != nil {
+	if a := store.Live(s.JobID); *a.Subagents != 0 || *a.Teammates != 0 || *a.Shells != 0 || *a.PRs != 0 || a.Doing != nil || a.Tokens != nil {
 		t.Fatalf("activity %+v", a)
 	}
 }

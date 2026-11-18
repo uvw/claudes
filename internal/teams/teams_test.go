@@ -95,14 +95,14 @@ func TestLeftoversSkipRunningAndRecentSessions(t *testing.T) {
 		t.Fatalf("leftovers (-want +got):\n%s", diff)
 	}
 	for _, f := range got {
-		if err := st.Remove(f); err != nil {
+		if err := st.Remove(f, os.RemoveAll); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(f.Path); !os.IsNotExist(err) {
 			t.Fatalf("%s is still there", f.Path)
 		}
 	}
-	if err := st.Remove(Folder{Path: t.TempDir()}); err == nil {
+	if err := st.Remove(Folder{Path: t.TempDir()}, os.RemoveAll); err == nil {
 		t.Fatal("removed a directory outside teams and tasks")
 	}
 }

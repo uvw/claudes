@@ -193,11 +193,7 @@ func (st Store) SessionFiles(s Session) []string {
 		out = append(out, CopyFiles(c)...)
 	}
 	if st.Home != "" && claude.ValidSessionID(s.SessionID) {
-		for _, p := range []string{
-			st.FileHistory(s.SessionID),
-			filepath.Join(st.Home, "session-env", s.SessionID),
-			filepath.Join(st.Home, "debug", s.SessionID+".txt"),
-		} {
+		for _, p := range append([]string{st.FileHistory(s.SessionID)}, st.sessionExtras(s.SessionID)...) {
 			if _, err := os.Lstat(p); err == nil {
 				out = append(out, p)
 			}

@@ -6,7 +6,7 @@ import (
 )
 
 // show prints an Activity's fields, with nil as "-".
-func show(a Activity) string {
+func show(a Live) string {
 	f := func(p any) string {
 		switch v := p.(type) {
 		case *int:
@@ -69,7 +69,7 @@ func TestActivityReadsWhatRunsFromStateJSON(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s := newStore(t)
 			writeJobFile(t, s, "abf00936", "state.json", tc.state)
-			if got := show(s.Activity("abf00936")); got != tc.want {
+			if got := show(s.Live("abf00936")); got != tc.want {
 				t.Errorf("got  %s\nwant %s", got, tc.want)
 			}
 		})
@@ -81,7 +81,7 @@ func TestActivityOfUnknownJobsIsBlank(t *testing.T) {
 	writeJobFile(t, s, "", "state.json", `{"tokens": 5}`)
 	want := "subagents=- teammates=- shells=- tokens=- prs=- doing=-"
 	for _, id := range []string{"", "0b1d30b8", "..", "../jobs"} {
-		if got := show(s.Activity(id)); got != want {
+		if got := show(s.Live(id)); got != want {
 			t.Errorf("%q: %s", id, got)
 		}
 	}

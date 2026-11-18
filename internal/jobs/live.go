@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-// Activity is what a background session's state.json says it is doing, as
+// Live is what a background session's state.json says it is doing, as
 // agent view shows it. Each field is nil when the file lacks it or gives it in
 // a shape claudes does not know, so a change in Claude Code blanks a field
 // rather than failing.
-type Activity struct {
+type Live struct {
 	// Subagents, Teammates, and Shells count the items in flight: subagents,
 	// agent team teammates, and background shells.
 	Subagents, Teammates, Shells *int
@@ -24,10 +24,10 @@ type Activity struct {
 	Doing *string
 }
 
-// Activity reads a background session's state.json. An unknown job, or a file
-// that does not parse, gives an Activity with every field nil.
-func (s Store) Activity(jobID string) Activity {
-	var a Activity
+// Live reads a background session's state.json. An unknown job, or a file
+// that does not parse, gives a Live with every field nil.
+func (s Store) Live(jobID string) Live {
+	var a Live
 	if jobID == "" {
 		return a
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -181,4 +182,63 @@ func TestSessionTriageKeepsRunningParkedAndHostSessions(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf("keep (-want +got):\n%s", diff)
 	}
+}
+
+// A transcript claudes could not read is kept for that reason, not for being
+// too big to read, and is read only once.
+func TestTriageSaysWhenItCannotReadATranscript(t *testing.T) {
+	p := pastSession{Session: transcripts.Session{Path: filepath.Join(t.TempDir(), "gone.jsonl"), Size: 10}}
+	readTally(&p, false)
+	if p.Activity != nil || p.tallyErr == nil {
+		t.Fatalf("activity %+v, err %v", p.Activity, p.tallyErr)
+	}
+	if why := keepWhy(p); why != "cannot read it" {
+		t.Fatalf("kept as %q", why)
+	}
+	first := p.tallyErr
+	readTally(&p, true)
+	if p.tallyErr != first {
+		t.Fatal("read the transcript a second time")
+	}
+}
+
+func TestSessionTriageNarrowsToADirectoryOrARecentWhile(t *testing.T) {
+	h := newHarness(t)
+	work, other := h.folder("work"), h.folder("other")
+	week := 7 * 24 * time.Hour
+	here := h.sessionOf(t, "ping", work, week, prompt("ping"), reply)
+	old := h.sessionOf(t, "old-ping", work, 60*24*time.Hour, prompt("ping"), reply)
+	h.sessionOf(t, "elsewhere", other, week, prompt("ping"), reply)
+	writeFile(t, filepath.Join(h.app.Transcripts.Dir, "-gone", sessionID("orphan"), "subagents", "a.jsonl"), "{}\n")
+	h.aged(t, filepath.Join(h.app.Transcripts.Dir, "-gone"), week)
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	ids := func(args ...string) []string {
+		t.Helper()
+		h.out.Reset()
+		h.ok(t, append([]string{"session", "triage", "-o", "json"}, args...)...)
+		var report triageReport
+		if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, group := range [][]triageItem{report.Remove, report.Review, report.Keep} {
+			for _, it := range group {
+				got = append(got, it.SessionID)
+			}
+		}
+		slices.Sort(got)
+		return got
+	}
+	want := []string{here, old}
+	slices.Sort(want)
+	if got := ids("-i", work); !slices.Equal(got, want) {
+		t.Errorf("-i %s: %v, want %v", work, got, want)
+	}
+	if got := ids("-i", work, "-l", "30d"); !slices.Equal(got, []string{here}) {
+		t.Errorf("-l 30d: %v, want only %s", got, here)
+	}
+	h.out.Reset()
+	h.ok(t, "session", "triage", "-i", work)
+	assertContains(t, h.out.String(), "To remove them: claudes session gc "+here[:8])
 }

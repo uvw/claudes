@@ -51,7 +51,7 @@ func (app *App) lsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
 		Aliases: []string{"list"},
-		Short:   "List sessions, or the ones the targets match: pinned first, then busy, then newest",
+		Short:   "List sessions: pinned first, then busy, then newest",
 		Long: `List sessions: pinned first, then busy, then newest. With targets, lists only
 the sessions they match. A target with *, ?, or [ is a pattern over names and
 ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
@@ -73,8 +73,7 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 			if out.format != "text" {
 				return out.encode(app.Out, rows)
 			}
-			app.printTable(app.Out, rows, wide)
-			return nil
+			return app.printTable(app.Out, rows, wide)
 		},
 	}
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "include finished background sessions")
@@ -100,11 +99,11 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	for _, s := range sessions {
 		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
-		a := app.Jobs.Activity(s.JobID)
+		a := app.Jobs.Live(s.JobID)
 		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
 		if !s.Running() {
 			// state.json can still list what ran when the process ended.
-			r.Subagents, r.Shells = none(r.Subagents), none(r.Shells)
+			r.Subagents, r.Shells = zeroIfKnown(r.Subagents), zeroIfKnown(r.Shells)
 		}
 		rows = append(rows, r)
 	}
@@ -114,18 +113,18 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	return rows, nil
 }
 
-// none is 0 for a known count, and nil for an unknown one.
-func none(n *int) *int {
+// zeroIfKnown is 0 for a known count, and nil for an unknown one.
+func zeroIfKnown(n *int) *int {
 	if n == nil {
 		return nil
 	}
 	return new(int)
 }
 
-func (app *App) printTable(w io.Writer, rows []row, wide bool) {
+func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
 	if len(rows) == 0 {
-		fmt.Fprintln(w, "No sessions.")
-		return
+		_, err := fmt.Fprintln(w, "No sessions.")
+		return err
 	}
 	c := app.colors
 	header := []string{"ID", "PINNED", "KIND", "STATE", "STATUS", agentsHeader}
@@ -157,10 +156,11 @@ func (app *App) printTable(w io.Writer, rows []row, wide bool) {
 		}
 		table = append(table, cells)
 	}
-	_ = app.writeTable(w, table, tableFit{fitLast: wide, lastCap: maxDoing})
-	if outdated {
-		fmt.Fprintln(w, "\n(old): behind the installed Claude Code, see claudes restart --outdated")
+	if err := app.writeTable(w, table, tableFit{fitLast: wide, lastCap: maxDoing}); err != nil || !outdated {
+		return err
 	}
+	_, err := fmt.Fprintln(w, "\n(old): behind the installed Claude Code, see claudes restart --outdated")
+	return err
 }
 
 // agents is the AGENTS cell: lead+N for the agent team a session leads, and

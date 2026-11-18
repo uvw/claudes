@@ -334,8 +334,10 @@ session you are running in, pass its id; claudes allows that one running
 session. It prints the resume command: tell the user to exit this session now
 and run it, since anything said after the copy stays behind. If it says DIR
 already has a copy, tell the user rather than removing that copy: it may hold
-work the original lacks. Pass `--rm` only when the user asked to delete the
-original; it never applies to your own session.
+work the original lacks. Pass `--rm`, which moves the original to the system
+trash, only when the user asked to remove the original, and add `--purge`, which
+deletes it for good, only when they asked for that. Neither applies to your own
+session.
 
 For a stopped background session, `session mv` also removes its job with
 `claude rm` and keeps the job's options, such as `--model`. Afterwards,
@@ -350,7 +352,9 @@ sessions that only ran slash commands, or got one prompt and made no tool call.
 `--older-than 30d` the subagent transcripts of sessions idle that long; say so
 when you show the plan, since those sessions cannot continue an old subagent. It
 moves what it removes to the system trash. Pass `--purge`, which deletes for
-good, only when the user asked for that.
+good, only when the user asked for that. `claudes gc --teams` moves the team
+directories and task lists it removes to the trash too, and takes `--purge` the
+same way.
 
 ## Triage
 
@@ -359,7 +363,8 @@ changes nothing. claudes decides remove and keep by itself. The review group is
 for you: sessions with one prompt, or only slash commands, that changed no file.
 Whether one is worth keeping takes reading what it was asked.
 
-1. Run `claudes session triage -o json`.
+1. Run `claudes session triage -o json`. Add `-i DIR` or `-l 7d` when the user
+   names a directory or a while.
 2. Judge each `review` item from its `activity.firstPrompt` and `lastPrompt`.
    Remove it when its output lives elsewhere or is quick to get again: a commit
    message now in git, a session id that was found, an evaluation result, or a

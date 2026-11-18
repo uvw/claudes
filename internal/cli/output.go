@@ -16,7 +16,7 @@ import (
 	"github.com/uvw/claudes/internal/style"
 )
 
-// outputFlag is -o/--output for the commands that print sessions. It is a
+// outputFlag is -o/--output for the commands that list or report. It is a
 // pflag.Value, so a bad format fails when the flags are parsed.
 type outputFlag struct{ format string }
 
@@ -80,9 +80,13 @@ func clearStyle(n *yaml.Node) {
 	}
 }
 
-// dirCell is a table cell that shows the directory path. Every path a table
-// shows goes through it, so writeTable can shorten and fade it.
-func dirCell(path string) string { return style.DirCell(homeShort(path)) }
+// dirCell is a table cell that shows the directory path, in a column headed
+// dirHeader. Every path a table shows goes through it.
+func dirCell(path string) string { return homeShort(path) }
+
+// dirHeader heads a table's directory column, which writeTable shortens to fit
+// and fades.
+const dirHeader = "DIR"
 
 // tableFit says how writeTable fits a table to the line.
 type tableFit struct {
@@ -98,8 +102,16 @@ type tableFit struct {
 // writeTable writes rows, the first being the header, as style.Table does,
 // after style.Fit fits them to Out's terminal and output.dirs.
 func (app *App) writeTable(w io.Writer, rows [][]string, fit tableFit) error {
+	var dirCols []int
+	if len(rows) > 0 {
+		for i, h := range rows[0] {
+			if h == dirHeader {
+				dirCols = append(dirCols, i)
+			}
+		}
+	}
 	style.Fit(rows, style.Layout{
-		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), FitLast: fit.fitLast, LastCap: fit.lastCap,
+		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), DirCols: dirCols, FitLast: fit.fitLast, LastCap: fit.lastCap,
 	}, app.colors.Faint)
 	return style.Table(w, rows)
 }
@@ -140,16 +152,20 @@ func homeShort(path string) string {
 	return "~" + string(filepath.Separator) + rel
 }
 
+// dirRow is one row of the table where and session where print.
+type dirRow struct{ id, dir, name string }
+
 // printDirs prints one directory bare, so cd "$(claudes where NAME)" works, or
-// several as name, id, and directory, so sessions that share a name stay apart.
-func (app *App) printDirs(found [][3]string) error {
+// several as a table of id, directory, and name, so sessions that share a name
+// stay apart.
+func (app *App) printDirs(found []dirRow) error {
 	if len(found) == 1 {
-		_, err := fmt.Fprintln(app.Out, shell.Printable(found[0][2]))
+		_, err := fmt.Fprintln(app.Out, shell.Printable(found[0].dir))
 		return err
 	}
-	table := make([][]string, 0, len(found))
+	table := [][]string{{"ID", "DIR", "NAME"}}
 	for _, f := range found {
-		table = append(table, []string{shell.Printable(f[0]), f[1], dirCell(f[2])})
+		table = append(table, []string{f.id, dirCell(f.dir), nameCell(f.name)})
 	}
 	return app.writeTable(app.Out, table, tableFit{})
 }

@@ -149,7 +149,7 @@ func TestSessionSearchTop(t *testing.T) {
 	}
 	h.err.Reset()
 	h.fails(t, "session", "search", "zebra", "--top", "-1")
-	assertContains(t, h.err.String(), "--top takes 0 or more, not -1")
+	assertContains(t, h.err.String(), `invalid argument "-1" for "-t, --top" flag: must be a whole number, 0 or more`)
 	h.fails(t, "session", "search", "zebra", "--limit", "2")
 }
 
@@ -290,6 +290,9 @@ func TestSessionSearchRefusesBadFlags(t *testing.T) {
 			t.Errorf("%q succeeded", args)
 		}
 	}
+	h.err.Reset()
+	h.fails(t, "session", "search", "zebra", "--who", "tool")
+	assertContains(t, h.err.String(), `invalid argument "tool" for "--who" flag: must be you or claude, not "tool"`)
 	h.err.Reset()
 	h.fails(t, "session", "search", "-e", "(")
 	assertContains(t, h.err.String(), "-e: ")

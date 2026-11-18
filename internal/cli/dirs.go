@@ -79,3 +79,12 @@ func dirGone(dir string) bool {
 	_, err := os.Stat(dir)
 	return errors.Is(err, fs.ErrNotExist)
 }
+
+// remover is how a command removes a file or directory: it moves it to the
+// system trash, or with --purge deletes it for good.
+func (app *App) remover(purge bool) func(string) error {
+	if purge {
+		return os.RemoveAll
+	}
+	return app.Trash
+}

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -328,7 +329,25 @@ func TestSessionMvRmDeletesTheOriginalOnceCopied(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	assertContains(t, h.out.String(), "removed the original")
+	assertContains(t, h.out.String(), "moved the original from")
+	if len(h.trashed) != 2 {
+		t.Fatalf("trashed %q, want the transcript and its sidecar", h.trashed)
+	}
+}
+
+func TestSessionMvRmPurgeDeletesForGood(t *testing.T) {
+	h := newHarness(t)
+	from := h.folder("from")
+	id := h.transcript(t, "plan", from, time.Hour)
+	src := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(from), id+".jsonl")
+
+	h.fails(t, "session", "mv", "--purge", "plan", h.folder("to"))
+	assertContains(t, h.err.String(), "--purge goes with --rm")
+	h.ok(t, "session", "mv", "--rm", "--purge", "plan", h.folder("to"))
+	if len(h.trashed) != 0 || exists(src) {
+		t.Fatalf("trashed %q, or kept %s", h.trashed, src)
+	}
+	assertContains(t, h.out.String(), "deleted the original from")
 }
 
 func TestSessionMvRmRefusesTheHost(t *testing.T) {
@@ -545,6 +564,33 @@ func TestSessionShowWritesTimesInUTCAndAnEmptyCopyList(t *testing.T) {
 	}
 }
 
+// A project directory's name reaches session show's older copies as is, so
+// an escape sequence in it must not reach the terminal.
+func TestSessionShowPrintsOlderCopiesPrintable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows file names cannot hold control characters")
+	}
+	h := newHarness(t)
+	id := h.transcript(t, "plan", h.folder("one"), time.Hour)
+	src := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(h.folder("one")), id+".jsonl")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evil := filepath.Join(h.app.Transcripts.Dir, "-evil\x1b[2J", id+".jsonl")
+	writeFile(t, evil, string(data))
+	old := h.now.Add(-48 * time.Hour)
+	if err := os.Chtimes(evil, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	h.ok(t, "session", "show", "plan")
+	assertContains(t, h.out.String(), "older copy:")
+	if strings.ContainsRune(h.out.String(), 0x1b) {
+		t.Fatalf("session show printed an escape sequence: %q", h.out.String())
+	}
+}
+
 // A transcript can record its directory through a link, as macOS does for the
 // temporary directory under /var.
 func TestSessionCommandsSeeAFolderRecordedThroughALink(t *testing.T) {
@@ -596,7 +642,7 @@ func TestSessionLsShowsSizesAndSortsBySize(t *testing.T) {
 	}
 
 	h.fails(t, "session", "ls", "--sort", "name")
-	if !strings.Contains(h.err.String(), "--sort takes active or size") {
+	if !strings.Contains(h.err.String(), `for "--sort" flag: must be active or size, not "name"`) {
 		t.Fatalf("stderr:\n%s", h.err)
 	}
 }
@@ -695,6 +741,9 @@ func TestSessionDuTopListsTheBiggestSessionsWithTheirSidecarShare(t *testing.T) 
 	if !strings.Contains(h.out.String(), `"top": []`) {
 		t.Fatalf("top is not an empty list without --top:\n%s", h.out)
 	}
+
+	h.fails(t, "session", "du", "--top", "-1")
+	assertContains(t, h.err.String(), `invalid argument "-1" for "-t, --top" flag: must be a whole number, 0 or more`)
 }
 
 func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {

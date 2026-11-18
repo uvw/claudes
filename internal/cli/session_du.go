@@ -43,7 +43,7 @@ type duReport struct {
 func (app *App) sessionDuCommand() *cobra.Command {
 	var in string
 	var since days
-	var top int
+	var top countFlag
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "du [TARGET...]",
@@ -54,8 +54,8 @@ func (app *App) sessionDuCommand() *cobra.Command {
 results (SIDECARS), older copies session mv left, and Claude Code's backups of
 the files each session edited (HISTORY).
 
-Leftovers are sidecar and file-history directories whose transcript is gone. They
-count only when no target, --in, or --since narrows the sessions.
+Leftovers are sidecar and file-history directories whose transcript is gone.
+They count only when no target, --in, or --since narrows the sessions.
 
 --top N also lists the N sessions that take the most space, with the share their
 sidecars take: tool results and subagent transcripts are often most of a big
@@ -81,7 +81,7 @@ session.`,
 				return err
 			}
 			report := duTally(list, leftovers)
-			report.Top = duTop(list, top)
+			report.Top = duTop(list, top.n)
 			if out.format != "text" {
 				return out.encode(app.Out, report)
 			}
@@ -103,7 +103,7 @@ session.`,
 					size += l.Size
 				}
 				table = append(table, []string{style.Size(size), "-", "-", "-", "-", "-",
-					app.colors.Faint(fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers)))})
+					fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers))})
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = style.Size(report.Total)
@@ -126,7 +126,7 @@ session.`,
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
-	cmd.Flags().IntVarP(&top, "top", "t", 0, "also list the N sessions that take the most space")
+	cmd.Flags().VarP(&top, "top", "t", "also list the N sessions that take the most space")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }

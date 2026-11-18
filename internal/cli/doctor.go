@@ -31,7 +31,7 @@ func (app *App) doctorCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Check that the installed Claude Code still looks the way claudes expects",
+		Short: "Check that Claude Code still looks the way claudes expects",
 		Long: `Check claude's version against the range claudes was tested with, its command
 line for the commands and flags claudes calls, claude agents --json and
 pins.json for values claudes does not recognize, and claudes' own files.
@@ -173,13 +173,13 @@ func (app *App) checkPins() check {
 // moment could lose one of them.
 func (app *App) checkPinsLock() check {
 	const name = "pins lock"
-	if app.ClaudeConfig == "" {
+	if app.MCP.ConfigFile == "" {
 		return checkWarn(name, "cannot find Claude Code's settings file, so cannot tell how it writes pins.json")
 	}
-	on, found, err := compat.FlagOn(app.ClaudeConfig, compat.PinsFlag)
+	on, found, err := app.MCP.Feature(compat.PinsFlag)
 	switch {
 	case err != nil:
-		return checkWarn(name, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.ClaudeConfig, err))
+		return checkWarn(name, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.MCP.ConfigFile, err))
 	case on:
 		return checkWarn(name, compat.PinsFlag+" is on, so Claude Code may write pins.json without pins.json.lock: "+
 			"pinning from agent view and from claudes at the same moment could lose one of the pins")

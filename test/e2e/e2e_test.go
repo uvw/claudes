@@ -90,7 +90,8 @@ func TestLsAndWhereMatchWordsAndPatterns(t *testing.T) {
 		t.Fatalf("where by id prefix printed %q", r.stdout)
 	}
 	r := w.ok("where", "plan*")
-	if lines := strings.Split(strings.TrimSpace(r.stdout), "\n"); len(lines) != 2 || !strings.HasPrefix(lines[0], "plan-") {
+	if lines := strings.Split(strings.TrimSpace(r.stdout), "\n"); len(lines) != 3 || !strings.HasPrefix(lines[0], "ID") ||
+		!strings.HasSuffix(lines[1], "plan-one") && !strings.HasSuffix(lines[1], "plan-two") {
 		t.Fatalf("where plan* printed:\n%s", r.stdout)
 	}
 	r = w.ok("ls", "-o", "yaml", "other")

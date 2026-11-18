@@ -18,10 +18,10 @@ func (app *App) pingCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping TARGET [MESSAGE]",
 		Short: "Send a background session a message, or a prompt to carry on",
-		Long: `Send a background session MESSAGE, or without one a prompt to carry on (ping.text
-in the config). A running session is stopped and resumed with it, because the
-claude command line has no way to send a message to a running session, so a turn
-in progress is cut off. A stopped session is resumed with it.
+		Long: `Send a background session MESSAGE, or without one a prompt to carry on
+(ping.text in the config). A running session is stopped and resumed with it,
+because the claude command line has no way to send a message to a running
+session, so a turn in progress is cut off. A stopped session is resumed with it.
 
 restart --ping prompts every session that was mid-turn, for more than one.`,
 		Args: cobra.RangeArgs(1, 2),

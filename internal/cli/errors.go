@@ -21,7 +21,7 @@ const (
 	exitSomeFailed  = 3   // the command reported sessions it could not handle
 	exitRefused     = 4   // a safety or compatibility check stopped it
 	exitBusy        = 5   // another claudes was changing sessions
-	exitInterrupted = 130 // Ctrl-C
+	exitInterrupted = 130 // Ctrl-C, or SIGTERM or SIGHUP on Unix
 )
 
 // errBusy means another claudes holds the run lock.

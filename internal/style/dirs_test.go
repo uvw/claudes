@@ -103,8 +103,8 @@ func TestCutEndsWhatItShortensWithAnEllipsis(t *testing.T) {
 		{"one word too many", 10, "one word…"},
 		{"日本語のテキスト", 7, "日本語…"},
 	} {
-		if got := Cut(tc.in, tc.limit); got != tc.want || Width(got) > tc.limit {
-			t.Errorf("Cut(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
+		if got := cut(tc.in, tc.limit); got != tc.want || Width(got) > tc.limit {
+			t.Errorf("cut(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
 		}
 	}
 }
@@ -124,8 +124,10 @@ func TestFitGivesADirectoryTheRoomTheOtherColumnsLeave(t *testing.T) {
 		{Layout{Width: 10, Dirs: DirsFish}, Fish(path, MinDir)},
 		{Layout{Width: 10, Dirs: DirsFull}, path},
 	} {
-		rows := [][]string{{"ID", "DIR", "NAME"}, {"0123abcd", DirCell(path), "api"}}
-		Fit(rows, tc.layout, faint)
+		rows := [][]string{{"ID", "DIR", "NAME"}, {"0123abcd", path, "api"}}
+		l := tc.layout
+		l.DirCols = []int{1}
+		Fit(rows, l, faint)
 		if rows[1][1] != "<"+tc.want+">" || rows[0][1] != "DIR" {
 			t.Errorf("%+v: got %q, want %q", tc.layout, rows[1][1], tc.want)
 		}
@@ -135,16 +137,16 @@ func TestFitGivesADirectoryTheRoomTheOtherColumnsLeave(t *testing.T) {
 func TestFitCutsTheLastColumnToWhatIsLeft(t *testing.T) {
 	path, doing := filepath.FromSlash(deep), strings.Repeat("checking the build ", 5)
 	plain := func(s string) string { return s }
-	rows := [][]string{{"DIR", "DOING"}, {DirCell(path), doing}}
-	Fit(rows, Layout{Width: 50, Dirs: DirsMiddle, FitLast: true}, plain)
+	rows := [][]string{{"DIR", "DOING"}, {path, doing}}
+	Fit(rows, Layout{Width: 50, Dirs: DirsMiddle, DirCols: []int{0}, FitLast: true}, plain)
 	if got := Width(rows[1][0]); got > 50-2-MinLast {
 		t.Errorf("DIR %q takes %d columns", rows[1][0], got)
 	}
 	if got := Width(rows[1][0]) + 2 + Width(rows[1][1]); got > 50 || Width(rows[1][1]) < MinLast-1 {
 		t.Errorf("the line is %d columns: %q", got, rows[1])
 	}
-	rows = [][]string{{"DIR", "DOING"}, {DirCell(path), doing}}
-	Fit(rows, Layout{Dirs: DirsMiddle, FitLast: true, LastCap: 20}, plain)
+	rows = [][]string{{"DIR", "DOING"}, {path, doing}}
+	Fit(rows, Layout{Dirs: DirsMiddle, DirCols: []int{0}, FitLast: true, LastCap: 20}, plain)
 	if Width(rows[1][1]) > 20 || Width(rows[1][0]) > MaxDir {
 		t.Errorf("off a terminal: %q", rows[1])
 	}

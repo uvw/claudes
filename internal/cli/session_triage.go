@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,9 +30,9 @@ type triageItem struct {
 	Size       int64     `json:"size"`
 	LastActive time.Time `json:"lastActive"`
 	// Why is the kind session gc removes it as, or why it is kept.
-	Why        string                `json:"why"`
-	LastPrompt string                `json:"lastPrompt"`
-	Activity   *transcripts.Activity `json:"activity"`
+	Why        string             `json:"why"`
+	LastPrompt string             `json:"lastPrompt"`
+	Activity   *transcripts.Tally `json:"activity"`
 }
 
 type triageReport struct {
@@ -43,6 +44,8 @@ type triageReport struct {
 }
 
 func (app *App) sessionTriageCommand() *cobra.Command {
+	var in string
+	var since days
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "triage",
@@ -56,25 +59,33 @@ nothing.
           its prompts
   keep    everything else, with the reason
 
+-i and -l sort only the sessions run in a directory, or active within a
+while, and leave out leftover directories, as session du does.
+
 -o json gives each review item's first and last prompt, so an agent can judge
 them. Remove the sessions you pick with claudes session gc ID...`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			report, err := app.triage(cmd.Context())
+			report, err := app.triage(cmd.Context(), in, since.d)
 			if err != nil {
 				return err
 			}
 			if out.format != "text" {
 				return out.encode(app.Out, report)
 			}
-			return app.printTriage(report)
+			return app.printTriage(report, in != "" || since.d > 0)
 		},
 	}
+	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
+	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().Lookup("since").DefValue = ""
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }
 
-func (app *App) triage(ctx context.Context) (triageReport, error) {
+// triage sorts the past sessions run in the directory in, and active within
+// since, or every one when both are unset.
+func (app *App) triage(ctx context.Context, in string, since time.Duration) (triageReport, error) {
 	report := triageReport{Remove: []triageItem{}, Review: []triageItem{}, Keep: []triageItem{}}
 	list, err := app.pastSessions(ctx)
 	if err != nil {
@@ -87,7 +98,12 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 	if err != nil {
 		return report, err
 	}
-	items, err := app.gcPick(list, keep, gcFlags{empty: true, trivial: true, copies: true, leftovers: true})
+	// A leftover belongs to no session the filter could match.
+	narrowed := in != "" || since > 0
+	if list, err = app.filterPast(list, nil, in, since); err != nil {
+		return report, err
+	}
+	items, err := app.gcPick(list, keep, gcFlags{empty: true, trivial: true, copies: true, leftovers: !narrowed})
 	if err != nil {
 		return report, err
 	}
@@ -100,7 +116,7 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 		t := triageItem{sessionRef: sessionRef{ID: it.ID(), SessionID: it.sessionID, Name: it.name}, Cwd: it.dir, Size: it.size, Why: string(it.why)}
 		if p, ok := byID[it.sessionID]; ok && (it.why == kindEmpty || it.why == kindTrivial) {
 			removed[it.sessionID] = true
-			readActivity(&p, false)
+			readTally(&p, false)
 			t = triageOf(p, string(it.why))
 			t.Size = it.size
 		}
@@ -120,7 +136,7 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 			report.Keep = append(report.Keep, triageOf(p, "changed in the last day"))
 			continue
 		}
-		readActivity(&p, false)
+		readTally(&p, false)
 		if why := keepWhy(p); why != "" {
 			report.Keep = append(report.Keep, triageOf(p, why))
 			continue
@@ -135,8 +151,10 @@ func (app *App) triage(ctx context.Context) (triageReport, error) {
 func keepWhy(p pastSession) string {
 	a := p.Activity
 	switch {
+	case a == nil && p.tallyErr != nil:
+		return "cannot read it"
 	case a == nil:
-		return "bigger than " + style.Size(transcripts.ActivityLimit)
+		return "bigger than " + style.Size(transcripts.TallyLimit)
 	case p.NameSource == transcripts.NameCustom:
 		return "named with /rename"
 	case a.Teammate:
@@ -158,9 +176,12 @@ func triageOf(p pastSession, why string) triageItem {
 		Size: p.Disk.Total, LastActive: p.LastActive, Why: why, LastPrompt: p.LastPrompt, Activity: p.Activity}
 }
 
-func (app *App) printTriage(r triageReport) error {
+// printTriage prints r. narrowed is set when -i or -l left sessions out, so
+// the remove command names each session rather than kinds.
+func (app *App) printTriage(r triageReport, narrowed bool) error {
+	say := func(format string, args ...any) { fmt.Fprintf(app.Out, format+"\n", args...) }
 	if len(r.Remove) > 0 {
-		app.say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
+		say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
 		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
 			table = append(table, []string{dash(t.ID), t.Why, style.Size(t.Size), dirCell(t.Cwd), nameCell(t.Label())})
@@ -168,10 +189,10 @@ func (app *App) printTriage(r triageReport) error {
 		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
 		}
-		app.say("\nTo remove them: %s\n", gcCommandFor(r.Remove))
+		say("\nTo remove them: %s\n", removeCommand(r.Remove, narrowed))
 	}
 	if len(r.Review) > 0 {
-		app.say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), style.Size(triageSize(r.Review)))
+		say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), style.Size(triageSize(r.Review)))
 		table := [][]string{{"ID", "TOOLS", "SIZE", "NAME", "FIRST PROMPT"}}
 		for _, t := range r.Review {
 			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(t.Label()),
@@ -180,7 +201,7 @@ func (app *App) printTriage(r triageReport) error {
 		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
 		}
-		app.say("\nRemove the ones you pick with: claudes session gc ID...\n")
+		say("\nRemove the ones you pick with: claudes session gc ID...\n")
 	}
 	counts := map[string]int{}
 	for _, t := range r.Keep {
@@ -191,9 +212,9 @@ func (app *App) printTriage(r triageReport) error {
 		reasons = append(reasons, why)
 	}
 	slices.SortFunc(reasons, func(a, b string) int { return cmp.Or(cmp.Compare(counts[b], counts[a]), cmp.Compare(a, b)) })
-	app.say("Keep %d session(s):", len(r.Keep))
+	say("Keep %d session(s):", len(r.Keep))
 	for _, why := range reasons {
-		app.say("  %4d  %s", counts[why], why)
+		say("  %4d  %s", counts[why], why)
 	}
 	return nil
 }
@@ -226,6 +247,33 @@ func gcCommandFor(items []triageItem) string {
 		if kinds[k.why] {
 			cmd += " " + k.flag
 		}
+	}
+	return cmd
+}
+
+// removeCommand is the session gc command that removes items. Unless narrowed,
+// that is gcCommandFor's. Narrowed, it names each session, since session gc's
+// kinds would take sessions -i or -l left out, and an older copy, which has no
+// id, is left to session gc --copies.
+func removeCommand(items []triageItem, narrowed bool) string {
+	if !narrowed {
+		return gcCommandFor(items)
+	}
+	var ids []string
+	copies := false
+	for _, t := range items {
+		if t.ID == "" {
+			copies = true
+		} else {
+			ids = append(ids, t.ID)
+		}
+	}
+	cmd := "claudes session gc " + strings.Join(ids, " ")
+	if len(ids) == 0 {
+		cmd = "claudes session gc --copies"
+	}
+	if copies && len(ids) > 0 {
+		cmd += ", and claudes session gc --copies for the older copies, which have no id"
 	}
 	return cmd
 }

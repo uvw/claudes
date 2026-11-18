@@ -15,7 +15,7 @@ import (
 func (app *App) configEditCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "edit",
-		Short: "Open config.yaml in $VISUAL or $EDITOR, starting it if it is missing",
+		Short: "Open config.yaml in $VISUAL or $EDITOR, creating it if missing",
 		Args:  cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			if err := app.configPathErr(); err != nil {

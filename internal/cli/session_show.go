@@ -24,7 +24,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			readActivity(&p, true)
+			readTally(&p, true)
 			if out.format != "text" {
 				return out.encode(app.Out, p)
 			}
@@ -51,7 +51,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				fmt.Fprintf(tw, "%s:\t%s\n", kv[0], dash(shell.Printable(kv[1])))
 			}
 			for _, c := range p.Copies {
-				fmt.Fprintf(tw, "older copy:\t%s\n", c)
+				fmt.Fprintf(tw, "older copy:\t%s\n", shell.Printable(c))
 			}
 			return tw.Flush()
 		},
@@ -84,7 +84,7 @@ func nameWithSource(name, source string) string {
 
 // activity is what a session did, such as "3 prompts, 1 command, 12 tool
 // calls, 2 edits".
-func activity(a *transcripts.Activity) string {
+func activity(a *transcripts.Tally) string {
 	if a == nil {
 		return ""
 	}
@@ -96,7 +96,7 @@ func activity(a *transcripts.Activity) string {
 	return s
 }
 
-func firstPrompt(a *transcripts.Activity) string {
+func firstPrompt(a *transcripts.Tally) string {
 	if a == nil {
 		return ""
 	}

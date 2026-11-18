@@ -89,10 +89,8 @@ type App struct {
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
-	// ClaudeConfig is Claude Code's settings file, ~/.claude.json, which
-	// claudes only reads, for the flags doctor reports.
-	ClaudeConfig string
-	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads.
+	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads, and
+	// the one reader of ~/.claude.json, whose feature flags doctor reports.
 	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
@@ -122,8 +120,9 @@ type App struct {
 	// Config is config.yaml, read from ConfigPath. Flags always win over it.
 	Config     config.Config
 	ConfigPath string
-	// Interrupt returns a context that the first Ctrl-C cancels, and the
-	// function that restores the default, so a second Ctrl-C ends claudes.
+	// Interrupt returns a context that the first Ctrl-C, or on Unix SIGTERM or
+	// SIGHUP, cancels, and the function that restores the default, so a second
+	// one ends claudes.
 	Interrupt func(context.Context) (context.Context, context.CancelFunc)
 	// Width is how many columns the terminal Out writes to has, or 0 when Out
 	// is not a terminal.
@@ -176,17 +175,15 @@ func newApp() *App {
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
 		Edit:           editFile,
-		Interrupt: func(ctx context.Context) (context.Context, context.CancelFunc) {
-			return signal.NotifyContext(ctx, os.Interrupt)
-		},
-		Which:       exec.LookPath,
-		Chdir:       os.Chdir,
-		HTTP:        &http.Client{Timeout: 5 * time.Minute},
-		ReleasesURL: selfupdate.Releases,
-		Executable:  os.Executable,
-		HostID:      os.Getenv("CLAUDE_CODE_SESSION_ID"),
-		HostJob:     hostJob(os.Getenv("CLAUDE_JOB_DIR")),
-		Environ:     os.Environ,
+		Interrupt:      interruptContext,
+		Which:          exec.LookPath,
+		Chdir:          os.Chdir,
+		HTTP:           &http.Client{Timeout: 5 * time.Minute},
+		ReleasesURL:    selfupdate.Releases,
+		Executable:     os.Executable,
+		HostID:         os.Getenv("CLAUDE_CODE_SESSION_ID"),
+		HostJob:        hostJob(os.Getenv("CLAUDE_JOB_DIR")),
+		Environ:        os.Environ,
 	}
 	app.Provenance = app.ghProvenance
 	app.Width = func() int { return style.TerminalWidth(app.Out) }
@@ -203,7 +200,6 @@ func newApp() *App {
 	// A missing Claude Code directory is setupErr's to report, through Jobs.
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
-	app.ClaudeConfig, _ = paths.ClaudeConfigFile()
 	app.MCP, _ = mcp.DefaultStore()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
@@ -354,7 +350,7 @@ func (app *App) lock(cmd *cobra.Command) error {
 	if f := cmd.Flags().Lookup("dry-run"); f != nil && f.Value.String() == "true" {
 		return nil
 	}
-	release, err := safefile.Lock{Path: app.LockPath, Stale: lockStale, Attempts: 1}.Acquire()
+	release, err := safefile.Lock{Path: app.LockPath, Stale: lockStale, Attempts: 1, Owner: app.lockOwner(), Gone: app.lockOwnerGone}.Acquire()
 	if errors.Is(err, safefile.ErrHeld) {
 		return fmt.Errorf("%w, so this one changed nothing. Try again once it ends; "+
 			"a claudes that crashed frees %s within %s", errBusy, app.LockPath, lockStale)
@@ -365,6 +361,29 @@ func (app *App) lock(cmd *cobra.Command) error {
 	app.unlockRun = release
 	app.log().Debug("took the run lock", "path", app.LockPath)
 	return nil
+}
+
+// lockOwner is what the run lock's owner file holds: this process's PID and
+// when it started, so a run that wakes from a suspend keeps its lock.
+func (app *App) lockOwner() []byte {
+	pid := os.Getpid()
+	var started time.Time
+	if app.Started != nil {
+		started, _ = app.Started(pid)
+	}
+	return fmt.Appendf(nil, "%d %s\n", pid, started.Format(time.RFC3339Nano))
+}
+
+// lockOwnerGone reports whether the claudes a run lock's owner file names has
+// ended. An owner file claudes cannot read names no one.
+func (app *App) lockOwnerGone(owner []byte) bool {
+	var pid int
+	var at string
+	if _, err := fmt.Sscan(string(owner), &pid, &at); err != nil || pid <= 0 || app.Alive == nil {
+		return true
+	}
+	started, err := time.Parse(time.RFC3339Nano, at)
+	return err != nil || !app.Alive(pid, started)
 }
 
 // unlock releases the run lock, if this run holds it.
@@ -467,7 +486,17 @@ same as Ctrl+T in agent view.`,
 	if ps, _, err := root.Find([]string{"completion", "powershell"}); err == nil && ps.Name() == "powershell" {
 		ps.Aliases = append(ps.Aliases, "pwsh")
 	}
+	// Flag help wraps to fit 80 columns, as the rest of the help does.
+	root.SetUsageTemplate(strings.NewReplacer(
+		".LocalFlags.FlagUsages", ".LocalFlags.FlagUsagesWrapped 80",
+		".InheritedFlags.FlagUsages", ".InheritedFlags.FlagUsagesWrapped 80",
+	).Replace(root.UsageTemplate()))
 	return root
+}
+
+// interruptContext is Interrupt: ctx, cancelled by the first of stopSignals.
+func interruptContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(ctx, stopSignals...)
 }
 
 func sleep(ctx context.Context, d time.Duration) error {

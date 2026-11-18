@@ -33,7 +33,7 @@ func (app *App) doctorEnvCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Print versions, the files claudes uses, and the variables that move them",
+		Short: "Print versions, claudes' files, and the variables that move them",
 		Long: `Print claudes' and claude's versions, where claudes finds its own files and
 Claude Code's, and the environment variables that change either. Paste it into
 a bug report.`,

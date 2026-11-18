@@ -265,10 +265,11 @@ func newest(dir string) (time.Time, error) {
 	return t, err
 }
 
-// Remove deletes a directory Leftovers returned.
-func (st Store) Remove(f Folder) error {
+// Remove removes a directory Leftovers returned with remove: a move to the
+// system trash, or os.RemoveAll to delete it for good.
+func (st Store) Remove(f Folder, remove func(string) error) error {
 	if filepath.Dir(f.Path) != st.Teams && filepath.Dir(f.Path) != st.Tasks {
 		return fmt.Errorf("%s is not a team or task directory", f.Path)
 	}
-	return os.RemoveAll(f.Path)
+	return remove(f.Path)
 }
