@@ -1,0 +1,9 @@
+{
+  "name": "claudes-mod",
+  "version": "0.1.0",
+  "description": "Runs the slash commands claudes queues for this session, such as /mcp disable, once the session is idle.",
+  "author": { "name": "uvw" },
+  "homepage": "https://github.com/uvw/claudes",
+  "repository": "https://github.com/uvw/claudes",
+  "license": "MIT"
+}

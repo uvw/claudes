@@ -11,6 +11,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/mod"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -84,7 +85,7 @@ func (app *App) diagnose(ctx context.Context, cliOnly bool) []check {
 	if cliOnly {
 		return checks
 	}
-	return append(checks, app.checkSessions(ctx), app.checkPins(), app.checkPinsLock(), app.checkTranscripts(), app.checkConfig(), app.checkPark(), app.checkTeams())
+	return append(checks, app.checkSessions(ctx), app.checkPins(), app.checkPinsLock(), app.checkTranscripts(), app.checkConfig(), app.checkPark(), app.checkTeams(), app.checkMod(ctx))
 }
 
 // result colors a check's result: ok green, warn yellow, and fail red.
@@ -230,4 +231,31 @@ func (app *App) checkPark() check {
 		return check{name, resultFail, err.Error()}
 	}
 	return check{name, resultOK, fmt.Sprintf("%d parked, in %s", len(entries), app.Park.Path)}
+}
+
+// checkMod reports whether the claudes mod is installed and turned on, and
+// which running sessions have not loaded it. The mod is optional, so a missing
+// one is no warning.
+func (app *App) checkMod(ctx context.Context) check {
+	const name = "claudes mod"
+	st, err := app.modStatus(ctx)
+	switch {
+	case err != nil:
+		return check{name, resultWarn, "cannot tell whether it is installed: " + err.Error()}
+	case !st.Installed:
+		return check{name, resultOK, "not installed, so claudes mcp on and off need --restart. claudes mod install adds it"}
+	case !st.Enabled:
+		return check{name, resultWarn, fmt.Sprintf("%s is installed but turned off: claude plugin enable %s", st.Version, mod.ID)}
+	}
+	var missing []string
+	for _, s := range st.Sessions {
+		if s.Version == "" {
+			missing = append(missing, s.Name)
+		}
+	}
+	if len(missing) > 0 {
+		return check{name, resultWarn, fmt.Sprintf("%s is installed, but %d of %d running session(s) have not loaded it: "+
+			"run /reload-plugins in %s", st.Version, len(missing), len(st.Sessions), strings.Join(missing, ", "))}
+	}
+	return check{name, resultOK, fmt.Sprintf("%s, loaded in every running session (%d)", st.Version, len(st.Sessions))}
 }

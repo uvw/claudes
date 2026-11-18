@@ -84,7 +84,7 @@ func TestCheckHelpFindsWhatIsGone(t *testing.T) {
 func TestCheckHelpIgnoresMentionsInSentences(t *testing.T) {
 	root := "Options:\n  --other   works with --resume and --bg\n\nCommands:\n  agents   lists stop and rm\n"
 	want := []string{
-		"claude attach", "claude logs", "claude respawn", "claude rm", "claude stop",
+		"claude attach", "claude logs", "claude plugin", "claude respawn", "claude rm", "claude stop",
 		"claude --bg", "claude --resume", "claude --version",
 		"claude agents --json", "claude agents --all",
 	}

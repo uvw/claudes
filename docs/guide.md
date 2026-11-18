@@ -521,6 +521,37 @@ server on.
 
 `mcp ls` and `mcp profiles` only read.
 
+## The claudes mod
+
+Without help, claudes reaches a running session only from outside: it stops it,
+respawns it, or ends its process. The claudes mod is a small Claude Code plugin
+that runs inside each session and gives claudes a way in. claudes asks it to run
+a slash command, and it runs the command in that session once the session is
+idle. [Installing claudes](install.md#the-claudes-mod) covers
+`claudes mod install`.
+
+1. **It runs only what it allows.** For now that is `/mcp enable NAME` and
+   `/mcp disable NAME`. It refuses anything else, and says so.
+2. **It waits for an idle session.** It runs nothing while a turn runs or while
+   the prompt box holds a draft, so it never interrupts work, answers a
+   permission prompt, or touches what you typed.
+3. **It reads only its own session's requests.** claudes writes one request file
+   per session under its state directory, in a directory only you can read. The
+   mod checks for its file every second and a half and does nothing else until
+   one appears. It writes a result for each request: `done`, `refused`, or
+   `error`. A request expires, so one claudes left behind never runs later.
+
+`claudes mod status` lists the running sessions and the mod version each loaded,
+and `claudes doctor` warns about a running session that has not loaded it. A
+session loads the mod when it starts, or at `/reload-plugins`. It does not load
+in a session started with `--bare` or `--safe-mode`, with `disableAllHooks` set,
+or under a managed `allowManagedHooksOnly`.
+
+The mod finds claudes' state directory the way claudes does, from
+`XDG_STATE_HOME`, `LOCALAPPDATA` on Windows, or the home directory. A session
+started with a different `XDG_STATE_HOME` than claudes runs with looks in the
+wrong place.
+
 ## Following a session
 
 `claudes logs NAME` prints a background session's recent screen, as

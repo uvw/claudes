@@ -21,6 +21,7 @@ import (
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
+	"github.com/uvw/claudes/internal/mod"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -62,6 +63,10 @@ type fakeAgents struct {
 	resumed map[string]claude.Session
 	// jobsDir is the jobs directory, where rm deletes a job's files.
 	jobsDir string
+	// plugins and markets are what claude plugin list and claude plugin
+	// marketplace list print.
+	plugins []claude.Plugin
+	markets []claude.Marketplace
 }
 
 func (f *fakeAgents) current() []claude.Session {
@@ -252,6 +257,62 @@ func (f *fakeAgents) Resume(_ context.Context, sessionID, cwd, prompt string, jo
 
 func (f *fakeAgents) CheckPrompt(prompt string) error { return claude.CheckOption(prompt) }
 
+func (f *fakeAgents) Plugins(context.Context) ([]claude.Plugin, error) {
+	if msg, ok := f.failures["plugin list"]; ok {
+		return nil, errors.New(msg)
+	}
+	return slices.Clone(f.plugins), nil
+}
+
+func (f *fakeAgents) Marketplaces(context.Context) ([]claude.Marketplace, error) {
+	if msg, ok := f.failures["marketplace list"]; ok {
+		return nil, errors.New(msg)
+	}
+	return slices.Clone(f.markets), nil
+}
+
+// AddMarketplace adds the claudes marketplace from source, as a GitHub
+// repository or a directory.
+func (f *fakeAgents) AddMarketplace(_ context.Context, source string) error {
+	if err := f.do("marketplace add", source); err != nil {
+		return err
+	}
+	m := claude.Marketplace{Name: "claudes", Source: "github", Repo: source}
+	if filepath.IsAbs(source) {
+		m = claude.Marketplace{Name: "claudes", Source: "directory", Path: source}
+	}
+	f.markets = append(f.markets, m)
+	return nil
+}
+
+func (f *fakeAgents) RemoveMarketplace(_ context.Context, name string) error {
+	if err := f.do("marketplace remove", name); err != nil {
+		return err
+	}
+	f.markets = slices.DeleteFunc(f.markets, func(m claude.Marketplace) bool { return m.Name == name })
+	return nil
+}
+
+func (f *fakeAgents) InstallPlugin(_ context.Context, id string) error {
+	if !slices.ContainsFunc(f.markets, func(m claude.Marketplace) bool { return strings.HasSuffix(id, "@"+m.Name) }) {
+		f.calls = append(f.calls, "plugin install "+id)
+		return fmt.Errorf("Plugin %q not found in any marketplace", id)
+	}
+	if err := f.do("plugin install", id); err != nil {
+		return err
+	}
+	f.plugins = append(f.plugins, claude.Plugin{ID: id, Version: "0.1.0", Scope: "user", Enabled: true})
+	return nil
+}
+
+func (f *fakeAgents) UninstallPlugin(_ context.Context, id string) error {
+	if err := f.do("plugin uninstall", id); err != nil {
+		return err
+	}
+	f.plugins = slices.DeleteFunc(f.plugins, func(p claude.Plugin) bool { return p.ID == id })
+	return nil
+}
+
 func (f *fakeAgents) Help(_ context.Context, command string) (string, error) {
 	if text, ok := f.help[command]; ok {
 		return text, nil
@@ -328,6 +389,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		Park:     park.File{Path: filepath.Join(h.root, "state", "parked.json")},
 		LockPath: filepath.Join(h.root, "state", "run.lock"),
 		MCP:      mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
+		Mod:      mod.Channel{Dir: filepath.Join(h.root, "state", "mod")},
 		Out:      h.out,
 		Err:      h.err,
 		In:       strings.NewReader(""),
@@ -620,4 +682,23 @@ func (h *harness) withConfig(t *testing.T, body string) string {
 	h.app.ConfigPath = path
 	h.app.Config, h.app.configErr = config.Load(path)
 	return path
+}
+
+// checkout makes a directory that holds the claudes marketplace, as a clone of
+// the repository does.
+func (h *harness) checkout(t *testing.T) string {
+	t.Helper()
+	dir := h.folder("claudes-checkout")
+	writeFile(t, filepath.Join(dir, ".claude-plugin", "marketplace.json"), `{"name":"claudes"}`)
+	return dir
+}
+
+// loaded writes the presence file the mod writes when s loads version 0.1.0.
+func (h *harness) loaded(t *testing.T, s claude.Session) {
+	t.Helper()
+	if err := h.app.Mod.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(mod.Presence{Protocol: mod.Protocol, Session: s.SessionID, Version: "0.1.0", At: h.now.UnixMilli()})
+	writeFile(t, filepath.Join(h.app.Mod.Dir, "sessions", s.SessionID+".json"), string(data))
 }

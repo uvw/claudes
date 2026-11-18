@@ -10,6 +10,10 @@
 # npm ci --prefix .github/release-notes installs Copilot CLI here.
 /.github/release-notes/node_modules/
 
+# The API types Claude Code lays beside a mod it loads with --plugin-dir. The
+# engine writes a .gitignore there too, but Prettier reads only this one.
+plugins/*/.claude-plugin/types/
+
 # Local agent settings
 .claude/settings.local.json
 CLAUDE.local.md

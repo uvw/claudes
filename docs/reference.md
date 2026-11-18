@@ -12,7 +12,7 @@ Pick a format with `-o`:
 | `ls`, `where`, `team ls`                                    | text, json, yaml | `output.format`, or text |
 | `session ls`, `show`, `where`, `du`, `search`, and `triage` | text, json, yaml | `output.format`, or text |
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
-| `mcp ls`, `mcp profiles`                                    | text, json, yaml | `output.format`, or text |
+| `mcp ls`, `mcp profiles`, `mod status`                      | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
 | `gc`, `pin`, `unpin`, `session gc`, `session restore`       | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
@@ -240,6 +240,23 @@ Each server has:
 `mcp profiles` prints a list of profiles, each with `name`, `servers`, and
 `unknown`: the servers that match none claudes can find.
 
+#### The claudes mod
+
+`mod status` prints one object:
+
+| Field       | Meaning                                                            |
+| ----------- | ------------------------------------------------------------------ |
+| `installed` | Whether `claudes-mod@claudes` is installed                         |
+| `enabled`   | Whether it is turned on                                            |
+| `version`   | Its version, or empty                                              |
+| `scope`     | The scope it is installed for, such as `user`, or empty            |
+| `source`    | Where the `claudes` marketplace comes from, or empty               |
+| `dir`       | The directory claudes and the mod share                            |
+| `sessions`  | The running sessions, each with `id`, `name`, `cwd`, and `version` |
+
+A session's `version` is the mod version it loaded, or empty when it shows no
+sign of the mod since it started.
+
 #### Checks
 
 `doctor` prints a list of checks, each with `name`, `result` (`ok`, `warn`, or
@@ -382,6 +399,12 @@ interface. So before a command changes anything, claudes checks what it read:
 interface either, and changes nothing. A field it cannot read shows `-`, and a
 file it cannot read gets a warning, so it never fails on them.
 
+The claudes mod runs on Claude Code's plugin mod API, which is early access and
+can change between releases. `claude plugin validate` and the mod's tests catch
+a change before a session loads it. claudes installs and removes the mod with
+`claude plugin` commands, and `claudes doctor` checks that `claude --help` still
+lists `plugin`.
+
 `claudes doctor` runs every check and says what failed. It also warns when a
 flag in Claude Code's own settings file, `~/.claude.json`, says Claude Code may
 write `pins.json` without the lock claudes takes. Pinning from agent view and
@@ -409,6 +432,7 @@ as usual. `--version` prints the version.
 | `moves.json`          | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `trashed.json`        | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `run.lock`            | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
+| `mod/`                | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `claude-version.json` | `$XDG_CACHE_HOME/claudes`, or `~/.cache/claudes`       | `%LOCALAPPDATA%\claudes\cache` |
 
 - `parked.json` lists paused sessions, and is deleted when it's empty. On
@@ -431,6 +455,12 @@ as usual. `--version` prints the version.
   Its `owner` file holds the PID and start time of the claudes that holds it. A
   lock that has not been refreshed for 30 seconds is broken only once that
   process has ended, or when it has no `owner` file.
+- `mod/` is the directory claudes and the claudes mod share, readable only by
+  you. `requests/SESSION.json` holds what claudes asks one session to run,
+  `results/ID.json` what the mod did with each request, and
+  `sessions/SESSION.json` the mod version a session loaded. claudes deletes a
+  request and its results once it has read them. `claudes mod uninstall` deletes
+  the directory.
 - An `XDG_` variable that holds an absolute path moves its directory on every
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and
   must be an absolute path.

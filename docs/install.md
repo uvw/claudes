@@ -91,14 +91,16 @@ Then run `claudes doctor`.
 
 ## Uninstalling
 
-1. Remove the binary: `brew uninstall claudes`, `winget uninstall uvw.claudes`,
+1. Remove the [claudes mod](#the-claudes-mod), if you installed it:
+   `claudes mod uninstall`.
+2. Remove the binary: `brew uninstall claudes`, `winget uninstall uvw.claudes`,
    or delete `claudes` from where the install script or `go install` put it.
-2. Remove the agent skill: delete `~/.claude/skills/claudes`, or the `claudes`
+3. Remove the agent skill: delete `~/.claude/skills/claudes`, or the `claudes`
    directory under the `--dir` you gave. A copy added with
    `npx skills add uvw/claudes` goes with `npx skills remove claudes`.
-3. Remove the lines [Shell setup](#shell-setup) added to your shell's profile,
+4. Remove the lines [Shell setup](#shell-setup) added to your shell's profile,
    and the zsh completion file, `~/.zfunc/_claudes`.
-4. Delete the directories in [Files](reference.md#files) if you want the
+5. Delete the directories in [Files](reference.md#files) if you want the
    settings and the park list gone too.
 
 ## Shell setup
@@ -164,3 +166,32 @@ claudes skill                     # print it
 `--install` writes `~/.claude/skills/claudes/SKILL.md`, under
 `CLAUDE_CONFIG_DIR` when that is set. `--dir PATH` writes
 `PATH/claudes/SKILL.md`, for another agent's skills directory.
+
+## The claudes mod
+
+The claudes mod is a Claude Code plugin that lets claudes run a command inside a
+running session, such as `/mcp disable` for `claudes mcp off`. The
+[guide](guide.md#the-claudes-mod) says what it does and what it refuses.
+
+```bash
+claudes mod install      # add the claudes marketplace and install the mod
+claudes mod status       # is it installed, and which sessions loaded it
+claudes mod uninstall    # remove the mod, the marketplace, and its requests
+```
+
+`claudes mod install` runs `claude plugin marketplace add` and
+`claude plugin install claudes-mod@claudes`, for your user. claudes never writes
+Claude Code's plugin files itself. Sessions you start from then on load the mod;
+in a session that already runs, type `/reload-plugins`.
+
+By default the marketplace is the `uvw/claudes` GitHub repository. Until a
+release ships the mod there, install it from a clone instead:
+
+```bash
+claudes mod install --from ~/src/claudes
+```
+
+Claude Code then reads the mod from that directory, so a `git pull` there and a
+`/reload-plugins` in each session update it. Installed from GitHub, the mod
+updates through `claude plugin update claudes-mod@claudes`. To move from a clone
+to GitHub, run `claudes mod uninstall`, then `claudes mod install`.
