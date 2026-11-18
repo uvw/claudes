@@ -9,13 +9,14 @@ import (
 )
 
 // sameMeaning lists the letters that stand for different long flags on
-// different commands, because they mean the same thing: -t is how many to
-// show, the last events in logs and the biggest sessions in session du.
+// different commands, because they mean the same thing. -t is how many to
+// show: the last events in logs, the biggest sessions in session du, and the
+// best matches in session search.
 var sameMeaning = map[string][]string{"t": {"tail", "top"}}
 
 // safeguards are the flags that override a protection. They stay long, so
 // that typing one is deliberate.
-var safeguards = []string{"force", "purge", "pinned", "interactive", "interactive-bg", "rm", "forget"}
+var safeguards = []string{"force", "purge", "pinned", "interactive", "interactive-bg", "rm", "forget", "no-redact"}
 
 func TestEachShortFlagMeansOneThingEverywhere(t *testing.T) {
 	letters := map[string]map[string][]string{}

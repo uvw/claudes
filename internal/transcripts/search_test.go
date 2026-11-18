@@ -379,6 +379,49 @@ func TestSearchSnippetComesFromTheClosestRecord(t *testing.T) {
 	}
 }
 
+func TestSearchMasksSecretsInSnippets(t *testing.T) {
+	val := fakeKey("", 200)
+	s := searchSession(t, "s1", "deploy "+fakeKey("gh"+"p_", 36), time.Hour,
+		prompt("deploy with GITHUB_TOKEN="+val+"/zebra keys"),
+		toolCall("Bash", `{"command":"curl -H 'Authorization: Bearer `+val+`' https://api.example.com"}`),
+	)
+	snippets := func(q Query) []string {
+		t.Helper()
+		q.Now = searchNow
+		results, err := Search([]Session{s}, q)
+		if err != nil || len(results) != 1 {
+			t.Fatalf("%+v, %v", results, err)
+		}
+		var out []string
+		for _, m := range results[0].Matches {
+			out = append(out, m.Snippet)
+		}
+		return out
+	}
+	// The terms match the text as written, inside a secret too.
+	for _, q := range []Query{
+		{Words: []string{"zebra"}},
+		{Words: []string{"deploy"}},
+		{Words: []string{val[:12]}},
+		{Ran: "curl"},
+		{Pattern: "keys$"},
+	} {
+		for _, got := range snippets(q) {
+			if strings.Contains(got, val[len(val)-12:]) || strings.Contains(got, val[:12]) || strings.Contains(got, "gh"+"p_") {
+				t.Errorf("%+v: snippet %q", q, got)
+			}
+		}
+	}
+	for _, q := range []Query{{Words: []string{val[:12]}}, {Ran: "curl"}} {
+		if got := snippets(q)[0]; !strings.Contains(got, Redacted) {
+			t.Errorf("%+v: snippet %q", q, got)
+		}
+	}
+	if got := snippets(Query{Words: []string{val[:12]}, Raw: true}); !strings.Contains(got[0], val[:12]) {
+		t.Errorf("Raw masked the snippet %q", got[0])
+	}
+}
+
 func TestSnippet(t *testing.T) {
 	text := strings.Repeat("lead in words ", 10) + "the\n\nzebra   keys" + strings.Repeat(" and more words", 10)
 	start := strings.Index(text, "zebra")
