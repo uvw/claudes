@@ -45,8 +45,9 @@ lost. Say each change once, in the part where it fits best.
    now does that it did not do before, in the terms of someone typing it: what
    it shows, refuses, skips, stops, or removes. New commands and flags go here
    too, each with the line you would type. Show a command, or a short before and
-   after in a code block, where that says more than a sentence. Group by command
-   when several changes touch one.
+   after in a code block, where that says more than a sentence. Name each code
+   block's language: `sh` for commands, `text` for output. Group by command when
+   several changes touch one.
 4. **Scripts that read claudes' output.** A heading
    `## Scripts that read claudes' output`, only when a change could break a
    script: a renamed or removed flag, a new or moved column, a changed JSON

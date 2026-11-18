@@ -220,13 +220,23 @@ check() {
   # notes will have.
   (
     cd "$root"
-    tools/node_modules/.bin/prettier --stdin-filepath "docs/release-notes/v$version.md" <"$notes" >"$dest"
+    tag_fences <"$notes" | tools/node_modules/.bin/prettier --stdin-filepath "docs/release-notes/v$version.md" >"$dest"
     tools/node_modules/.bin/markdownlint-cli2 --no-globs - <"$dest"
   ) || die "the notes do not pass Prettier and markdownlint"
   verify "$dest"
   cp "$out/sha" "$out/result/sha"
   echo "The notes for v$version passed every check"
   echo "written=true" >>"${GITHUB_OUTPUT:-/dev/null}"
+}
+
+# tag_fences gives a code block that names no language the language text, which
+# markdownlint requires and the model sometimes leaves out.
+tag_fences() {
+  awk '/^[[:space:]]*```/ {
+      if (!open && $0 ~ /^[[:space:]]*```[[:space:]]*$/) sub(/```[[:space:]]*$/, "```text")
+      open = !open
+    }
+    { print }'
 }
 
 body() {
@@ -286,6 +296,24 @@ selftest() {
   [[ -f $out/result/docs/release-notes/v0.5.0.md && $(<"$out/result/sha") == fixtures ]] || die "test: check left no result"
   cmp -s "$notes" "$out/result/docs/release-notes/v0.5.0.md" || die "test: check changed formatted notes"
   echo "ok   check passes the sample notes"
+
+  cat >"$tmp/bare.md" <<'NOTES'
+## TL;DR
+
+- **New:** a thing
+
+```
+claudes ls
+```
+
+```sh
+claudes ls -a
+```
+NOTES
+  check_case "$out" "$tmp/bare.md" >/dev/null || die "test: check refused a code block with no language"
+  grep -qx '```text' "$out/result/docs/release-notes/v0.5.0.md" || die "test: check left a code block with no language"
+  grep -qx '```sh' "$out/result/docs/release-notes/v0.5.0.md" || die "test: check changed a code block's language"
+  echo "ok   check tags a code block that names no language"
 
   expect_fail "a missing file" check_case "$out" ''
   expect_fail "a second file" check_case "$out" "$notes" extra.md
