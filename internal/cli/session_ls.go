@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 )
 
@@ -53,7 +52,7 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 					running = app.colors.Green("yes")
 				}
 				table = append(table, []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total),
-					dash(shell.Printable(p.Branch)), dirCell(p.Cwd), nameCell(p.Label())})
+					branchCell(p.Branch), dirCell(p.Cwd), nameCell(p.Label())})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},

@@ -26,10 +26,12 @@ A few cases differ:
    table of id, directory, and name.
 3. `logs -o json` prints the transcript records themselves, one per line.
 
-Text tables and plans cut a name longer than 40 characters, with `…`; JSON,
-YAML, and `session show` keep it whole.
+Text tables and plans cut a name longer than 40 characters, and `session ls` a
+git branch longer than 24, with `…`. A branch loses its middle and keeps its
+first name, so `feat/ledger-rounding-for-every-currency` reads
+`feat/…for-every-currency`. JSON, YAML, and `session show` keep both whole.
 
-### Directories in tables
+### Table widths
 
 A table shows a directory with `~` for the home directory, and shortens one that
 does not fit its column, so a deep path does not wrap every row. This covers
@@ -38,15 +40,21 @@ and the heading of `mcp ls`. JSON, YAML, `session show`, `doctor env`, and the
 bare directory `where` prints for one session keep the whole path, since scripts
 read them.
 
-On a terminal, a directory gets the width the other columns leave on the line,
-and at least 20 columns. A wide window shows the whole path, and a narrow one
-shortens it. Elsewhere, such as in a pipe, a directory takes at most 40 columns.
-A path that fits is never shortened.
+On a terminal, a table fits each line to the window. While a line is wider than
+the window, the table cuts these columns in turn, and cuts one only when the one
+before it is down to its floor:
 
-When `DOING` in `ls --wide` or `MATCH` in `session search` ends the line, the
-directory is fitted first, as though that column took 10 columns. The column
-then gets what is left, and at least 10. Off a terminal, `DOING` is cut to 50
-characters and `MATCH` stays whole.
+1. `DOING` in `ls --wide`, `MATCH` in `session search`, or `FIRST PROMPT` in
+   `session triage`, which ends the line, down to 10 columns.
+2. The directory, down to 20.
+3. The name, down to 12, cut at its end.
+4. The branch, down to 12, cut in its middle.
+
+A wide window shows the whole path, and a narrow one shortens it. A line still
+wider than the window once every column is at its floor wraps. Elsewhere, such
+as in a pipe, a directory takes at most 40 columns, `DOING` 50 characters, and
+`FIRST PROMPT` 60, while `MATCH` stays whole, and names and branches keep their
+40 and 24. A path that fits is never shortened.
 
 `output.dirs` in `config.yaml` picks how a directory is shortened. Each example
 fits `~/code/acme/monorepo/services/billing/internal/ledger/testdata/v2` into 30
@@ -56,7 +64,7 @@ columns:
    place of directories in the middle, and keeps the last one whole.
 2. `fish` gives `~/c/a/m/s/b/i/l/testdata/v2`. It shortens directories to their
    first character, from the left, until the path fits.
-3. `full` never shortens.
+3. `full` never shortens, so the name and then the branch are cut instead.
 
 ### Fields
 
@@ -325,12 +333,12 @@ one line of JSON. `claudes config set KEY VALUE` changes one and keeps the
 file's comments, except `mcp.profiles`, which takes `claudes config edit`. A
 profile's name is letters, digits, `-`, and `_`, and each server name is a
 string; quote one that YAML would read as a number or `true`. `output.dirs`
-takes `middle`, the default, `fish`, or `full`
-([Directories in tables](#directories-in-tables)). `claudes config edit` opens
-the file in `$VISUAL` or `$EDITOR`, and `claudes config path` prints where it
-is. claudes refuses a file with an unknown key or a value it cannot use. Until
-it is fixed, only `config`, `doctor`, `init`, `completion`, `skill`,
-`--version`, help, and what passes through to `claude agents` run.
+takes `middle`, the default, `fish`, or `full` ([Table widths](#table-widths)).
+`claudes config edit` opens the file in `$VISUAL` or `$EDITOR`, and
+`claudes config path` prints where it is. claudes refuses a file with an unknown
+key or a value it cannot use. Until it is fixed, only `config`, `doctor`,
+`init`, `completion`, `skill`, `--version`, help, and what passes through to
+`claude agents` run.
 
 ## Compatibility
 

@@ -39,7 +39,7 @@ adds what an agent needs on top of them.
 | Where claudes keeps its own files            | `internal/paths`, one file per platform                         |
 | Atomic writes and lock directories           | `internal/safefile`                                             |
 | Colors and the text tables' layout           | `internal/style`                                                |
-| Fitting directories into tables              | `internal/style`, `internal/cli/output.go`                      |
+| Fitting tables to the terminal               | `internal/style`, `internal/cli/output.go`                      |
 | CI, security scans, and releases             | `.github/workflows/`, `docs/releasing.md`                       |
 | The checks' tools and their pins             | `tools/`, `.github/workflows/hack/tool-pins.sh`                 |
 | `claudes upgrade` and its downloads          | `internal/cli/upgrade.go`, `internal/selfupdate`                |
@@ -142,9 +142,10 @@ heredoc, and never run it through Prettier.
    new session-scoped variable there.
 9. **Change the park file only through `park.File.Update`.** It holds the park
    file's lock, so two claudes runs cannot lose each other's entries.
-10. **Every path a table shows goes through `dirCell`, and every table through
-    `app.writeTable`.** A path that skips them wraps every row, and
-    `TestTablesPutPathsThroughDirCell` fails.
+10. **Every path a table shows goes through `dirCell`, every branch through
+    `branchCell`, and every table through `app.writeTable`.** A path or branch
+    that skips them wraps every row, and `TestTablesPutPathsThroughDirCell` or
+    `TestTablesPutBranchesThroughBranchCell` fails.
 11. **A transcript record type claudes does not know keeps the session out of
     `session gc`'s empty and trivial kinds.** When Claude Code adds a type that
     holds no conversation, add it to `bookkeeping` in

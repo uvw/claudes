@@ -164,21 +164,6 @@ func TestSizeReadsAsDuDoes(t *testing.T) {
 	}
 }
 
-func TestIndentIsWhereTheLastCellStarts(t *testing.T) {
-	rows := [][]string{{"ID", "NAME", "DOING"}, {"abf00936", On.Green("a name"), "tests"}}
-	var b strings.Builder
-	if err := Table(&b, rows); err != nil {
-		t.Fatal(err)
-	}
-	line := strings.Split(b.String(), "\n")[1]
-	if got, want := indent(rows), Width(line)-len("tests"); got != want {
-		t.Errorf("indent is %d, the last cell starts at %d in %q", got, want, line)
-	}
-	if indent(nil) != 0 {
-		t.Error("an empty table has an indent")
-	}
-}
-
 func TestTerminalWidthOfWhatIsNoTerminal(t *testing.T) {
 	if w := TerminalWidth(&strings.Builder{}); w != 0 {
 		t.Errorf("a buffer has width %d", w)

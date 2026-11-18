@@ -198,7 +198,7 @@ func (app *App) printTriage(r triageReport, narrowed bool) error {
 			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(t.Label()),
 				shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
 		}
-		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
+		if err := app.writeTable(app.Out, table, tableFit{fitLast: true}); err != nil {
 			return err
 		}
 		say("\nRemove the ones you pick with: claudes session gc ID...\n")
