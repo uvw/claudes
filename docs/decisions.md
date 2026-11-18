@@ -42,6 +42,7 @@ current.
 | [31](#31-every-tool-pin-is-updated-or-checked-each-week)                            | Every tool pin is updated or checked each week                             |
 | [32](#32-session-search-scans-every-transcript-with-no-index)                       | session search scans every transcript, with no index                       |
 | [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
+| [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
 
 ## 1. Go, in one static binary
 
@@ -675,3 +676,29 @@ Weighed: POSIX semantics alone, which fail where the file system lacks them;
 `FILE_RENAME_FLAG_IGNORE_READONLY_ATTRIBUTE`, which would overwrite a file the
 owner made read-only and needs Windows 10 1809; and Go's `os.Root.Rename`, which
 makes the same two attempts but needs an `os.Root` opened for every write.
+
+## 34. MCP control starts read-only, and never prints a server's secrets
+
+`claudes mcp ls` lists the MCP servers a session's directory has, with each
+one's scope, state, and kind, and `claudes mcp profiles` lists the profiles in
+`config.yaml`. Both only read. A server's command, arguments, environment,
+headers, and URL are never printed, in text or JSON. A profile is a list of the
+servers that stay on, and `mcp ls --profile` shows what it would change.
+`internal/mcp` reads the MCP configuration, and writes none of it.
+
+Why: deciding which servers a session loads is one of the jobs around running
+Claude Code sessions, the README's first goal. Claude Code spreads the answer
+over `~/.claude.json`, settings files, `.mcp.json` files, and plugins, so the
+read side is useful alone. It also comes first because writing `~/.claude.json`
+while Claude Code runs needs tests against a live Claude Code. Server entries
+carry tokens in their arguments, environment, headers, and URLs, and a listing
+ends up in terminals, logs, and agent transcripts, so claudes keeps only the
+name and the transport. An on-list says what a kind of work needs, and stays
+right when a new server is added: the new one is off in every profile until
+someone adds it.
+
+Weighed: printing the command or URL with secrets masked, which still leaks
+tokens claudes cannot recognize, such as one inside a path; an off-list per
+profile, which would let every new server in; and building `mcp on`, `mcp off`,
+and launch profiles in the same change, before the live tests that show how
+Claude Code picks up a change while it runs.

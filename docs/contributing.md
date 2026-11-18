@@ -14,8 +14,10 @@
    `internal/paths`, the transcripts under `~/.claude/projects` by
    `internal/transcripts`, the agent teams under `~/.claude/teams` and their
    task lists under `~/.claude/tasks` by `internal/teams`, and installing the
-   agent skill by `internal/install`. `internal/compat` reads Claude Code's
-   settings file, `~/.claude.json`, and nothing writes it.
+   agent skill by `internal/install`. `internal/mcp` reads MCP configuration:
+   the MCP keys of `~/.claude.json` and the settings files, `.mcp.json` files,
+   plugins' MCP files, and `managed-mcp.json`. `internal/compat` reads the
+   feature flags in `~/.claude.json`, and nothing writes it.
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
@@ -194,9 +196,9 @@ Use Conventional Commits with a scope: `type(scope): subject`, with the subject
 in lowercase imperative, for example `fix(cli): skip pinned sessions in gc`.
 Types are `feat`, `fix`, `perf`, `docs`, `test`, `refactor`, `ci`, and `chore`.
 `feat` and `fix` decide the next version and appear in the changelog. The scope
-names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `park`, `paths`,
-`target`, `transcripts`, `teams`, `procs`, `install`, `safefile`, `shell`,
-`selfupdate`, `style`, `trash`, and `version` for the packages under
+names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `mcp`, `park`,
+`paths`, `target`, `transcripts`, `teams`, `procs`, `install`, `safefile`,
+`shell`, `selfupdate`, `style`, `trash`, and `version` for the packages under
 `internal/`; `e2e` for `test/e2e`; `skill` for `skills/claudes`; `hack` for the
 developer tools; `deps` for Dependabot's updates; and `release` or `docs`. Leave
 the scope out only when a commit spans several areas. Keep the body to one or

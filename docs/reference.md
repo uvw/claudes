@@ -12,6 +12,7 @@ Pick a format with `-o`:
 | `ls`, `where`, `team ls`                                    | text, json, yaml | `output.format`, or text |
 | `session ls`, `show`, `where`, `du`, `search`, and `triage` | text, json, yaml | `output.format`, or text |
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
+| `mcp ls`, `mcp profiles`                                    | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
 | `gc`, `pin`, `unpin`                                        | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
@@ -27,7 +28,9 @@ A few cases differ:
 Every text table, and every plan a command prints before it acts, starts with
 the id and ends with the directory and the name, followed by a note when there
 is one, or by `DOING` in `ls --wide`. Names longer than 40 characters are cut,
-with `…`; JSON, YAML, and `session show` keep them whole.
+with `…`; JSON, YAML, and `session show` keep them whole. The `mcp` tables list
+servers and profiles rather than sessions, so they start with the name, and end
+with the profiles.
 
 ### Fields
 
@@ -150,6 +153,30 @@ A directory in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
 
 Each task has `id`, `subject`, `status`, `owner`, and `blockedBy`.
 
+#### MCP servers
+
+`mcp ls` prints one object:
+
+| Field     | Meaning                                                     |
+| --------- | ----------------------------------------------------------- |
+| `dir`     | The directory whose servers it lists                        |
+| `profile` | The profile `--profile` named, or empty                     |
+| `servers` | The servers: on first, then pending, then off, then by name |
+
+Each server has:
+
+| Field          | Meaning                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| `name`         | Its name; a plugin's server is `plugin:PLUGIN:SERVER`            |
+| `scope`        | `user`, `local`, `project`, `plugin`, or `managed`               |
+| `state`        | `on`, `off`, or `pending` for a project server not yet approved  |
+| `kind`         | The transport, such as `stdio`, `http`, or `sse`, or empty       |
+| `profiles`     | The profiles in `mcp.profiles` that keep it on                   |
+| `profileState` | Its state under `--profile`: `on` or `off`, or empty without one |
+
+`mcp profiles` prints a list of profiles, each with `name`, `servers`, and
+`unknown`: the servers that match none claudes can find.
+
 #### Checks
 
 `doctor` prints a list of checks, each with `name`, `result` (`ok`, `warn`, or
@@ -238,10 +265,16 @@ wait:
   timeout: 45m # how long --wait waits; 30m by default
 output:
   format: json # the default -o of ls, where, team ls, and the session commands
+mcp:
+  profiles: # each profile, and the MCP servers that stay on in it
+    safe: [browser, "plugin:docs:search"]
 ```
 
-`claudes config get` lists every key with its value,
-`claudes config set KEY VALUE` changes one and keeps the file's comments,
+`claudes config get` lists every key with its value, and shows `mcp.profiles` as
+one line of JSON. `claudes config set KEY VALUE` changes one and keeps the
+file's comments, except `mcp.profiles`, which takes `claudes config edit`. A
+profile's name is letters, digits, `-`, and `_`, and each server name is a
+string; quote one that YAML would read as a number or `true`.
 `claudes config edit` opens the file in `$VISUAL` or `$EDITOR`, and
 `claudes config path` prints where it is. claudes refuses a file with an unknown
 key or a value it cannot use. Until it is fixed, only `config`, `doctor`,
@@ -258,6 +291,10 @@ interface. So before a command changes anything, claudes checks what it read:
   `--force` goes ahead anyway, with a warning.
 - A Claude Code outside the range claudes was tested with gets a warning, once
   per run. The installed version is cached for six hours.
+
+`claudes mcp` reads Claude Code's MCP configuration, which is not a stable
+interface either, and changes nothing. A field it cannot read shows `-`, and a
+file it cannot read gets a warning, so it never fails on them.
 
 `claudes doctor` runs every check and says what failed. It also warns when a
 flag in Claude Code's own settings file, `~/.claude.json`, says Claude Code may

@@ -3,15 +3,18 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"go.yaml.in/yaml/v4"
 
@@ -25,6 +28,7 @@ type Config struct {
 	Ping   Ping   `yaml:"ping"`
 	Wait   Wait   `yaml:"wait"`
 	Output Output `yaml:"output"`
+	MCP    MCP    `yaml:"mcp"`
 }
 
 // Ping holds the prompt that --ping and claudes ping send.
@@ -40,6 +44,36 @@ type Wait struct {
 // Output holds the default -o format of ls and where.
 type Output struct {
 	Format string `yaml:"format"`
+}
+
+// MCP holds the MCP server profiles that claudes mcp shows.
+type MCP struct {
+	// Profiles maps each profile's name to the servers that stay on in it.
+	Profiles map[string]ServerNames `yaml:"profiles"`
+}
+
+// ServerNames is a list of MCP server names, each a YAML string.
+type ServerNames []string
+
+// UnmarshalYAML implements yaml.Unmarshaler. It refuses a number or a true,
+// which YAML would otherwise turn into a name.
+func (s *ServerNames) UnmarshalYAML(n *yaml.Node) error {
+	if isNull(n) {
+		*s = nil
+		return nil
+	}
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("line %d: a profile is a list of server names", n.Line)
+	}
+	names := make(ServerNames, 0, len(n.Content))
+	for _, item := range n.Content {
+		if item.Kind != yaml.ScalarNode || item.Tag != "!!str" {
+			return fmt.Errorf("line %d: a server name is a string; quote it", item.Line)
+		}
+		names = append(names, item.Value)
+	}
+	*s = names
+	return nil
 }
 
 // Duration is a time.Duration written as "30m" or "1h30m".
@@ -66,19 +100,43 @@ func (d Duration) MarshalYAML() (any, error) { return time.Duration(d).String(),
 type Key struct {
 	Name, About string
 	get         func(Config) string
+	// editOnly marks a setting that is not one string, which config set
+	// cannot write.
+	editOnly bool
 }
 
 // Keys lists every setting.
 var Keys = []Key{
-	{"ping.text", "the prompt that --ping and claudes ping send", func(c Config) string { return c.Ping.Text }},
+	{"ping.text", "the prompt that --ping and claudes ping send", func(c Config) string { return c.Ping.Text }, false},
 	{"wait.timeout", "how long --wait waits, such as 30m", func(c Config) string {
 		if c.Wait.Timeout == 0 {
 			return ""
 		}
 		return time.Duration(c.Wait.Timeout).String()
-	}},
-	{"output.format", "the default -o of commands that print sessions: text, json, or yaml", func(c Config) string { return c.Output.Format }},
+	}, false},
+	{"output.format", "the default -o of commands that print sessions: text, json, or yaml", func(c Config) string { return c.Output.Format }, false},
+	{"mcp.profiles", "MCP server profiles: each name and the servers that stay on in it", profilesValue, true},
 }
+
+// profilesValue is mcp.profiles as one line of JSON, which YAML reads too, or
+// "" when no profile is set.
+func profilesValue(c Config) string {
+	if len(c.MCP.Profiles) == 0 {
+		return ""
+	}
+	profiles := map[string]ServerNames{}
+	for name, servers := range c.MCP.Profiles {
+		profiles[name] = append(ServerNames{}, servers...)
+	}
+	data, err := json.Marshal(profiles)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// profileName is a simple word, so it reads the same in a flag and a table.
+var profileName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
 // Path is $CLAUDES_CONFIG, or config.yaml in the directory paths.Config names.
 func Path() (string, error) {
@@ -137,6 +195,16 @@ func (c Config) validate() error {
 	if c.Wait.Timeout < 0 {
 		return errors.New("wait.timeout cannot be negative")
 	}
+	for name, servers := range c.MCP.Profiles {
+		if !profileName.MatchString(name) {
+			return fmt.Errorf("mcp.profiles: %q is not a profile name: use letters, digits, - and _", name)
+		}
+		for _, s := range servers {
+			if s == "" || strings.ContainsFunc(s, unicode.IsControl) {
+				return fmt.Errorf("mcp.profiles.%s: %q is not a server name", name, s)
+			}
+		}
+	}
 	return nil
 }
 
@@ -152,8 +220,12 @@ func Get(c Config, name string) (string, error) {
 // Set writes one setting into the file at path, keeping everything else in
 // it, comments included. It checks the result before it writes.
 func Set(path, name, value string) error {
-	if _, err := find(name); err != nil {
+	k, err := find(name)
+	if err != nil {
 		return err
+	}
+	if k.editOnly {
+		return fmt.Errorf("%s is not one value; change it with claudes config edit", name)
 	}
 	// Write through a link, such as one into a dotfiles repository, rather
 	// than replacing the link with a file.
