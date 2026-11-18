@@ -67,13 +67,6 @@ var allowed = map[string][]string{
 	"test/e2e/internal/fake": nil,
 }
 
-// notYetNamed are the packages AGENTS.md does not name yet.
-var notYetNamed = []string{}
-
-// notYetRenamed are the package names that join two words, with the one word
-// each takes.
-var notYetRenamed = map[string]string{}
-
 // twoWords are names that join two words. A name of lowercase letters can
 // still be two words, which no pattern tells apart, so this lists the ones
 // already found, to keep them from coming back.
@@ -237,19 +230,9 @@ func TestAgentsNamesEveryPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, p := range internal(pkgs) {
-		named := regexp.MustCompile(`\b` + regexp.QuoteMeta(p.dir) + `\b`).Match(agents)
-		waiting := slices.Contains(notYetNamed, name)
-		switch {
-		case !named && !waiting:
+	for _, p := range internal(pkgs) {
+		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(p.dir) + `\b`).Match(agents) {
 			t.Errorf("AGENTS.md does not name %s: add it to \"Where to look first\"", p.dir)
-		case named && waiting:
-			t.Errorf("AGENTS.md names %s now: take it off notYetNamed", p.dir)
-		}
-	}
-	for _, name := range notYetNamed {
-		if internal(pkgs)[name] == nil {
-			t.Errorf("notYetNamed lists %s, which is not a package: take it off", name)
 		}
 	}
 }
@@ -259,20 +242,12 @@ var oneWord = regexp.MustCompile(`^[a-z]+$`)
 func TestPackageNamesAreOneWord(t *testing.T) {
 	_, pkgs := packages(t)
 	for name, p := range internal(pkgs) {
-		_, waiting := notYetRenamed[name]
 		bad := !oneWord.MatchString(name) || slices.Contains(twoWords, name)
 		switch {
 		case p.name != name:
 			t.Errorf("%s is package %s: name the package for its directory", p.dir, p.name)
-		case bad && !waiting:
+		case bad:
 			t.Errorf("%s is not one lowercase word: name it for its concern in one", p.dir)
-		case !bad && waiting:
-			t.Errorf("%s is one word now: take it off notYetRenamed", p.dir)
-		}
-	}
-	for name := range notYetRenamed {
-		if internal(pkgs)[name] == nil {
-			t.Errorf("notYetRenamed lists %s, which is not a package: take it off", name)
 		}
 	}
 }
