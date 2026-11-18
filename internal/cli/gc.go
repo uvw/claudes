@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -199,22 +200,23 @@ func (l leftover) Label() string {
 // run and that have not changed since olderThan ago, keeping a pinned
 // session's unless withPinned.
 func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, dryRun, withPinned bool) error {
-	sessions, err := app.listed(ctx, false)
+	sessions, err := app.listed(ctx, true)
 	if err != nil {
 		return err
 	}
 	// Kept: a running session's, and one claudes resume or a pin brings back.
+	// A pinned job id is its session's short id, so a pin keeps its team even
+	// when claude agents no longer lists the session.
 	keep := map[string]bool{}
-	pins, err := app.Jobs.Pins()
-	if err != nil {
-		return err
-	}
 	pinned := map[string]bool{}
-	for _, id := range pins {
-		pinned[id] = true
+	if !withPinned {
+		if pinned, err = app.protectedPins(sessions); err != nil {
+			return err
+		}
+		maps.Copy(keep, pinned)
 	}
 	for _, s := range sessions {
-		if s.Running() || pinned[s.JobID] && !withPinned {
+		if s.Running() || pinned[s.JobID] {
 			keep[claude.ShortID(s.SessionID)] = true
 		}
 	}

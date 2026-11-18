@@ -258,3 +258,39 @@ func TestASlowStartIsNotReportedAsNotResumed(t *testing.T) {
 		t.Fatalf("a resume that was issued is reported as not done:\n%s", msg)
 	}
 }
+
+// A pin protects a session's team and task list once the session has stopped,
+// whether or not claude agents still lists it, unless --pinned.
+func TestGCTeamsKeepsAStoppedPinnedSessionsTeam(t *testing.T) {
+	h := newHarness(t)
+	listed := stopped(h.bg("listed", ""))
+	unlisted := stopped(h.bg("unlisted", ""))
+	unlisted.JobID = unlisted.ShortID()
+	h.agents.snapshots = [][]claude.Session{{}}
+	h.agents.finished = []claude.Session{listed}
+	h.pin(t, listed, unlisted)
+	old := h.now.Add(-30 * 24 * time.Hour)
+	var paths []string
+	for _, s := range []claude.Session{listed, unlisted} {
+		paths = append(paths, filepath.Join(h.app.Teams.Teams, teams.Name(s.SessionID), "config.json"),
+			filepath.Join(h.app.Teams.Tasks, teams.Name(s.SessionID), "1.json"))
+	}
+	for _, p := range paths {
+		writeFile(t, p, "{}")
+		if err := os.Chtimes(p, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.ok(t, "gc", "--teams")
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("gc --teams removed a pinned session's %s: %v\n%s", p, err, h.out)
+		}
+	}
+	h.ok(t, "gc", "--teams", "--pinned")
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			t.Fatalf("gc --teams --pinned kept %s", p)
+		}
+	}
+}
