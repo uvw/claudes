@@ -58,8 +58,8 @@ Files in `internal/cli` take their command's path as a prefix, such as
 `claudes doctor env`. The parent's file holds what its subcommands share, and
 small subcommands, such as `config get`, stay in it.
 `TestEachCommandLivesInItsFile` checks each command's file, and its
-`inParentsFile` lists the exceptions, each with why. Code more than one command
-uses goes in a file named for what it does, such as `cells.go` for table cells,
+`inParentsFile` lists the exceptions, each with why. Code that several commands
+use goes in a file named for what it does, such as `cells.go` for table cells,
 never in one command's file. Test files follow the same names, and `cli_test.go`
 holds the harness they share.
 

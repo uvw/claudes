@@ -49,8 +49,7 @@ type Session struct {
 	// Name is the name given with /rename, or agent view's name, or the title
 	// Claude Code wrote for it, in that order.
 	Name string `json:"name"`
-	// NameSource is where Name came from: NameCustom, NameAgent, or NameAI,
-	// or "" when it has none.
+	// NameSource is where Name came from, or "" when it has none.
 	NameSource string    `json:"nameSource"`
 	Cwd        string    `json:"cwd"`
 	Branch     string    `json:"branch"`

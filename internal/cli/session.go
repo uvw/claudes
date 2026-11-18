@@ -48,7 +48,6 @@ func readActivity(p *pastSession, force bool) {
 	}
 }
 
-// refOf is p's sessionRef.
 func refOf(p pastSession) sessionRef {
 	return sessionRef{ID: p.ShortID, SessionID: p.SessionID, Name: p.Name}
 }
