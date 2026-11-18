@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -69,7 +68,8 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			}
 			path, err := app.Transcripts.Find(s.SessionID, s.Cwd)
 			if ofTeammate && err == nil {
-				if path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate); err != nil {
+				path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate)
+				if none := (*transcripts.NoTeammateError)(nil); errors.As(err, &none) {
 					err = noMatch{err}
 				}
 			}
@@ -94,13 +94,10 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 // printLog prints the last tail events of the transcript at path, then, with
 // follow, each new one until Ctrl-C.
 func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw bool) error {
-	data, err := os.ReadFile(path)
+	log, events, err := transcripts.Follow(path)
 	if err != nil {
 		return err
 	}
-	// A line still being written is held back until it ends.
-	done := bytes.LastIndexByte(data, '\n') + 1
-	events := transcripts.Events(data[:done])
 	if raw {
 		events = oneEach(events)
 	}
@@ -109,47 +106,22 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 		return nil
 	}
 	app.endsOnInterrupt = true
-	offset := int64(done)
-	head := headOf(data[:done])
 	for {
 		if app.Sleep(ctx, followEvery) != nil {
 			return nil
 		}
-		f, err := os.Open(path)
+		events, rewritten, err := log.Next()
 		if err != nil {
 			return err
 		}
-		all, err := io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			return err
-		}
-		if int64(len(all)) < offset || !bytes.Equal(headOf(all), head) {
-			// Claude Code rewrote the transcript, such as on a compaction.
+		if rewritten {
 			app.warn("claudes: the transcript was rewritten; following it from the start")
-			offset = 0
 		}
-		more := all[offset:]
-		end := bytes.LastIndexByte(more, '\n') + 1
-		events := transcripts.Events(more[:end])
 		if raw {
 			events = oneEach(events)
 		}
 		app.printEvents(events, raw)
-		offset += int64(end)
-		if head == nil {
-			head = headOf(all[:offset])
-		}
 	}
-}
-
-// headOf is the first line of a transcript, which a rewrite changes. A
-// transcript without a whole line has none yet.
-func headOf(data []byte) []byte {
-	if i := bytes.IndexByte(data, '\n'); i >= 0 {
-		return bytes.Clone(data[:i])
-	}
-	return nil
 }
 
 // oneEach keeps one event per transcript record, for -o json, which prints the

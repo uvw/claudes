@@ -203,9 +203,20 @@ func (st Store) Teammate(sessionID, cwd, name string) (string, error) {
 	}
 	if newest == "" {
 		slices.Sort(names)
-		return "", fmt.Errorf("no teammate %q in this session's team; teammates: %s", name, cmp.Or(strings.Join(slices.Compact(names), ", "), "none"))
+		return "", &NoTeammateError{Name: name, Teammates: slices.Compact(names)}
 	}
 	return newest, nil
+}
+
+// NoTeammateError is a teammate name a session's agent team does not have.
+type NoTeammateError struct {
+	Name string
+	// Teammates are the names the team has, sorted.
+	Teammates []string
+}
+
+func (e *NoTeammateError) Error() string {
+	return fmt.Sprintf("no teammate %q in this session's team; teammates: %s", e.Name, cmp.Or(strings.Join(e.Teammates, ", "), "none"))
 }
 
 // isTeammate reports whether a subagent's meta file names a team.

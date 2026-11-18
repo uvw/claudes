@@ -106,7 +106,17 @@ func TestTeammateFindsTheNewestTranscriptOfTheName(t *testing.T) {
 	if _, err := st.Teammate(sid, "/a", "nobody"); err == nil || !strings.Contains(err.Error(), "teammates: tester, writer") {
 		t.Fatalf("err %v", err)
 	}
+	// logs takes this error, and only this one, for a target that names nothing.
+	var none *NoTeammateError
+	if _, err := st.Teammate(sid, "/a", "nobody"); !errors.As(err, &none) || none.Name != "nobody" {
+		t.Fatalf("err %v is not a NoTeammateError", err)
+	}
+	if _, err := st.Teammate(sessionIDNobodyHas, "/a", "tester"); errors.As(err, &none) {
+		t.Fatalf("a missing lead transcript is a NoTeammateError: %v", err)
+	}
 }
+
+const sessionIDNobodyHas = "00000000-0000-4000-8000-000000000000"
 
 func TestAShutdownRequestShowsItsReason(t *testing.T) {
 	rec := `{"type":"user","message":{"content":"<teammate-message teammate_id=\"team-lead\">\n{\"type\":\"shutdown_request\",\"reason\":\"All tasks complete.\"}\nPlease stop.\n</teammate-message>"}}`
