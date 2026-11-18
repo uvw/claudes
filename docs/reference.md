@@ -306,7 +306,7 @@ ping:
 wait:
   timeout: 45m # how long --wait waits; 30m by default
 output:
-  format: json # the default -o of ls, where, team ls, and the session commands
+  format: json # the default -o of ls, where, team ls, doctor, mcp ls, mcp profiles, and the session commands
   dirs: fish # how text tables shorten a long directory: middle, fish, or full
 mcp:
   profiles: # each profile, and the MCP servers that stay on in it

@@ -138,13 +138,28 @@ func TestConfigSetsFlagDefaults(t *testing.T) {
 	h := newHarness(t)
 	h.withConfig(t, "ping:\n  text: keep going\nwait:\n  timeout: 5m\noutput:\n  format: json\n")
 	root := h.app.rootCommand()
+	// The commands docs/reference.md says follow output.format, and two it
+	// says stay text.
 	for _, c := range []struct{ cmd, flag, want string }{
 		{"ls", "output", "json"},
 		{"where", "output", "json"},
+		{"team ls", "output", "json"},
+		{"session ls", "output", "json"},
+		{"session show", "output", "json"},
+		{"session where", "output", "json"},
+		{"session du", "output", "json"},
+		{"session search", "output", "json"},
+		{"session triage", "output", "json"},
+		{"doctor", "output", "json"},
+		{"doctor env", "output", "json"},
+		{"mcp ls", "output", "json"},
+		{"mcp profiles", "output", "json"},
+		{"logs", "output", "text"},
+		{"restart", "output", "text"},
 		{"restart", "timeout", (5 * time.Minute).String()},
 		{"pause", "timeout", (5 * time.Minute).String()},
 	} {
-		cmd, _, err := root.Find([]string{c.cmd})
+		cmd, _, err := root.Find(strings.Fields(c.cmd))
 		if err != nil {
 			t.Fatal(err)
 		}

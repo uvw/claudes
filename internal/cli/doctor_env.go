@@ -63,7 +63,7 @@ a bug report.`,
 			return tw.Flush()
 		},
 	}
-	out.add(cmd, "")
+	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }
 
