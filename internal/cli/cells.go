@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/shell"
+	"github.com/uvw/claudes/internal/style"
 )
 
 // dash is s, or "-" for a value a table cell does not have.
@@ -47,12 +48,25 @@ func ago(now, t time.Time) string {
 }
 
 // maxName is the most characters of a name a table shows. Claude Code's own
-// titles for sessions run past 60.
-const maxName = 40
+// titles for sessions run past 60. On a terminal too narrow for the line,
+// writeTable cuts a name to as few as minName.
+const maxName, minName = 40, 12
 
-// nameCell is a name as a table shows it: printable, on one line, and cut to
-// maxName characters.
+// nameCell is a name as a table shows it, in a column headed nameHeader:
+// printable, on one line, and cut to maxName characters.
 func nameCell(name string) string { return firstLine(shell.Printable(name), maxName) }
+
+// maxBranch is the most columns of a git branch a table shows, enough for
+// feat/ and a few words. On a terminal too narrow for the line, writeTable
+// cuts a branch to as few as minBranch.
+const maxBranch, minBranch = 24, 12
+
+// branchCell is a git branch as a table shows it, in a column headed
+// branchHeader: printable, and cut in the middle to maxBranch columns, or "-"
+// when there is none. Every branch a table shows goes through it.
+func branchCell(branch string) string {
+	return dash(style.Branch(shell.Printable(branch), maxBranch))
+}
 
 // firstLine is the first line of s, cut to at most limit characters.
 func firstLine(s string, limit int) string {

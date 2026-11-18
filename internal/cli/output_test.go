@@ -342,6 +342,39 @@ func TestDirectoriesFitTheTerminal(t *testing.T) {
 	}
 }
 
+func TestSessionLsFitsALongBranchAndNameToTheTerminal(t *testing.T) {
+	h, deep, _ := deepHarness(t)
+	branch, name := "feat/ledger-rounding-for-every-currency", "reconcile the ledger totals for each month"[:maxName]
+	h.said(t, name, deep, time.Hour, fmt.Sprintf(`{"type":"user","gitBranch":%q,"message":{"content":"go"}}`, branch))
+	cells := func(out string) (string, string) {
+		for n, b := range column(t, out, "BRANCH") {
+			if strings.HasPrefix(n, "reconcile") {
+				return b, n
+			}
+		}
+		t.Fatalf("no row for %q:\n%s", name, out)
+		return "", ""
+	}
+
+	out := runTable(t, h, deep, []string{"session", "ls"})
+	if b, n := cells(out); b != style.Branch(branch, maxBranch) || n != name {
+		t.Errorf("off a terminal: BRANCH %q and NAME %q, want %q and the whole name:\n%s", b, n, style.Branch(branch, maxBranch), out)
+	}
+	for _, width := range []int{90, 100, 120} {
+		h.app.Width = func() int { return width }
+		out := runTable(t, h, deep, []string{"session", "ls"})
+		for line := range strings.Lines(out) {
+			if w := style.Width(strings.TrimRight(line, "\n")); w > width {
+				t.Errorf("width %d: a line of %d columns:\n%s", width, w, out)
+			}
+		}
+		// cut drops the space before its …, so a name can end a column short.
+		if b, n := cells(out); style.Width(b) < minBranch || style.Width(n) < minName-1 || style.Width(n) >= maxName {
+			t.Errorf("width %d: BRANCH %q, NAME %q:\n%s", width, b, n, out)
+		}
+	}
+}
+
 func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 	h, deep, short := deepHarness(t)
 	for _, tc := range []struct {
@@ -427,17 +460,51 @@ func TestTablesPutPathsThroughDirCell(t *testing.T) {
 					}
 				}
 			case *ast.FuncDecl:
-				if n.Body != nil && callsWriteTable(n.Body) {
-					for _, cell := range tableCells(n.Body) {
-						if namesPath(cell, pathNames) {
-							use("path in a table cell", cell.Pos())
-						}
+				for _, cell := range writtenCells(n) {
+					if shows(cell, pathNames, "dirCell") {
+						use("path in a table cell", cell.Pos())
 					}
 				}
 			}
 			return true
 		})
 	}
+}
+
+// TestTablesPutBranchesThroughBranchCell reads the package's source, so a new
+// table cannot show a git branch that branchCell and the terminal's width
+// leave whole.
+func TestTablesPutBranchesThroughBranchCell(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, decl := range f.Decls {
+			for _, cell := range writtenCells(decl) {
+				if shows(cell, []string{"Branch", "branch"}, "branchCell") {
+					t.Errorf("%s: a branch in a table cell; a table shows a branch through branchCell", fset.Position(cell.Pos()))
+				}
+			}
+		}
+	}
+}
+
+// writtenCells is every table cell of decl, when it is a function that writes
+// a table.
+func writtenCells(decl ast.Decl) []ast.Expr {
+	if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil && callsWriteTable(fn.Body) {
+		return tableCells(fn.Body)
+	}
+	return nil
 }
 
 // callsWriteTable reports whether body writes a table.
@@ -474,23 +541,24 @@ func tableCells(body *ast.BlockStmt) []ast.Expr {
 	return cells
 }
 
-// namesPath reports whether the cell e shows something named as a path, such
-// as r.Cwd or Faint(r.Cwd), other than through dirCell.
-func namesPath(e ast.Expr, names []string) bool {
+// shows reports whether the cell e shows something with one of names, such
+// as r.Cwd or Faint(r.Cwd) for a path, other than through the function named
+// through.
+func shows(e ast.Expr, names []string, through string) bool {
 	switch e := e.(type) {
 	case *ast.Ident:
 		return slices.Contains(names, e.Name)
 	case *ast.SelectorExpr:
 		return slices.Contains(names, e.Sel.Name)
 	case *ast.ParenExpr:
-		return namesPath(e.X, names)
+		return shows(e.X, names, through)
 	case *ast.BinaryExpr:
-		return namesPath(e.X, names) || namesPath(e.Y, names)
+		return shows(e.X, names, through) || shows(e.Y, names, through)
 	case *ast.CallExpr:
-		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "dirCell" {
+		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == through {
 			return false
 		}
-		return slices.ContainsFunc(e.Args, func(a ast.Expr) bool { return namesPath(a, names) })
+		return slices.ContainsFunc(e.Args, func(a ast.Expr) bool { return shows(a, names, through) })
 	}
 	return false
 }

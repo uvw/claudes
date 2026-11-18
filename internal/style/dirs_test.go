@@ -126,7 +126,7 @@ func TestFitGivesADirectoryTheRoomTheOtherColumnsLeave(t *testing.T) {
 	} {
 		rows := [][]string{{"ID", "DIR", "NAME"}, {"0123abcd", path, "api"}}
 		l := tc.layout
-		l.DirCols = []int{1}
+		l.Columns = []Column{dirColumn(1)}
 		Fit(rows, l, faint)
 		if rows[1][1] != "<"+tc.want+">" || rows[0][1] != "DIR" {
 			t.Errorf("%+v: got %q, want %q", tc.layout, rows[1][1], tc.want)
@@ -138,7 +138,7 @@ func TestFitCutsTheLastColumnToWhatIsLeft(t *testing.T) {
 	path, doing := filepath.FromSlash(deep), strings.Repeat("checking the build ", 5)
 	plain := func(s string) string { return s }
 	rows := [][]string{{"DIR", "DOING"}, {path, doing}}
-	Fit(rows, Layout{Width: 50, Dirs: DirsMiddle, DirCols: []int{0}, FitLast: true}, plain)
+	Fit(rows, Layout{Width: 50, Dirs: DirsMiddle, Columns: []Column{lastColumn(1, 0), dirColumn(0)}}, plain)
 	if got := Width(rows[1][0]); got > 50-2-MinLast {
 		t.Errorf("DIR %q takes %d columns", rows[1][0], got)
 	}
@@ -146,8 +146,12 @@ func TestFitCutsTheLastColumnToWhatIsLeft(t *testing.T) {
 		t.Errorf("the line is %d columns: %q", got, rows[1])
 	}
 	rows = [][]string{{"DIR", "DOING"}, {path, doing}}
-	Fit(rows, Layout{Dirs: DirsMiddle, DirCols: []int{0}, FitLast: true, LastCap: 20}, plain)
+	Fit(rows, Layout{Dirs: DirsMiddle, Columns: []Column{lastColumn(1, 20), dirColumn(0)}}, plain)
 	if Width(rows[1][1]) > 20 || Width(rows[1][0]) > MaxDir {
 		t.Errorf("off a terminal: %q", rows[1])
 	}
 }
+
+func dirColumn(i int) Column { return Column{Index: i, Cut: CutDir, Min: MinDir, Max: MaxDir} }
+
+func lastColumn(i, limit int) Column { return Column{Index: i, Cut: CutEnd, Min: MinLast, Max: limit} }

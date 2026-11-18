@@ -88,31 +88,48 @@ func dirCell(path string) string { return homeShort(path) }
 // and fades.
 const dirHeader = "DIR"
 
+// nameHeader and branchHeader head the columns of nameCell and branchCell,
+// which writeTable cuts further when a line is wider than the terminal.
+const nameHeader, branchHeader = "NAME", "BRANCH"
+
 // tableFit says how writeTable fits a table to the line.
 type tableFit struct {
 	// margin is how many columns go before each line.
 	margin int
-	// fitLast cuts the last column to what is left of the terminal's width
-	// after the directories, or to lastCap off a terminal when lastCap is not
-	// 0.
+	// fitLast cuts the last column to what is left of the terminal's width,
+	// or to lastCap off a terminal when lastCap is not 0.
 	fitLast bool
 	lastCap int
 }
 
 // writeTable writes rows, the first being the header, as style.Table does,
-// after style.Fit fits them to Out's terminal and output.dirs.
+// after style.Fit fits them to Out's terminal and output.dirs. While a line is
+// wider than the terminal, it cuts the last column with fitLast, then each
+// directory, then each name, then each branch.
 func (app *App) writeTable(w io.Writer, rows [][]string, fit tableFit) error {
-	var dirCols []int
+	var cols []style.Column
 	if len(rows) > 0 {
-		for i, h := range rows[0] {
-			if h == dirHeader {
-				dirCols = append(dirCols, i)
+		last := len(rows[0]) - 1
+		if fit.fitLast {
+			cols = append(cols, style.Column{Index: last, Cut: style.CutEnd, Min: style.MinLast, Max: fit.lastCap})
+		}
+		for _, c := range []struct {
+			header string
+			col    style.Column
+		}{
+			{dirHeader, style.Column{Cut: style.CutDir, Min: style.MinDir, Max: style.MaxDir}},
+			{nameHeader, style.Column{Cut: style.CutEnd, Min: minName}},
+			{branchHeader, style.Column{Cut: style.CutBranch, Min: minBranch}},
+		} {
+			for i, h := range rows[0] {
+				if h == c.header && (i != last || !fit.fitLast) {
+					c.col.Index = i
+					cols = append(cols, c.col)
+				}
 			}
 		}
 	}
-	style.Fit(rows, style.Layout{
-		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), DirCols: dirCols, FitLast: fit.fitLast, LastCap: fit.lastCap,
-	}, app.colors.Faint)
+	style.Fit(rows, style.Layout{Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), Columns: cols}, app.colors.Faint)
 	return style.Table(w, rows)
 }
 
