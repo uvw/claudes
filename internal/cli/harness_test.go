@@ -388,7 +388,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		Jobs:     jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
 		Park:     park.File{Path: filepath.Join(h.root, "state", "parked.json")},
 		LockPath: filepath.Join(h.root, "state", "run.lock"),
-		MCP:      mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
+		MCP:      mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root, Profiles: filepath.Join(h.root, "state", "profiles")},
 		Mod:      mod.Channel{Dir: filepath.Join(h.root, "state", "mod")},
 		Out:      h.out,
 		Err:      h.err,

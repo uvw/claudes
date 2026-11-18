@@ -249,5 +249,6 @@ Commands:
 Options:
   --all                                 With --json: also include completed
   --json                                Print active sessions as JSON
+  --settings <file-or-json>             Settings file or JSON string to apply
 `
 )

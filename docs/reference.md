@@ -12,7 +12,7 @@ Pick a format with `-o`:
 | `ls`, `where`, `team ls`                                    | text, json, yaml | `output.format`, or text |
 | `session ls`, `show`, `where`, `du`, `search`, and `triage` | text, json, yaml | `output.format`, or text |
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
-| `mcp ls`, `profiles`, `on`, and `off`, and `mod status`     | text, json, yaml | `output.format`, or text |
+| `mcp ls`, `profiles`, `on`, `off`, `use`, and `mod status`  | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
 | `gc`, `pin`, `unpin`, `session gc`, `session restore`       | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
@@ -240,11 +240,11 @@ Each server has:
 `mcp profiles` prints a list of profiles, each with `name`, `servers`, and
 `unknown`: the servers that match none claudes can find.
 
-`mcp on` and `mcp off` print one object:
+`mcp on`, `mcp off`, and `mcp use` print one object:
 
 | Field     | Meaning                                                      |
 | --------- | ------------------------------------------------------------ |
-| `command` | `mcp on` or `mcp off`                                        |
+| `command` | `mcp on`, `mcp off`, or `mcp use`                            |
 | `dir`     | The directory whose `disabledMcpServers` list changed        |
 | `id`      | The session's id, or empty with `--in`                       |
 | `name`    | The session's name, or empty with `--in`                     |
@@ -465,6 +465,7 @@ as usual. `--version` prints the version.
 | `trashed.json`        | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `run.lock`            | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `mod/`                | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
+| `profiles/`           | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `claude-version.json` | `$XDG_CACHE_HOME/claudes`, or `~/.cache/claudes`       | `%LOCALAPPDATA%\claudes\cache` |
 
 - `parked.json` lists paused sessions, and is deleted when it's empty. On
@@ -493,6 +494,10 @@ as usual. `--version` prints the version.
   `sessions/SESSION.json` the mod version a session loaded. claudes deletes a
   request and its results once it has read them. `claudes mod uninstall` deletes
   the directory.
+- `profiles/NAME.json` is the `allowedMcpServers` setting
+  `agents --profile NAME` passes to `claude agents --settings`, readable only by
+  you, since it holds the servers' URLs and commands. claudes writes it again at
+  each run.
 - An `XDG_` variable that holds an absolute path moves its directory on every
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and
   must be an absolute path.
@@ -507,5 +512,5 @@ as usual. `--version` prints the version.
   there; `session restore`, which moves them back; and `skill --install`.
   Unpinning also deletes the job's `order` file, as agent view does. Outside
   `~/.claude`, it writes only a directory's `disabledMcpServers` in
-  `~/.claude.json`, for `mcp on` and `mcp off` with `--restart` or `--in`.
-  Everything else it changes goes through the `claude` command.
+  `~/.claude.json`, for `mcp on`, `mcp off`, and `mcp use` with `--restart` or
+  `--in`. Everything else it changes goes through the `claude` command.

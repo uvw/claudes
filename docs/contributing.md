@@ -36,6 +36,7 @@
    | The cached `claude --version`                                                                                          | `internal/compat`      |
    | The installed agent skill                                                                                              | `internal/cli`         |
    | `mod/`, the directory claudes and the claudes mod share, in claudes' state directory                                   | `internal/mod`         |
+   | `profiles/`, the settings files `claudes agents --profile` passes, in claudes' state directory                         | `internal/mcp`         |
 
    In `~/.claude.json`, claudes writes only a directory's `disabledMcpServers`,
    through `claude.SetDisabled`, with a compare-and-swap. Nothing in claudes

@@ -144,6 +144,8 @@ binary by its full path rather than assuming it is gone.
 | is the claudes mod installed, loaded | `claudes mod status`; see "The claudes mod"               |
 | turn MCP server M off in session X   | `claudes mcp off M X`; see "The claudes mod"              |
 | turn every MCP server back on in X   | `claudes mcp on --all X`                                  |
+| use only profile P's MCPs in X       | `claudes mcp use P X`; `--dry-run` first                  |
+| open agent view with only profile P  | Ask the user to run `claudes agents --profile P`          |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.
@@ -211,7 +213,7 @@ These commands are read-only. Run them freely:
 - `doctor`, `doctor env`, `config get`, `config path`, `upgrade --check`,
   `skill` without `--install` or `--dir`, `--version`, and `--help`
 - `restart`, `pause`, `resume`, `gc`, `session gc`, `session restore`, `mcp on`,
-  and `mcp off` with `--dry-run`
+  `mcp off`, and `mcp use` with `--dry-run`
 
 Every other command changes the user's sessions or their computer, such as
 `upgrade`, `skill --install`, `config set`, and `gc --teams`. Run one only as

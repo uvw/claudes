@@ -150,6 +150,24 @@ func Want(names []string, state string) map[string]string {
 	return want
 }
 
+// ProfileWant turns on the servers keep names and turns off every other one
+// of servers, and lists the names in keep that servers does not have.
+func ProfileWant(servers []Server, keep []string) (want map[string]string, missing []string) {
+	want = map[string]string{}
+	for _, s := range servers {
+		want[s.Name] = Off
+		if slices.Contains(keep, s.Name) {
+			want[s.Name] = On
+		}
+	}
+	for _, name := range keep {
+		if _, ok := want[name]; !ok {
+			missing = append(missing, name)
+		}
+	}
+	return want, missing
+}
+
 // Match picks the names each pattern matches: a glob over whole names, or one
 // exact name. A pattern that matches nothing is an error.
 func Match(patterns, names []string) ([]string, error) {
