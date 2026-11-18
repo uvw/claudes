@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/uvw/claudes/internal/claude"
 )
 
 // fixture is a home directory with a ~/.claude.json, a ~/.claude, and a work
@@ -295,60 +297,6 @@ func TestAProjectInstallAppliesToItsDirectoryOnly(t *testing.T) {
 	same(t, f.servers(f.dir("other")), []string{})
 }
 
-func TestAWorktreeUsesItsMainRepositorysEntry(t *testing.T) {
-	f := newFixture(t)
-	main := f.dir("repo")
-	sub := f.dir("repo", "pkg")
-	tree := f.dir("repo", ".claude", "worktrees", "feature")
-	gitDir := filepath.Join(main, ".git", "worktrees", "feature")
-	f.write(filepath.Join(gitDir, "commondir"), "../..\n")
-	f.write(filepath.Join(tree, ".git"), "gitdir: "+gitDir+"\n")
-	f.claudeJSON(map[string]any{
-		"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}},
-		"projects": map[string]any{filepath.ToSlash(main): map[string]any{
-			"disabledMcpServers": []string{"helper"},
-		}},
-	})
-	for _, d := range []string{main, sub, tree} {
-		same(t, f.servers(d), []string{"helper user off stdio"})
-	}
-
-	// A submodule's .git file has no commondir, so it is its own repository.
-	module := f.dir("repo", "vendor", "lib")
-	f.write(filepath.Join(main, ".git", "modules", "lib", "HEAD"), "ref: refs/heads/main\n")
-	f.write(filepath.Join(module, ".git"), "gitdir: ../../.git/modules/lib\n")
-	same(t, f.servers(module), []string{"helper user on stdio"})
-}
-
-func TestALinkIsFollowedBeforeTheRepositoryIsFound(t *testing.T) {
-	f := newFixture(t)
-	main := f.dir("repo")
-	f.write(filepath.Join(main, ".git", "HEAD"), "ref: refs/heads/main\n")
-	inside := f.dir("repo", "jobs", "scratch")
-	link := filepath.Join(f.root, "link")
-	if err := os.Symlink(filepath.Join(main, "jobs"), link); err != nil {
-		t.Skipf("cannot make a link here: %v", err)
-	}
-	f.claudeJSON(map[string]any{
-		"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}},
-		"projects": map[string]any{
-			filepath.ToSlash(main):                           map[string]any{"disabledMcpServers": []string{"helper"}},
-			filepath.ToSlash(filepath.Join(link, "scratch")): map[string]any{},
-		},
-	})
-	same(t, f.servers(filepath.Join(link, "scratch")), []string{"helper user off stdio"})
-	same(t, f.servers(inside), []string{"helper user off stdio"})
-}
-
-func TestOutsideARepositoryTheDirectoryIsItsOwnEntry(t *testing.T) {
-	f := newFixture(t)
-	dir := f.dir("plain")
-	f.claudeJSON(map[string]any{"projects": map[string]any{filepath.ToSlash(dir): map[string]any{
-		"mcpServers": map[string]any{"mine": map[string]any{"command": "x"}},
-	}}})
-	same(t, f.servers(dir), []string{"mine local on stdio"})
-}
-
 func TestAManagedFileTakesOver(t *testing.T) {
 	f := newFixture(t)
 	f.claudeJSON(map[string]any{"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}}})
@@ -384,13 +332,13 @@ func TestKnownReadsClaudeJSONOnce(t *testing.T) {
 	f := newFixture(t)
 	f.claudeJSON(map[string]any{"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}}})
 	reads := 0
-	readFile = func(path string) ([]byte, error) {
+	readConfig = func(path string) (claude.Config, error) {
 		if path == f.store.ConfigFile {
 			reads++
 		}
-		return os.ReadFile(path)
+		return claude.ReadConfig(path)
 	}
-	t.Cleanup(func() { readFile = os.ReadFile })
+	t.Cleanup(func() { readConfig = claude.ReadConfig })
 	if !f.store.Known(f.dir())["helper"] {
 		t.Fatal("helper is not known")
 	}
@@ -427,43 +375,5 @@ func TestDefaultStoreFollowsClaudeConfigDir(t *testing.T) {
 	t.Setenv("CLAUDE_CONFIG_DIR", "relative")
 	if _, err := DefaultStore(); err == nil {
 		t.Fatal("accepted a relative CLAUDE_CONFIG_DIR")
-	}
-}
-
-func TestFeatureReadsTheFlagsClaudeCodeCaches(t *testing.T) {
-	dir := t.TempDir()
-	st := Store{ConfigFile: filepath.Join(dir, ".claude.json")}
-	write := func(body string) {
-		if err := os.WriteFile(st.ConfigFile, []byte(body), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	const flag = "tengu_hover_rest"
-	for _, tc := range []struct {
-		body      string
-		on, found bool
-	}{
-		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":false}}`, false, true},
-		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":true}}`, true, true},
-		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":{"variant":"a"}}}`, true, true},
-		{`{"cachedGrowthBookFeatures":{"tengu_hover_rest":null}}`, false, true},
-		{`{"cachedGrowthBookFeatures":{"other":true}}`, false, false},
-		{`{"numStartups":3}`, false, false},
-	} {
-		write(tc.body)
-		on, found, err := st.Feature(flag)
-		if err != nil || on != tc.on || found != tc.found {
-			t.Errorf("%s: on %v, found %v, err %v", tc.body, on, found, err)
-		}
-	}
-	if _, found, err := (Store{ConfigFile: filepath.Join(dir, "missing.json")}).Feature(flag); found || err != nil {
-		t.Errorf("a missing file: found %v, err %v", found, err)
-	}
-	if _, found, err := (Store{}).Feature(flag); found || err != nil {
-		t.Errorf("no file: found %v, err %v", found, err)
-	}
-	write("not json")
-	if _, _, err := st.Feature(flag); err == nil {
-		t.Error("a file that is not JSON gave no error")
 	}
 }

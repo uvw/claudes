@@ -14,8 +14,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 )
 
 // lockStale matches the stale time Claude Code passes to its lock for
@@ -51,6 +51,15 @@ func (s Store) statePath(jobID string) string {
 }
 
 var validID = regexp.MustCompile(`^[0-9a-f]{8}$`)
+
+// IDFromDir is the job id a job's directory names, such as ff78d735 for
+// ~/.claude/jobs/ff78d735 in CLAUDE_JOB_DIR, or "" when it names none.
+func IDFromDir(dir string) string {
+	if id := filepath.Base(filepath.Clean(dir)); dir != "" && ValidID(id) {
+		return id
+	}
+	return ""
+}
 
 // ValidID reports whether id has the form of a job id: eight hex digits.
 func ValidID(id string) bool { return validID.MatchString(id) }
@@ -142,13 +151,13 @@ func writePins(path string, ids []string) error {
 	if err != nil {
 		return err
 	}
-	return safefile.WriteFile(path, data, 0o644)
+	return files.WriteFile(path, data, 0o644)
 }
 
 // withLock holds the same lock Claude Code takes for pins.json: a directory
 // named pins.json.lock.
 func (s Store) withLock(fn func() error) error {
-	lock := safefile.Lock{Path: s.pinsPath() + ".lock", Stale: lockStale, Attempts: s.LockAttempts, Delay: s.LockDelay}
+	lock := files.Lock{Path: s.pinsPath() + ".lock", Stale: lockStale, Attempts: s.LockAttempts, Delay: s.LockDelay}
 	return lock.Do(fn)
 }
 

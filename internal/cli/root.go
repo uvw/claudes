@@ -7,37 +7,16 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime/debug"
 	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/version"
 )
-
-// Version and Commit are set at build time with -ldflags
-// "-X github.com/uvw/claudes/internal/cli.Version=...".
-var (
-	Version = "dev"
-	Commit  = ""
-)
-
-// buildVersion prefers the ldflags values, then the module version go install
-// records.
-func buildVersion() string {
-	if Version != "dev" {
-		if Commit != "" {
-			return Version + " (" + Commit + ")"
-		}
-		return Version
-	}
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		return info.Main.Version
-	}
-	return Version
-}
 
 // Main runs claudes and returns its exit code.
 func Main(args []string) int { return newApp().Run(args) }
@@ -111,7 +90,7 @@ func (app *App) Run(args []string) int {
 		switch {
 		case ctx.Err() != nil && !app.endsOnInterrupt:
 			r.Error = "interrupted"
-		case err != nil && !errors.Is(err, errSomeFailed) && !errors.Is(err, errReported):
+		case err != nil && !errors.Is(err, exit.ErrSomeFailed) && !errors.Is(err, exit.ErrReported):
 			r.Error = err.Error()
 		}
 	})
@@ -121,16 +100,16 @@ func (app *App) Run(args []string) int {
 	case ctx.Err() != nil:
 		fmt.Fprintln(app.Err)
 		app.errorLine("claudes: interrupted. Some sessions may already be stopped or restarted: check claudes ls")
-		return exitInterrupted
+		return exit.Interrupted
 	case err == nil:
 		return 0
-	case errors.Is(err, errSomeFailed):
-		return exitSomeFailed
-	case errors.Is(err, errReported):
-		return exitFailed
+	case errors.Is(err, exit.ErrSomeFailed):
+		return exit.SomeFailed
+	case errors.Is(err, exit.ErrReported):
+		return exit.Failed
 	}
 	app.errorLine("claudes: %s", shell.PrintableText(err.Error()))
-	return exitCode(err)
+	return exit.Code(err)
 }
 
 // commandName is the first argument after claudes' own -v or --verbose, or
@@ -178,7 +157,7 @@ ARGS starts with a claudes command.
 
 Bulk commands leave pinned sessions alone unless you name them. Pins are the
 same as Ctrl+T in agent view.`,
-		Version:       buildVersion(),
+		Version:       version.Build(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {

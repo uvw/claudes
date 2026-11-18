@@ -257,3 +257,16 @@ func (st Store) Find(sessionID, cwd string) (string, error) {
 	}
 	return cmp.Or(newest, matches[0]), nil
 }
+
+// OneEach keeps one event per transcript record, for logs -o json, which
+// prints the records themselves.
+func OneEach(events []Event) []Event {
+	var out []Event
+	for _, e := range events {
+		if n := len(out); n > 0 && bytes.Equal(out[n-1].Raw, e.Raw) {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}

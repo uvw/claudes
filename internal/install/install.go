@@ -4,8 +4,8 @@ package install
 import (
 	"path/filepath"
 
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 )
 
 const skillName = "claudes"
@@ -24,5 +24,5 @@ func ClaudeSkillsDir() (string, error) {
 // older copy, so running it again updates the skill.
 func Skill(dir string, content []byte) (string, error) {
 	path := filepath.Join(dir, skillName, "SKILL.md")
-	return path, safefile.WriteFileAll(path, content, 0o644)
+	return path, files.WriteFileAll(path, content, 0o644)
 }

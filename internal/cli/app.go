@@ -8,22 +8,22 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/interrupt"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
-	"github.com/uvw/claudes/internal/selfupdate"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/trash"
+	"github.com/uvw/claudes/internal/upgrade"
 )
 
 const (
@@ -57,8 +57,8 @@ type App struct {
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
-	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads, and
-	// the one reader of ~/.claude.json, whose feature flags doctor reports.
+	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads. Its
+	// ConfigFile is ~/.claude.json, whose feature flags doctor reports.
 	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
@@ -135,25 +135,27 @@ func newApp() *App {
 		Err:            os.Stderr,
 		In:             os.Stdin,
 		Now:            time.Now,
-		Sleep:          sleep,
+		Sleep:          interrupt.Sleep,
 		Terminate:      procs.Terminate,
 		Started:        procs.Started,
 		RunningVersion: procs.RunningVersion,
 		Trash:          trash.Move,
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
-		Edit:           editFile,
-		Interrupt:      interruptContext,
+		Edit:           config.Edit,
+		Interrupt:      interrupt.Context,
 		Which:          exec.LookPath,
 		Chdir:          os.Chdir,
 		HTTP:           &http.Client{Timeout: 5 * time.Minute},
-		ReleasesURL:    selfupdate.Releases,
+		ReleasesURL:    upgrade.Releases,
 		Executable:     os.Executable,
 		HostID:         os.Getenv("CLAUDE_CODE_SESSION_ID"),
-		HostJob:        hostJob(os.Getenv("CLAUDE_JOB_DIR")),
+		HostJob:        jobs.IDFromDir(os.Getenv("CLAUDE_JOB_DIR")),
 		Environ:        os.Environ,
 	}
-	app.Provenance = app.ghProvenance
+	app.Provenance = func(ctx context.Context, archive string, fromGitHub bool) (string, error) {
+		return upgrade.Provenance(ctx, app.Which, archive, fromGitHub)
+	}
 	app.Width = func() int { return style.TerminalWidth(app.Out) }
 	client := claude.NewClient()
 	client.Log = app.log()
@@ -177,29 +179,13 @@ func newApp() *App {
 	return app
 }
 
-// hostJob is the job id a CLAUDE_JOB_DIR names, such as ff78d735 for
-// ~/.claude/jobs/ff78d735, or "" when it names none.
-func hostJob(dir string) string {
-	if id := filepath.Base(filepath.Clean(dir)); dir != "" && jobs.ValidID(id) {
-		return id
+// remover is how a command removes a file or directory: it moves it to the
+// system trash, or with --purge deletes it for good.
+func (app *App) remover(purge bool) func(string) error {
+	if purge {
+		return os.RemoveAll
 	}
-	return ""
-}
-
-// interruptContext is Interrupt: ctx, canceled by the first of stopSignals.
-func interruptContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return signal.NotifyContext(ctx, stopSignals...)
-}
-
-func sleep(ctx context.Context, d time.Duration) error {
-	timer := time.NewTimer(d)
-	defer timer.Stop()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
-	}
+	return app.Trash
 }
 
 // configPathErr is the error when claudes cannot even tell where config.yaml

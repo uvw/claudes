@@ -9,6 +9,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/compat"
+	"github.com/uvw/claudes/internal/exit"
 )
 
 // compatible warns once when the installed Claude Code is outside the tested
@@ -35,7 +36,7 @@ func (app *App) protectedPins(sessions []claude.Session) (map[string]bool, error
 		missing := fmt.Sprintf("the jobs directory %s does not exist, though claude agents lists background sessions, "+
 			"so claudes cannot see which are pinned. CLAUDE_CONFIG_DIR may point to the wrong directory", app.Jobs.Dir)
 		if !app.force {
-			return nil, refused(errors.New(missing + ". Pass --force to go ahead anyway"))
+			return nil, exit.Refusal(errors.New(missing + ". Pass --force to go ahead anyway"))
 		}
 		app.warn("claudes: going ahead with --force, although %s", missing)
 	}
@@ -57,7 +58,7 @@ func (app *App) refuse(source string, problems []string) error {
 		app.warn("claudes: going ahead with --force, although %s looks unfamiliar:%s", source, list)
 		return nil
 	}
-	return refused(fmt.Errorf("%s holds something claudes does not recognize, so it changed nothing:%s\n"+
+	return exit.Refusal(fmt.Errorf("%s holds something claudes does not recognize, so it changed nothing:%s\n"+
 		"Claude Code may have changed. Run claudes doctor, or pass --force to go ahead anyway", source, list))
 }
 
@@ -73,4 +74,36 @@ func (app *App) warnVersion(ctx context.Context) {
 	if w := compat.Tested.CheckVersion(installed); w != "" {
 		app.warn("claudes: %s. Run claudes doctor if anything goes wrong.", w)
 	}
+}
+
+// sessionVersion is the Claude Code version a session runs: the one its
+// process's executable names, or else the job's cliVersion, which Claude Code
+// updates only once a respawned session takes a turn.
+func (app *App) sessionVersion(s claude.Session) string {
+	if s.PID > 0 && app.RunningVersion != nil {
+		if v := app.RunningVersion(s.PID); v != "" {
+			return v
+		}
+	}
+	return app.Jobs.Version(s.JobID)
+}
+
+// installedVersion is `claude --version`, cached in CacheDir.
+func (app *App) installedVersion(ctx context.Context) (string, error) {
+	binary := app.claudePath()
+	return compat.CachedVersion(app.CacheDir, binary, app.Now(), func() (string, error) {
+		return app.Agents.Version(ctx)
+	})
+}
+
+// claudePath is where claude is on PATH, or "" when it is not found.
+func (app *App) claudePath() string {
+	if app.Which == nil {
+		return ""
+	}
+	path, err := app.Which("claude")
+	if err != nil {
+		return ""
+	}
+	return path
 }

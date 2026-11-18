@@ -7,6 +7,8 @@ import (
 	"slices"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 )
@@ -24,7 +26,7 @@ func (app *App) handOff(ctx context.Context, name, token string, finished bool) 
 	}
 	s := picked[0]
 	if s.JobID == "" {
-		return refused(fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name))
+		return exit.Refusal(fmt.Errorf("%s is an interactive session: claude %s works on background sessions. claudes logs -f follows any session", s.Label(), name))
 	}
 	return app.Exec("claude", name, s.JobID)
 }
@@ -32,7 +34,7 @@ func (app *App) handOff(ctx context.Context, name, token string, finished bool) 
 // resumePast resumes p in its own directory: in the background with bg, or in
 // this terminal otherwise, which ends claudes.
 func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg bool) error {
-	if !claude.FolderExists(p.Cwd) {
+	if !paths.IsDir(p.Cwd) {
 		return fmt.Errorf("%s ran in %s, which is gone. Move it with claudes session mv first", p.Label(), p.Cwd)
 	}
 	if bg {
@@ -40,7 +42,7 @@ func (app *App) resumePast(ctx context.Context, p pastSession, prompt string, bg
 		if err != nil {
 			return err
 		}
-		if dir := app.Jobs.Folder(job, p.SessionID); dir != "" && !sameDir(dir, p.Cwd) {
+		if dir := app.Jobs.Folder(job, p.SessionID); dir != "" && !paths.Same(dir, p.Cwd) {
 			return fmt.Errorf("%s has a background job in %s, and claude --bg --resume would wake it there, not in %s. "+
 				"Resume it in this terminal without --bg, or remove the job first with claudes gc %s", p.Label(), dir, p.Cwd, job)
 		}

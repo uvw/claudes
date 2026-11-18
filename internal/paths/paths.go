@@ -1,7 +1,8 @@
 // Package paths says where claudes keeps its own files: its config, its state
 // such as the park file, and its cache. It follows the XDG base directory
 // variables on every platform, and each platform's own directories otherwise. It
-// also finds Claude Code's own directory.
+// also finds Claude Code's own directory, and tells whether a directory is
+// within another, the same, real, or gone.
 package paths
 
 import (

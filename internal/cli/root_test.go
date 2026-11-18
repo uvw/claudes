@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 )
 
 // inParentsFile are the commands whose code lives in another command's file,
@@ -76,21 +77,9 @@ func TestSafetyRefusalsExitFour(t *testing.T) {
 	} {
 		os.MkdirAll(h.folder("other"), 0o755)
 		h.err.Reset()
-		if code := h.run(args...); code != exitRefused {
+		if code := h.run(args...); code != exit.Refused {
 			t.Errorf("%v exits %d: %s", args, code, strings.TrimSpace(h.err.String()))
 		}
-	}
-}
-
-func TestBuildVersionPrefersTheReleaseVersion(t *testing.T) {
-	defer func(v, c string) { Version, Commit = v, c }(Version, Commit)
-	Version, Commit = "0.3.0", "abc1234"
-	if got := buildVersion(); got != "0.3.0 (abc1234)" {
-		t.Fatalf("got %q", got)
-	}
-	Commit = ""
-	if got := buildVersion(); got != "0.3.0" {
-		t.Fatalf("got %q", got)
 	}
 }
 
@@ -128,9 +117,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
 var notYetMoved = []string{
-	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
-	"dirs.go", "errors.go", "signals_unix.go", "signals_unix_test.go",
-	"signals_windows.go", "version.go",
+	"cells.go", "cells_test.go",
 }
 
 // commandFiles are the names, without .go, that a command's file takes: its
@@ -267,19 +254,17 @@ var plumbingTypes = map[string]string{
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
 var notYetHelpers = []string{
-	"activity", "age", "ago", "branchCell", "buildVersion", "checkFail",
-	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
-	"dash", "describeForCompletion", "dirCell", "dirGone", "doing", "duRow",
-	"duTally", "duTop", "editFile", "entryOf", "exitCode", "firstLine",
-	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "interruptContext",
+	"activity", "age", "ago", "branchCell", "checkFail", "checkOK", "checkWarn",
+	"clearStyle", "completeKeys", "count", "countCell", "dash",
+	"describeForCompletion", "dirCell", "doing", "duRow", "duTally", "duTop",
+	"entryOf", "firstLine", "firstPrompt", "gcCommandFor", "homeShort",
 	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
-	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
-	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
-	"realDir", "refOf", "refused", "relWithin", "removeCommand",
-	"requireFinished", "requireRunning", "resolved", "runningIn", "sameDir",
-	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
-	"sleep", "stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
-	"trivial", "trueFirst", "withOptions", "within", "zeroIfKnown",
+	"leftovers", "nameCell", "nameWithSource", "named", "noProfile", "noteOf",
+	"orList", "pickPast", "readTally", "refOf", "removeCommand",
+	"requireFinished", "requireRunning", "runningIn", "sameName",
+	"sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet", "stamp",
+	"taskSummary", "tokenCount", "triageOf", "triageSize", "trivial",
+	"trueFirst", "withOptions", "zeroIfKnown",
 }
 
 func TestCLIDeclaresNoHelpers(t *testing.T) {
@@ -333,8 +318,7 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.claudePath", "App.gcKeep", "App.gcPick", "App.ghProvenance",
-	"App.installedVersion", "App.remover", "App.sessionVersion",
+	"App.gcKeep", "App.gcPick",
 }
 
 // builder is the method that builds the command a file is named for, such as
@@ -449,16 +433,16 @@ func TestExitCodesSayWhatHappened(t *testing.T) {
 	bad := h.bg("bad", "idle")
 	h.agents.snapshots = [][]claude.Session{{one, two, bad}}
 
-	h.exits(t, exitNoMatch, "stop", "nothing-like-it")
-	h.exits(t, exitNoMatch, "stop", "review")
+	h.exits(t, exit.NoMatch, "stop", "nothing-like-it")
+	h.exits(t, exit.NoMatch, "stop", "review")
 
 	h.agents.failures = map[string]string{"stop " + bad.JobID: "boom"}
-	h.exits(t, exitSomeFailed, "stop", "bad")
+	h.exits(t, exit.SomeFailed, "stop", "bad")
 
 	odd := h.bg("odd", "idle")
 	odd.Kind = "daemon"
 	h.agents.snapshots = [][]claude.Session{{odd}}
-	h.exits(t, exitRefused, "stop", "odd")
+	h.exits(t, exit.Refused, "stop", "odd")
 }
 
 func TestVerboseFirstStillRunsClaudesCommands(t *testing.T) {

@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -136,7 +138,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		return err
 	}
 	if !app.runningKnown {
-		return refused(errors.New("cannot tell which sessions are running, so session gc removes nothing"))
+		return exit.Refusal(errors.New("cannot tell which sessions are running, so session gc removes nothing"))
 	}
 	keep, err := app.gcKeep(ctx, list)
 	if err != nil {
@@ -151,7 +153,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		}
 		for _, p := range picked {
 			if why, ok := keep[p.SessionID]; ok {
-				return refused(fmt.Errorf("%s %s, so session gc leaves it alone", p.Label(), why))
+				return exit.Refusal(fmt.Errorf("%s %s, so session gc leaves it alone", p.Label(), why))
 			}
 			items = append(items, app.wholeSession(p, kindNamed))
 		}
@@ -198,7 +200,7 @@ func (app *App) gcKeep(ctx context.Context, list []pastSession) (map[string]stri
 	}
 	listed, err := app.Agents.Sessions(ctx, true)
 	if err != nil {
-		return nil, refused(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
+		return nil, exit.Refusal(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
 	}
 	for _, s := range listed {
 		switch {
@@ -243,7 +245,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			items = append(items, app.wholeSession(*p, kindEmpty))
 		case f.trivial && trivial(*p):
 			items = append(items, app.wholeSession(*p, kindTrivial))
-		case f.gone && dirGone(p.Cwd):
+		case f.gone && paths.Gone(p.Cwd):
 			items = append(items, app.wholeSession(*p, kindGone))
 		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
 			items = append(items, app.wholeSession(*p, kindOld))
@@ -325,7 +327,7 @@ func (app *App) wholeSession(p pastSession, why gcKind) gcItem {
 func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error {
 	running, err := app.Agents.Sessions(ctx, false)
 	if err != nil {
-		return refused(fmt.Errorf("cannot tell which sessions are running, so session gc removes nothing: %w", err))
+		return exit.Refusal(fmt.Errorf("cannot tell which sessions are running, so session gc removes nothing: %w", err))
 	}
 	live := map[string]bool{}
 	for _, s := range running {

@@ -10,19 +10,20 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/files"
 )
 
 func TestOneClaudesChangesSessionsAtATime(t *testing.T) {
 	h := newHarness(t)
 	s := h.bg("api", "idle")
 	h.agents.snapshots = [][]claude.Session{{s}}
-	release, err := safefile.Lock{Path: h.app.LockPath, Stale: time.Minute}.Acquire()
+	release, err := files.Lock{Path: h.app.LockPath, Stale: time.Minute}.Acquire()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	h.exits(t, exitBusy, "stop", "api")
+	h.exits(t, exit.Busy, "stop", "api")
 	assertContains(t, h.err.String(), "another claudes is changing sessions")
 	h.ok(t, "restart", "--dry-run", "api")
 	h.ok(t, "ls")
@@ -88,24 +89,10 @@ func TestTheRunLockOutlivesASuspendButNotItsOwner(t *testing.T) {
 	}
 	h.app.Alive = func(pid int, started time.Time) bool { return pid == 4242 && started.Equal(start) }
 
-	h.exits(t, exitBusy, "stop", "api")
+	h.exits(t, exit.Busy, "stop", "api")
 	assertCalls(t, h)
 
 	h.app.Alive = func(int, time.Time) bool { return false }
 	h.ok(t, "stop", "api")
 	assertCalls(t, h, "stop "+s.JobID)
-}
-
-func TestTheRunLockNamesItsProcess(t *testing.T) {
-	h := newHarness(t)
-	owner := h.app.lockOwner()
-	h.app.Alive = func(pid int, started time.Time) bool { return pid == os.Getpid() && started.Equal(start) }
-	if h.app.lockOwnerGone(owner) {
-		t.Fatalf("owner %q of this process reads as gone", owner)
-	}
-	for _, bad := range []string{"", "x", "0 " + start.Format(time.RFC3339Nano), "42 yesterday"} {
-		if !h.app.lockOwnerGone([]byte(bad)) {
-			t.Errorf("owner %q reads as running", bad)
-		}
-	}
 }

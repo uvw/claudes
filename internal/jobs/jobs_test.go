@@ -279,3 +279,16 @@ func TestOptionsBelongToTheirSession(t *testing.T) {
 		}
 	}
 }
+
+func TestIDFromDir(t *testing.T) {
+	for dir, want := range map[string]string{
+		filepath.Join("home", ".claude", "jobs", "ff78d735"):       "ff78d735",
+		filepath.Join("home", ".claude", "jobs", "ff78d735") + "/": "ff78d735",
+		filepath.Join("home", ".claude", "jobs", "not-a-job"):      "",
+		"": "",
+	} {
+		if got := IDFromDir(dir); got != want {
+			t.Errorf("IDFromDir(%q) = %q, want %q", dir, got, want)
+		}
+	}
+}

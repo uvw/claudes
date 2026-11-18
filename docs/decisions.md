@@ -419,7 +419,7 @@ transcripts outgrow the scan.
 ## 33. Windows replaces a file with POSIX rename semantics first
 
 On Windows, an atomic write renames with POSIX semantics first, and falls back
-to a plain rename on any error (`internal/safefile`).
+to a plain rename on any error (`internal/files`).
 
 Why: agent view reads `pins.json` while claudes writes it, and a plain rename
 waits until agent view closes the file. A POSIX rename replaces a file other

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 // toFreedesktop moves path into the trash at dir, as the freedesktop.org
@@ -23,8 +23,8 @@ func toFreedesktop(path, dir string, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	files, info := filepath.Join(dir, "files"), filepath.Join(dir, "info")
-	for _, d := range []string{files, info} {
+	stored, info := filepath.Join(dir, "files"), filepath.Join(dir, "info")
+	for _, d := range []string{stored, info} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
 			return err
 		}
@@ -50,7 +50,7 @@ func toFreedesktop(path, dir string, now time.Time) error {
 			werr = cerr
 		}
 		if werr == nil {
-			werr = safefile.RenameNoReplace(abs, filepath.Join(files, name))
+			werr = files.RenameNoReplace(abs, filepath.Join(stored, name))
 			if werr == nil {
 				return nil
 			}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -31,7 +32,7 @@ plugin's. Change the profiles with claudes config edit.`,
 		Args: cobra.NoArgs,
 		RunE: func(*cobra.Command, []string) error {
 			profiles := app.Config.MCP.Profiles
-			dir, err := realDir("")
+			dir, err := paths.Real("")
 			if err != nil {
 				return err
 			}

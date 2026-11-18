@@ -1,4 +1,5 @@
-// Package claude wraps the parts of the claude command line that claudes uses.
+// Package claude wraps the parts of the claude command line that claudes uses,
+// and reads ~/.claude.json, the state file Claude Code keeps beside ~/.claude.
 package claude
 
 import (

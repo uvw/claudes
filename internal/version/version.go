@@ -1,4 +1,5 @@
-// Package version compares dotted version numbers such as "2.1.325".
+// Package version holds claudes' own build version, and compares dotted
+// version numbers such as "2.1.325".
 package version
 
 import (

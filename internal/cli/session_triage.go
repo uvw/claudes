@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -92,7 +93,7 @@ func (app *App) triage(ctx context.Context, in string, since time.Duration) (tri
 		return report, err
 	}
 	if !app.runningKnown {
-		return report, refused(errors.New("cannot tell which sessions are running, so session triage cannot sort them"))
+		return report, exit.Refusal(errors.New("cannot tell which sessions are running, so session triage cannot sort them"))
 	}
 	keep, err := app.gcKeep(ctx, list)
 	if err != nil {

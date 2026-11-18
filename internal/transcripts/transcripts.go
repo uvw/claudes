@@ -25,8 +25,8 @@ import (
 	"unicode"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -263,7 +263,7 @@ func (st Store) updateMoves(change func(map[string]move) bool) error {
 	if st.Moves == "" {
 		return nil
 	}
-	lock := safefile.Lock{Path: st.Moves + ".lock", Stale: 10 * time.Second, Attempts: 50, Delay: 10 * time.Millisecond}
+	lock := files.Lock{Path: st.Moves + ".lock", Stale: 10 * time.Second, Attempts: 50, Delay: 10 * time.Millisecond}
 	return lock.Do(func() error {
 		moves, err := st.loadMoves()
 		if err != nil {
@@ -276,7 +276,7 @@ func (st Store) updateMoves(change func(map[string]move) bool) error {
 		if err != nil {
 			return err
 		}
-		return safefile.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
+		return files.WriteFileAll(st.Moves, append(data, '\n'), 0o600)
 	})
 }
 
@@ -539,11 +539,11 @@ func stage(transcript, sidecar, target, sidecarTarget string) error {
 		if err := copyTree(sidecar, stagedSidecar); err != nil {
 			return err
 		}
-		if err := safefile.RenameNoReplace(stagedSidecar, sidecarTarget); err != nil {
+		if err := files.RenameNoReplace(stagedSidecar, sidecarTarget); err != nil {
 			return err
 		}
 	}
-	if err := safefile.RenameNoReplace(staged, target); err != nil {
+	if err := files.RenameNoReplace(staged, target); err != nil {
 		if sidecar != "" {
 			os.RemoveAll(sidecarTarget)
 		}
@@ -658,7 +658,7 @@ func copyFile(src, dest string) error {
 	if err != nil {
 		return err
 	}
-	if err := safefile.WriteFrom(dest, in, info.Mode().Perm()); err != nil {
+	if err := files.WriteFrom(dest, in, info.Mode().Perm()); err != nil {
 		return err
 	}
 	return os.Chtimes(dest, info.ModTime(), info.ModTime())

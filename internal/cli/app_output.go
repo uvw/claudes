@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v4"
 
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 )
@@ -161,7 +162,7 @@ func homeShort(path string) string {
 	if err != nil || home == "" {
 		return path
 	}
-	rel, ok := relWithin(home, path)
+	rel, ok := paths.RelWithin(home, path)
 	switch {
 	case !ok:
 		return path

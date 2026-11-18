@@ -10,6 +10,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -249,7 +250,7 @@ func (app *App) unpark(sessionID string) error {
 // session is parked until it is back, and is not stopped at all when its
 // directory is gone, because it could not be resumed.
 func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) error {
-	if !claude.FolderExists(s.Cwd) {
+	if !paths.IsDir(s.Cwd) {
 		return fmt.Errorf("directory %s is gone, so it was not stopped", s.Cwd)
 	}
 	if err := app.parkOne(s, prompt != ""); err != nil {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/style"
 )
 
@@ -421,7 +422,7 @@ func TestColorVariablesOnAPipe(t *testing.T) {
 			h.env(tc.env...)
 			h.ok(t, "ls")
 			out := h.out.String()
-			h.exits(t, exitNoMatch, "where", "nobody")
+			h.exits(t, exit.NoMatch, "where", "nobody")
 			errOut := h.err.String()
 			if !tc.colored {
 				assertPlain(t, "stdout", out)

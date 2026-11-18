@@ -19,6 +19,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
@@ -378,6 +379,7 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		},
 		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Home: h.root, Moves: filepath.Join(h.root, "state", "moves.json")},
 		Teams:       teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},
+		Executable:  func() (string, error) { return filepath.Join(h.root, "bin", "claudes"), nil },
 	}
 	return h
 }
@@ -495,7 +497,7 @@ func (h *harness) ok(t *testing.T, args ...string) {
 // 1 to 5.
 func (h *harness) fails(t *testing.T, args ...string) {
 	t.Helper()
-	if code := h.run(args...); code < exitFailed || code > exitBusy {
+	if code := h.run(args...); code < exit.Failed || code > exit.Busy {
 		t.Fatalf("claudes %q: exit %d, want 1 to 5\n%s%s", args, code, h.out, h.err)
 	}
 }

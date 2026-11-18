@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -51,9 +52,9 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 			for _, s := range picked {
 				switch {
 				case s.Interactive():
-					return refused(fmt.Errorf("%s is an interactive session: only background sessions can be pinged", s.Label()))
+					return exit.Refusal(fmt.Errorf("%s is an interactive session: only background sessions can be pinged", s.Label()))
 				case app.isHost(s):
-					return refused(fmt.Errorf("%s is the session running this command: it cannot ping itself", s.Label()))
+					return exit.Refusal(fmt.Errorf("%s is the session running this command: it cannot ping itself", s.Label()))
 				}
 			}
 			app.warnTeams(picked)

@@ -182,8 +182,7 @@ func readFile(t *testing.T, path string) string {
 func TestDoctorEnvPrintsVersionsFilesAndVariables(t *testing.T) {
 	h := newHarness(t)
 	path := h.withConfig(t, "")
-	t.Setenv("CLAUDES_CONFIG", path)
-	t.Setenv("VISUAL", "")
+	h.env("CLAUDES_CONFIG="+path, "VISUAL=")
 	h.agents.version = "2.1.330"
 
 	h.ok(t, "doctor", "env")

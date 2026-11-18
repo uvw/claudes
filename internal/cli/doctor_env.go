@@ -3,15 +3,16 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/version"
 )
 
 // envVars are the variables that change where claudes looks or how it runs.
@@ -68,9 +69,9 @@ a bug report.`,
 }
 
 func (app *App) environment(ctx context.Context) []envSection {
-	exe, _ := os.Executable()
+	exe, _ := app.Executable()
 	claudes := envSection{"claudes", [][2]string{
-		{"version", buildVersion()},
+		{"version", version.Build()},
 		{"executable", exe},
 		{"platform", runtime.GOOS + "/" + runtime.GOARCH},
 		{"go", runtime.Version()},
@@ -107,9 +108,20 @@ func (app *App) environment(ctx context.Context) []envSection {
 		{"transcripts", app.Transcripts.Dir},
 	}}
 
+	var vars []string
+	if app.Environ != nil {
+		vars = app.Environ()
+	}
 	env := envSection{name: "environment"}
 	for _, name := range envVars {
-		value, set := os.LookupEnv(name)
+		// The last value wins, as it does for the colors.
+		var value string
+		var set bool
+		for _, kv := range vars {
+			if k, v, ok := strings.Cut(kv, "="); ok && k == name {
+				value, set = v, true
+			}
+		}
 		if set && value == "" {
 			value = `""`
 		}

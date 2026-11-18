@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/mcp"
+	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/style"
 )
@@ -63,7 +64,7 @@ keeps on only the servers it lists. It changes nothing.`,
 				dir = p.Cwd
 			default:
 				var err error
-				if dir, err = realDir(in); err != nil {
+				if dir, err = paths.Real(in); err != nil {
 					return err
 				}
 			}

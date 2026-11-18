@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -56,8 +57,8 @@ func TestLogsLeadSlashNameNeedsATeam(t *testing.T) {
 	path := h.logLines(t, solo, `{"type":"user","message":{"content":"go"}}`)
 	writeFile(t, filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "agent-adeps-d27ce76e9061ede7.jsonl"),
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"a subagent"}]}}`+"\n")
-	h.exits(t, exitNoMatch, "logs", "solo/deps")
-	h.exits(t, exitNoMatch, "logs", "solo/nobody")
+	h.exits(t, exit.NoMatch, "logs", "solo/deps")
+	h.exits(t, exit.NoMatch, "logs", "solo/nobody")
 }
 
 // Session names often hold a slash, like a branch name.

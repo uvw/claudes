@@ -7,8 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/paths"
 )
 
 func (app *App) pauseCommand() *cobra.Command {
@@ -78,7 +79,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 			notReached(app, others[i:])
 			break
 		}
-		if !claude.FolderExists(s.Cwd) {
+		if !paths.IsDir(s.Cwd) {
 			failures = append(failures, failure{s.Label(), fmt.Sprintf("directory %s is gone, so it was not stopped: it could not be resumed", s.Cwd), s})
 			if err := app.unpark(s.SessionID); err != nil {
 				failures = append(failures, failure{label: "park file", reason: err.Error()})
@@ -102,7 +103,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 	if host != nil && ctx.Err() == nil {
 		if err := app.stopHost(ctx, *host, "Pausing", true); err != nil {
 			app.warn("claudes: this session (%s): %v", host.Label(), err)
-			return errSomeFailed
+			return exit.ErrSomeFailed
 		}
 	}
 	return result

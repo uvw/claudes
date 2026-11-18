@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -70,7 +71,7 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			if ofTeammate && err == nil {
 				path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate)
 				if none := (*transcripts.NoTeammateError)(nil); errors.As(err, &none) {
-					err = noMatch{err}
+					err = exit.Unmatched(err)
 				}
 			}
 			if err != nil {
@@ -99,7 +100,7 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 		return err
 	}
 	if raw {
-		events = oneEach(events)
+		events = transcripts.OneEach(events)
 	}
 	app.printEvents(events[max(0, len(events)-tail):], raw)
 	if !follow {
@@ -115,24 +116,11 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 			app.warn("claudes: the transcript was rewritten; following it from the start")
 		}
 		if raw {
-			events = oneEach(events)
+			events = transcripts.OneEach(events)
 		}
 		app.printEvents(events, raw)
 	}
 	return nil
-}
-
-// oneEach keeps one event per transcript record, for -o json, which prints the
-// records themselves.
-func oneEach(events []transcripts.Event) []transcripts.Event {
-	var out []transcripts.Event
-	for _, e := range events {
-		if n := len(out); n > 0 && bytes.Equal(out[n-1].Raw, e.Raw) {
-			continue
-		}
-		out = append(out, e)
-	}
-	return out
 }
 
 func (app *App) printEvents(events []transcripts.Event, raw bool) {
