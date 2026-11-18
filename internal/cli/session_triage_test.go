@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -144,5 +146,39 @@ func TestOlderCopiesAndLeftoversHaveNoID(t *testing.T) {
 	h.ok(t, "session", "triage")
 	if strings.Contains(h.out.String(), claude.ShortID(moved)) {
 		t.Fatalf("the table shows the original's id for its copy:\n%s", h.out)
+	}
+}
+
+// Each of these sessions would go to review or remove on what it did, but
+// session gc never removes it, so triage keeps it.
+func TestSessionTriageKeepsRunningParkedAndHostSessions(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	week := 7 * 24 * time.Hour
+	live := h.bg("live", "idle")
+	live.SessionID = h.sessionOf(t, "live", work, week, prompt("which branch?"), toolCall)
+	parked := h.sessionOf(t, "parked", work, week, prompt("which tag?"), toolCall)
+	host := h.sessionOf(t, "host", work, week, prompt("ping"), reply)
+	h.app.HostID = host
+	if err := h.app.Park.Save([]park.Entry{{SessionID: parked, Name: "parked", Cwd: work, Kind: "background"}}); err != nil {
+		t.Fatal(err)
+	}
+	h.agents.snapshots = [][]claude.Session{{live}}
+
+	h.ok(t, "session", "triage", "-o", "json")
+	var report triageReport
+	if err := json.Unmarshal(h.out.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Remove) != 0 || len(report.Review) != 0 {
+		t.Fatalf("remove %+v, review %+v", report.Remove, report.Review)
+	}
+	got := map[string]string{}
+	for _, it := range report.Keep {
+		got[it.SessionID] = it.Why
+	}
+	want := map[string]string{live.SessionID: "running", parked: "parked", host: "the session running claudes"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Fatalf("keep (-want +got):\n%s", diff)
 	}
 }

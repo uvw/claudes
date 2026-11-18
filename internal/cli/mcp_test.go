@@ -93,6 +93,31 @@ func TestMCPLsShowsNameScopeStateAndKindOnly(t *testing.T) {
 	}
 }
 
+// A warning about a file claudes cannot read goes to stderr, so it must not
+// quote the file either.
+func TestMCPLsPrintsNoSecretOnStderr(t *testing.T) {
+	h := newHarness(t)
+	dir := h.folder("api")
+	h.mcpServers(t, dir, map[string]any{})
+	h.ok(t, "mcp", "ls", "--in", dir)
+	noSecrets(t, h.out.String()+h.err.String())
+
+	for _, broken := range []struct{ path, body string }{
+		{filepath.Join(dir, ".mcp.json"), `{"mcpServers": {"repo-tool": {"command": "/bin/sk-command-secret", "env": {"KEY": "sk-env-secret"}`},
+		{filepath.Join(dir, ".mcp.json"), `{"mcpServers": {"repo-tool": {"args": ["sk-arg-secret"], "url": sk-url-secret}}}`},
+		{h.app.ClaudeConfig, `{"mcpServers": {"browser": {"headers": {"Authorization": "sk-header-secret"}}} sk-env-secret}`},
+	} {
+		writeFile(t, broken.path, broken.body)
+		for _, format := range []string{"text", "json"} {
+			h.out.Reset()
+			h.err.Reset()
+			h.run("mcp", "ls", "--in", dir, "-o", format)
+			assertContains(t, h.err.String(), "cannot read every MCP setting")
+			noSecrets(t, h.out.String()+h.err.String())
+		}
+	}
+}
+
 func TestMCPLsTakesASessionOrADirectory(t *testing.T) {
 	h := newHarness(t)
 	api, docs := h.folder("api"), h.folder("docs")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -300,6 +301,9 @@ func TestSessionGcTrivialTakesSessionsThatDidNothing(t *testing.T) {
 		"an edit":                 h.sessionOf(t, "edit", work, week, prompt("fix it"), editCall),
 		"renamed":                 h.sessionOf(t, "renamed", work, week, prompt("ping"), `{"type":"custom-title","customTitle":"keep me"}`),
 		"teammate":                h.sessionOf(t, "teammate", work, week, `{"type":"user","message":{"content":"<teammate-message teammate_id=\"lead\">go</teammate-message>"}}`),
+		"teammate with a prompt": h.sessionOf(t, "teammate prompt", work, week,
+			`{"type":"user","message":{"content":"<teammate-message teammate_id=\"lead\">go</teammate-message>"}}`, prompt("ping")),
+		"no prompt it could read": h.sessionOf(t, "unread", work, week, reply),
 		"active today":            h.sessionOf(t, "today", work, time.Hour, prompt("ping")),
 	}
 	history := h.sessionOf(t, "history", work, week, prompt("ping"))
@@ -411,4 +415,80 @@ func TestSessionGcRemovesOnlyFoldersInsideTheSessionsSidecar(t *testing.T) {
 	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{mine}}, h.root, true); err != nil || exists(mine) {
 		t.Fatalf("kept the session's own directory: %v", err)
 	}
+}
+
+func TestSessionGcSkipsASessionThatChangedSinceThePlan(t *testing.T) {
+	h := newHarness(t)
+	id := h.emptyTranscript(t, "e", h.folder("work"), 7*24*time.Hour)
+	h.agents.snapshots = [][]claude.Session{{}}
+	list, err := h.app.pastSessions(t.Context())
+	if err != nil || len(list) != 1 {
+		t.Fatalf("list %+v, err %v", list, err)
+	}
+	it := h.app.wholeSession(list[0], "empty")
+	if err := os.Chtimes(list[0].Path, h.now, h.now); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := h.app.gcRemove(t.Context(), []gcItem{it}, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.trashed) != 0 || !exists(list[0].Path) {
+		t.Fatalf("trashed %q", h.trashed)
+	}
+	assertContains(t, h.out.String(), "it changed since the plan")
+	assertContains(t, h.out.String(), id[:8])
+}
+
+// An older copy that changed in the last day, such as one resumed from its old
+// directory after claudes listed the sessions, is left alone.
+func TestSessionGcKeepsAnOlderCopyThatChangedInTheLastDay(t *testing.T) {
+	h := newHarness(t)
+	work, other := h.folder("work"), h.folder("other")
+	week := 7 * 24 * time.Hour
+	moved := h.transcript(t, "moved", other, 2*week)
+	data, err := os.ReadFile(filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(other), moved+".jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldCopy := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(work), moved+".jsonl")
+	writeFile(t, oldCopy, string(data))
+	h.aged(t, oldCopy, 3*week)
+	h.agents.snapshots = [][]claude.Session{{}}
+	list, err := h.app.pastSessions(t.Context())
+	if err != nil || len(list) != 1 || len(list[0].Copies) != 1 {
+		t.Fatalf("list %+v, err %v", list, err)
+	}
+	h.aged(t, oldCopy, 2*time.Hour)
+
+	items, err := h.app.gcPick(list, map[string]string{}, gcFlags{copies: true})
+	if err != nil || len(items) != 0 {
+		t.Fatalf("picked %+v, err %v", items, err)
+	}
+}
+
+// A directory claudes cannot check, such as one behind a permission error, may
+// still be there, so --gone does not take its sessions.
+func TestSessionGcGoneSkipsADirectoryItCannotCheck(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs a directory the test cannot search")
+	}
+	h := newHarness(t)
+	locked := filepath.Join(h.root, "locked")
+	cwd := filepath.Join(locked, "repo")
+	if err := os.MkdirAll(cwd, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	h.transcript(t, "behind", cwd, 7*24*time.Hour)
+	if err := os.Chmod(locked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(locked, 0o755) })
+	h.agents.snapshots = [][]claude.Session{{}}
+
+	h.ok(t, "session", "gc", "--gone")
+	if len(h.trashed) != 0 {
+		t.Fatalf("trashed %q", h.trashed)
+	}
+	assertContains(t, h.out.String(), "Nothing to clean up.")
 }
