@@ -1,0 +1,30 @@
+{
+  "state": "blocked",
+  "detail": "",
+  "tempo": "blocked",
+  "output": null,
+  "children": null,
+  "linkScanOffset": 185,
+  "template": "bg",
+  "respawnFlags": [],
+  "providerEnv": {
+    "CLAUDE_BG_SESSION_CREDENTIAL": "none"
+  },
+  "intent": "say hi",
+  "sessionId": "5e1f0c3a-7b2d-4c8e-9a10-3f6b2d8e4c71",
+  "resumeSessionId": "5e1f0c3a-7b2d-4c8e-9a10-3f6b2d8e4c71",
+  "daemonShort": "5e1f0c3a",
+  "cwd": "/home/user/project",
+  "createdAt": "2026-11-16T09:00:00.000Z",
+  "updatedAt": "2026-11-16T09:00:01.250Z",
+  "firstTerminalAt": null,
+  "backend": "daemon",
+  "inFlight": {
+    "tasks": 0,
+    "queued": 0,
+    "kinds": [],
+    "drainableMonitors": 0
+  },
+  "needs": "login required — run /login",
+  "linkScanPath": "/home/user/.claude/projects/-home-user-project/5e1f0c3a-7b2d-4c8e-9a10-3f6b2d8e4c71.jsonl"
+}

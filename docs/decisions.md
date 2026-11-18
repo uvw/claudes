@@ -344,19 +344,30 @@ Every command that changes sessions or pins checks what it read first. A session
 kind, status, job id, or session id outside the values claudes knows, or a
 `pins.json` entry that is not a job id, stops the command before it acts.
 `--force` overrides the stop. A Claude Code version outside `compat.Tested` only
-warns. `claudes doctor` runs every check, and a weekly workflow runs
-`claudes doctor --cli-only --strict` against the newest Claude Code and opens an
-issue when it fails.
+warns. `claudes doctor` runs every check.
+
+A weekly workflow checks the newest Claude Code and opens an issue when a check
+fails. It runs `claudes doctor --cli-only --strict`, then `TestLiveClaude` in
+`internal/compat`, which reads the real `claude agents --json`, empty and then
+with a background job, and that job's `state.json`, through `claude.Client`,
+`compat.CheckSessions`, and the `jobs.Store` readers. A job starts without a
+login and waits for one, so the check needs no API key. Such a job never takes a
+turn, so the check cannot see `cliVersion`. Scrubbed samples of both formats sit
+in `internal/compat/testdata`, with tests over them.
 
 Why: claudes decides whom to ping and how to stop a session from these values.
 An unknown status read as idle would restart a session mid-turn without a ping.
 A version number alone cannot tell whether a release changed them, so the checks
-look at the data itself, and the version only prompts a look.
+look at the data itself, and the version only prompts a look. The tests' fakes
+encode the authors' model of the formats, so only the real output shows when
+Claude Code changes them.
 
 Weighed: refusing every untested version, which blocks claudes after each Claude
 Code update, almost always for nothing; warning without stopping, which lets a
 changed status cut work short; and checking only in `claudes doctor`, which
-nobody runs before a bulk restart.
+nobody runs before a bulk restart. For the weekly check, a `claudes doctor`
+option that starts a job, which would add a flag users never need, and the full
+`claudes doctor --strict`, which fails on the job's missing `cliVersion`.
 
 ## 20. Past sessions come from their transcripts
 

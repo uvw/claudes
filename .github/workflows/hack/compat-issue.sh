@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opens an issue labeled compatibility with a failed claudes doctor report, or
+# Opens an issue labeled compatibility with a failed weekly check's report, or
 # comments on the open one, so a week of failures stays in one thread.
 #
 # Usage: .github/workflows/hack/compat-issue.sh REPORT RUN_URL
@@ -20,7 +20,7 @@ fence='```'
 while grep -qF -- "$fence" "$report"; do fence="$fence\`"; done
 
 {
-  echo "\`claudes doctor --cli-only --strict\` failed against Claude Code ${version}."
+  echo "The weekly compatibility check failed against Claude Code ${version}."
   echo
   echo "${fence}text"
   cat "$report"
@@ -35,6 +35,6 @@ number=$(gh issue list --label compatibility --state open --json number --jq '.[
 if [ -n "$number" ]; then
   gh issue comment "$number" --body-file "$body"
 else
-  gh issue create --title "Claude Code ${version} fails claudes doctor" \
+  gh issue create --title "Claude Code ${version} fails the compatibility check" \
     --label compatibility --body-file "$body"
 fi

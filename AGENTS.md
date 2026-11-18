@@ -113,7 +113,8 @@ heredoc, and never run it through Prettier.
    interfaces.** `internal/compat` checks what claudes reads, and a write
    command refuses what it does not recognize. When the weekly Compatibility
    workflow opens an issue, run `claudes doctor`, update `kinds`, `statuses`, or
-   `commands` in `internal/compat` as needed, and raise `compat.Tested`.
+   `commands` in `internal/compat` as needed, refresh the scrubbed samples in
+   `internal/compat/testdata` from the run's log, and raise `compat.Tested`.
 5. **`pins.json` must stay byte-compatible with agent view.** It is a JSON array
    indented by two spaces with no trailing newline, written atomically under a
    `pins.json.lock` directory that goes stale after five seconds. Unpinning also
