@@ -43,7 +43,7 @@ func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 		labels, sizes, notes = labels || r.label != "", sizes || r.size != "", notes || r.note != ""
 	}
 	pick := func(r planRow, dirShown string) []string {
-		cells := []string{r.id}
+		cells := []string{dash(r.id)}
 		if labels {
 			cells = append(cells, r.label)
 		}

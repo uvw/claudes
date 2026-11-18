@@ -39,7 +39,17 @@ type gcItem struct {
 	changed    time.Time
 }
 
-func (g gcItem) ID() string    { return claude.ShortID(g.sessionID) }
+// ID is the session's short id for a whole session, and "" for a part of one:
+// session gc ID removes the whole session, so an older copy, a sidecar, or a
+// leftover must not offer it.
+func (g gcItem) ID() string {
+	switch g.why {
+	case "copy", "sidecar", "leftover":
+		return ""
+	}
+	return claude.ShortID(g.sessionID)
+}
+
 func (g gcItem) Label() string { return g.name }
 
 type gcFlags struct {

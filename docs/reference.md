@@ -174,8 +174,11 @@ three best records at most.
 | `why`                     | Its `session gc` kind, `review`, or why it is kept |
 | `lastPrompt`, `activity`  | As for a past session                              |
 
-A directory in `remove`, such as a leftover, has only `id`, `sessionId`, `name`,
-`cwd`, `size`, and `why`.
+An older copy or a leftover in `remove` has only `id`, `sessionId`, `name`,
+`cwd`, `size`, and `why`, and its `id` is empty: `session gc ID` removes the
+whole session, so remove these with `session gc --copies` or `--leftovers`. The
+`session gc` plan shows them, and saved outputs `--sidecars` trims, with no id
+too.
 
 #### Teams
 
