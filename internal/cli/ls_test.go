@@ -138,8 +138,8 @@ func TestLsWideFitsDoingToTheTerminal(t *testing.T) {
 	h.app.Width = func() int { return 20 }
 	h.out.Reset()
 	h.ok(t, "ls", "--wide")
-	if doing := column(t, h.out.String(), "DOING")["work"]; style.Width(doing) != minDoing {
-		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, minDoing)
+	if doing := column(t, h.out.String(), "DOING")["work"]; style.Width(doing) != minLast {
+		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, minLast)
 	}
 }
 

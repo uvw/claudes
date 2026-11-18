@@ -43,6 +43,7 @@ current.
 | [32](#32-session-search-scans-every-transcript-with-no-index)                       | session search scans every transcript, with no index                       |
 | [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
 | [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
+| [35](#35-tables-shorten-a-long-directory-and-scripts-get-it-whole)                  | Tables shorten a long directory, and scripts get it whole                  |
 
 ## 1. Go, in one static binary
 
@@ -702,3 +703,27 @@ tokens claudes cannot recognize, such as one inside a path; an off-list per
 profile, which would let every new server in; and building `mcp on`, `mcp off`,
 and launch profiles in the same change, before the live tests that show how
 Claude Code picks up a change while it runs.
+
+## 35. Tables shorten a long directory, and scripts get it whole
+
+Every text table, plan, and `mcp ls` heading shortens a directory that does not
+fit its column. On a terminal the column gets the width the other columns leave,
+and at least 20 columns; elsewhere it gets 40. `output.dirs` picks `middle`, the
+default, `fish`, or `full`. A trailing column fitted to the terminal, `DOING` or
+`MATCH`, gets what the directory leaves, and at least 10 columns. JSON, YAML,
+`session show`, `doctor env`, and `where` with one match print the whole path.
+Every table cell that shows a path goes through `dirCell`, and a test that reads
+the source of `internal/cli` fails on one that does not.
+
+Why: one deep directory wrapped every row of `claudes ls`, since a column is as
+wide as its widest cell. Keeping the last directory whole keeps what tells
+sessions apart, and keeping `~` or `/` says where the path starts. The directory
+goes before the trailing column because it is the shorter and more useful of the
+two, and the trailing column was already cut to fit. Scripts read the bare
+`where` output and the key and value lists, so those stay exact.
+
+Weighed: cutting the end of the path, which drops the part that differs most; a
+fixed width with no terminal fitting, which wastes a wide window; giving the
+trailing column its room first, which shortens the directory whenever that
+column is long; and finding paths by their column header, which misses the
+tables `where` prints, which have no header.

@@ -10,7 +10,6 @@ import (
 
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -59,7 +58,7 @@ Exits 1 when a check fails.`,
 						table = append(table, []string{"", "", line})
 					}
 				}
-				if err := style.Table(app.Out, table); err != nil {
+				if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 					return err
 				}
 			}

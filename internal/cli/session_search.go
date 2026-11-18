@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -77,9 +76,9 @@ one with claudes session resume ID.`,
 			for _, h := range hits {
 				best := h.Matches[0]
 				table = append(table, []string{h.ID, age(app.Now(), h.LastActive), best.Where,
-					app.colors.Faint(homeShort(h.Cwd)), nameCell(cmp.Or(h.Name, h.ID)), shell.Printable(best.Snippet)})
+					dirCell(h.Cwd), nameCell(cmp.Or(h.Name, h.ID)), shell.Printable(best.Snippet)})
 			}
-			if err := style.Table(app.Out, table); err != nil {
+			if err := app.writeTable(app.Out, table, tableFit{fitLast: true}); err != nil {
 				return err
 			}
 			if more > 0 {

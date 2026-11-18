@@ -10,6 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/style"
 )
 
 func TestLsNarrowsToTheTargets(t *testing.T) {
@@ -121,8 +122,8 @@ func TestWherePatternPrintsEveryMatch(t *testing.T) {
 	h.ok(t, "where", "plan*")
 
 	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
-	if len(lines) != 2 || !strings.Contains(lines[0], "plan-a") || !strings.Contains(lines[0], a.Cwd) ||
-		!strings.Contains(lines[1], "plan-b") || !strings.Contains(lines[1], b.Cwd) {
+	if len(lines) != 2 || !strings.Contains(lines[0], "plan-a") || !strings.Contains(lines[0], style.Middle(homeShort(a.Cwd), maxDir)) ||
+		!strings.Contains(lines[1], "plan-b") || !strings.Contains(lines[1], style.Middle(homeShort(b.Cwd), maxDir)) {
 		t.Fatalf("output:\n%s", h.out)
 	}
 }

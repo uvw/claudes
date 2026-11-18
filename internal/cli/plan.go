@@ -42,7 +42,7 @@ func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 		})
 		labels, sizes, notes = labels || r.label != "", sizes || r.size != "", notes || r.note != ""
 	}
-	pick := func(r planRow) []string {
+	pick := func(r planRow, dirShown string) []string {
 		cells := []string{r.id}
 		if labels {
 			cells = append(cells, r.label)
@@ -50,19 +50,19 @@ func (app *App) printPlanOf(heading, noun, labelHeader string, rows []planRow) {
 		if sizes {
 			cells = append(cells, r.size)
 		}
-		cells = append(cells, r.cwd, r.name)
+		cells = append(cells, dirShown, r.name)
 		if notes {
 			cells = append(cells, r.note)
 		}
 		return cells
 	}
-	table := [][]string{pick(planRow{id: "ID", label: labelHeader, size: "SIZE", cwd: "DIR", name: "NAME", note: "NOTE"})}
+	table := [][]string{pick(planRow{id: "ID", label: labelHeader, size: "SIZE", name: "NAME", note: "NOTE"}, "DIR")}
 	for _, r := range rows {
-		r.cwd, r.name = app.colors.Faint(homeShort(r.cwd)), nameCell(r.name)
-		table = append(table, pick(r))
+		r.name = nameCell(r.name)
+		table = append(table, pick(r, dirCell(r.cwd)))
 	}
 	var b strings.Builder
-	_ = style.Table(&b, table)
+	_ = app.writeTable(&b, table, tableFit{margin: 2})
 	for line := range strings.Lines(b.String()) {
 		app.say("  %s", strings.TrimRight(line, " \n"))
 	}

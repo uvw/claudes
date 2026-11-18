@@ -58,9 +58,9 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 					running = app.colors.Green("yes")
 				}
 				table = append(table, []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total),
-					dash(shell.Printable(p.Branch)), app.colors.Faint(homeShort(p.Cwd)), nameCell(p.Label())})
+					dash(shell.Printable(p.Branch)), dirCell(p.Cwd), nameCell(p.Label())})
 			}
-			return style.Table(app.Out, table)
+			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")

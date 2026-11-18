@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -46,8 +45,8 @@ type row struct {
 const agentsHeader = "AGENTS"
 
 // maxDoing is the most characters of DOING a table shows when it does not go
-// to a terminal, and minDoing the fewest when it does.
-const maxDoing, minDoing = 50, 10
+// to a terminal.
+const maxDoing = 50
 
 func (app *App) lsCommand() *cobra.Command {
 	var all, asJSON, wide bool
@@ -167,16 +166,13 @@ func (app *App) printTable(w io.Writer, rows []row, wide bool) {
 		if wide {
 			cells = append(cells, countCell(r.Shells), tokenCount(r.Tokens), countCell(r.PRs))
 		}
-		cells = append(cells, age(app.Now(), r.Started()), ver, c.Faint(homeShort(r.Cwd)), nameCell(r.Label()))
+		cells = append(cells, age(app.Now(), r.Started()), ver, dirCell(r.Cwd), nameCell(r.Label()))
 		if wide {
-			cells = append(cells, "")
+			cells = append(cells, doing(r))
 		}
 		table = append(table, cells)
 	}
-	if wide {
-		app.fillDoing(table, rows)
-	}
-	style.Table(w, table)
+	_ = app.writeTable(w, table, tableFit{fitLast: wide, lastCap: maxDoing})
 	if outdated {
 		fmt.Fprintln(w, "\n(old): behind the installed Claude Code, see claudes restart --outdated")
 	}
@@ -198,23 +194,12 @@ func (app *App) agents(r row) string {
 	return strings.Join(parts, ", ")
 }
 
-// fillDoing fills the last column of table, which is empty, with each row's
-// DOING, cut to what is left of the terminal's width, or to maxDoing when the
-// table does not go to a terminal, so it never wraps.
-func (app *App) fillDoing(table [][]string, rows []row) {
-	limit := maxDoing
-	if app.Width != nil {
-		if width := app.Width(); width > 0 {
-			limit = max(width-style.Indent(table), minDoing)
-		}
+// doing is the DOING cell, which writeTable cuts to fit.
+func doing(r row) string {
+	if r.Doing == nil {
+		return "-"
 	}
-	for i, r := range rows {
-		doing := "-"
-		if r.Doing != nil {
-			doing = cut(shell.Printable(*r.Doing), limit)
-		}
-		table[i+1][len(table[i+1])-1] = doing
-	}
+	return shell.Printable(*r.Doing)
 }
 
 // cut shortens s to at most limit columns, ending it with … when it shortens.
@@ -304,22 +289,6 @@ func age(now, t time.Time) string {
 	}
 }
 
-func homeShort(path string) string {
-	path = shell.Printable(path)
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
-		return path
-	}
-	rel, ok := relWithin(home, path)
-	switch {
-	case !ok:
-		return path
-	case rel == ".":
-		return "~"
-	}
-	return "~" + string(filepath.Separator) + rel
-}
-
 // relWithin is path relative to root, and whether path is root or below it.
 func relWithin(root, path string) (string, bool) {
 	rel, err := filepath.Rel(root, path)
@@ -336,8 +305,8 @@ func (app *App) whereCommand() *cobra.Command {
 		Short: `Print the directories of the sessions the targets match, as in cd "$(claudes where NAME)"`,
 		Long: `Print the directories of the sessions the targets match. With one match, prints the
 bare directory, so cd "$(claudes where NAME)" works. With several, prints each
-session's name and directory. With -o json or yaml, prints the same session
-objects as claudes ls. A target with *, ?, or [ is a pattern over names and
+session's name, id, and directory, which it shortens to fit as every table
+does. With -o json or yaml, prints the same session objects as claudes ls. A target with *, ?, or [ is a pattern over names and
 ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: app.completeSessions(anySession, false),
@@ -374,9 +343,9 @@ func (app *App) printFolders(folders [][3]string) error {
 	}
 	table := make([][]string, 0, len(folders))
 	for _, f := range folders {
-		table = append(table, []string{shell.Printable(f[0]), f[1], app.colors.Faint(shell.Printable(f[2]))})
+		table = append(table, []string{shell.Printable(f[0]), f[1], dirCell(f[2])})
 	}
-	return style.Table(app.Out, table)
+	return app.writeTable(app.Out, table, tableFit{})
 }
 
 // listMatch keeps the rows any of targets match. A target that matches

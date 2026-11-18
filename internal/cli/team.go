@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/teams"
 )
 
@@ -129,9 +128,9 @@ runs, which claudes gc --teams removes.`,
 				if !r.Running {
 					lead = c.Faint(lead + " (not running)")
 				}
-				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), c.Faint(homeShort(r.Cwd)), lead})
+				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), dirCell(r.Cwd), lead})
 			}
-			return style.Table(app.Out, table)
+			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "include teams with no teammates and teams whose lead no longer runs")
