@@ -513,11 +513,15 @@ session is big. The command is `du`, since it measures files, not free space;
 
 `claudes session gc` removes a past session with everything Claude Code keeps
 for it, and moves it to the system trash: the macOS Trash, the Windows Recycle
-Bin, or the freedesktop.org trash. `--purge` deletes for good. Without flags it
-removes empty sessions, older copies `session mv` left, and leftover
-directories; `--trivial`, `--gone`, and `--older-than` are opt-in. A trivial
-session changed no file, made no tool call, was not named with `/rename` or
-started by an agent team, and either only ran slash commands or got one prompt.
+Bin, or the freedesktop.org trash. `--purge` deletes for good, and Windows
+deletes an item too big for the Recycle Bin, or on a drive without one, for
+good. Without flags it removes empty sessions, older copies `session mv` left,
+and leftover directories; `--trivial`, `--gone`, and `--older-than` are opt-in.
+An empty session holds only record types claudes knows to be bookkeeping, with
+no message and no line that fails to parse. A trivial session changed no file,
+made no tool call, was not named with `/rename` or started by an agent team, and
+either only ran slash commands or got one prompt. A record type claudes does not
+know, or a line that fails to parse, makes a session neither empty nor trivial.
 `--sidecars` keeps each session and trims its sidecar directory: the command
 outputs saved under `tool-results`, and with `--older-than` the subagent
 transcripts of sessions idle that long, removing no whole session. It never
@@ -530,19 +534,22 @@ carry the session's id.
 Why: a transcript is the only record of a session's work, so a mistaken removal
 must be recoverable, unlike `claudes gc`, which only drops a job from agent
 view's list. Empty sessions, superseded copies, and orphaned directories hold
-nothing anyone can resume, so they are safe to pick by default. A missing
-directory can be a disk that is not attached, and age says nothing about value,
-so those wait for a flag. So does `--trivial`: a one-prompt answer can still be
-worth keeping, though one with no tool call holds only what the model already
-knew. Which of the one-prompt sessions with tool calls to keep takes reading the
-prompt, so claudes leaves that to the user or their agent. A test resumed
-sessions with each part of the sidecar moved away: both resumed with their
-context, since the transcript keeps a preview of each saved output and each
-subagent's answer. Without `tool-results`, reading a saved output again fails;
-without `subagents`, continuing a past subagent fails. Subagents held 1.3 GB
-against 227 MB of saved outputs here, so they go too, but only for sessions old
-enough that nobody continues their subagents. A session that changed in the last
-day may be starting, before its transcript says what it is.
+nothing anyone can resume, so they are safe to pick by default. Claude Code adds
+and renames record types often, and empty is a default kind, so claudes judges a
+session empty or trivial only on what it recognizes: a type it has not seen
+keeps the session until claudes learns it. A missing directory can be a disk
+that is not attached, and age says nothing about value, so those wait for a
+flag. So does `--trivial`: a one-prompt answer can still be worth keeping,
+though one with no tool call holds only what the model already knew. Which of
+the one-prompt sessions with tool calls to keep takes reading the prompt, so
+claudes leaves that to the user or their agent. A test resumed sessions with
+each part of the sidecar moved away: both resumed with their context, since the
+transcript keeps a preview of each saved output and each subagent's answer.
+Without `tool-results`, reading a saved output again fails; without `subagents`,
+continuing a past subagent fails. Subagents held 1.3 GB against 227 MB of saved
+outputs here, so they go too, but only for sessions old enough that nobody
+continues their subagents. A session that changed in the last day may be
+starting, before its transcript says what it is.
 
 Weighed: deleting outright with `--dry-run` to preview, as `gc` does, which
 cannot undo a mistake; previewing by default with `--yes` to act, which goes
@@ -662,13 +669,15 @@ backreferences, so it needs no new dependency.
 
 ## 33. Windows replaces a file with POSIX rename semantics first
 
-On Windows, an atomic write renames its temp file over the target with
-`FILE_RENAME_FLAG_POSIX_SEMANTICS`. That replaces the target while other
-processes have it open, as long as each opened it with delete sharing. Node and
-Bun, which run Claude Code, share delete. Go's `os.Open`, which claudes reads
-with, does not. When the POSIX rename fails for any reason, claudes falls back
-to `os.Rename`, which is `MoveFileEx` and cannot replace an open file. Either
-way, a target that stays held gets retries for a little over a second.
+On Windows, an atomic write opens the target's directory as an `os.Root` and
+renames its temp file over the target with `os.Root.Rename`. Go's
+`windows.Renameat`, which it calls, first renames with
+`FILE_RENAME_POSIX_SEMANTICS`. That replaces the target while other processes
+have it open, as long as each opened it with delete sharing. Node and Bun, which
+run Claude Code, share delete. Go's `os.Open`, which claudes reads with, does
+not. When the POSIX rename fails for any reason, Go tries again with a plain
+rename, which cannot replace an open file. Either way, a target that stays held
+gets nine retries, a little under a second in all.
 
 Why: agent view reads `pins.json` while claudes writes it, and a plain rename
 waits until agent view closes the file. POSIX semantics need Windows 10 1607 or
@@ -676,12 +685,15 @@ later and a file system that has them, such as NTFS. Older builds, FAT, and
 exFAT answer with errors such as invalid parameter, not supported, or invalid
 function, and network shares may too. Falling back on any error covers a code
 that list misses. Readers still see the old file or the new one: the rename is
-one step, and a reader that has the old file open keeps reading it.
+one step, and a reader that has the old file open keeps reading it. Go keeps
+both attempts in the standard library, so claudes carries no `FILE_RENAME_INFO`
+code of its own, and the cost is one `os.Root` opened for each write.
 
 Weighed: POSIX semantics alone, which fail where the file system lacks them;
+calling `SetFileInformationByHandle` with `FILE_RENAME_INFO` by hand, which
+makes the same two attempts with unsafe code claudes would own; and
 `FILE_RENAME_FLAG_IGNORE_READONLY_ATTRIBUTE`, which would overwrite a file the
-owner made read-only and needs Windows 10 1809; and Go's `os.Root.Rename`, which
-makes the same two attempts but needs an `os.Root` opened for every write.
+owner made read-only and needs Windows 10 1809.
 
 ## 34. MCP control starts read-only, and never prints a server's secrets
 

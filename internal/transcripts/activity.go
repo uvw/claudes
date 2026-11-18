@@ -2,6 +2,7 @@ package transcripts
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"io"
 	"os"
@@ -30,7 +31,14 @@ type Activity struct {
 	// Teammate is a session an agent team's lead started: its first message
 	// came from the lead, not the user.
 	Teammate bool `json:"teammate"`
+	// unsure is whether a line did not parse or had a type claudes does not
+	// know, either of which could hide a prompt or a tool call.
+	unsure bool
 }
+
+// Complete reports whether claudes read every line of the transcript and
+// knew the type of each record, so the counts cover all of it.
+func (a Activity) Complete() bool { return !a.unsure }
 
 // editTools are the tools that change files.
 var editTools = map[string]bool{"Edit": true, "MultiEdit": true, "Write": true, "NotebookEdit": true}
@@ -46,7 +54,7 @@ type activityRecord struct {
 }
 
 // ReadActivity reads the transcript at path in full and counts what happened
-// in it. Lines that do not parse are skipped.
+// in it. Lines that do not parse are skipped, and make it not Complete.
 func ReadActivity(path string) (Activity, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -74,9 +82,14 @@ func ReadActivity(path string) (Activity, error) {
 // session yet, the user or a team's lead.
 func (a *Activity) take(line []byte, spoke *bool) {
 	var r activityRecord
-	if json.Unmarshal(line, &r) != nil || r.IsMeta || r.IsCompactSummary {
+	if json.Unmarshal(line, &r) != nil {
+		a.unsure = a.unsure || len(bytes.TrimSpace(line)) > 0
 		return
 	}
+	if r.IsMeta || r.IsCompactSummary || r.IsSidechain {
+		return
+	}
+	a.unsure = a.unsure || !known[r.Type]
 	switch r.Type {
 	case "assistant":
 		for _, b := range blocks(r.Message) {

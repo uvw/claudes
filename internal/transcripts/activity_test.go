@@ -24,9 +24,37 @@ func TestReadActivityCountsWhatTheUserDid(t *testing.T) {
 		`not json`,
 	}
 	got := activityOf(t, lines)
-	want := Activity{Prompts: 2, Commands: 2, ToolCalls: 3, Edits: 2, FirstPrompt: "fix the flaky test"}
+	want := Activity{Prompts: 2, Commands: 2, ToolCalls: 3, Edits: 2, FirstPrompt: "fix the flaky test", unsure: true}
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestReadActivityLeavesOutSubagentRecords(t *testing.T) {
+	got := activityOf(t, []string{
+		`{"type":"user","message":{"role":"user","content":"ping"}}`,
+		`{"type":"user","isSidechain":true,"message":{"role":"user","content":"look through the repository"}}`,
+		`{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{}}]}}`,
+	})
+	if want := (Activity{Prompts: 1, FirstPrompt: "ping"}); got != want {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestReadActivityIsCompleteOnlyWhenItKnowsEveryLine(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		lines    []string
+		complete bool
+	}{
+		{"known types and a blank line", []string{`{"type":"mode"}`, ``, `{"type":"user","message":{"content":"hi"}}`, `{"type":"api-request"}`}, true},
+		{"a type claudes does not know", []string{`{"type":"user","message":{"content":"hi"}}`, `{"type":"assistant-turn","message":{}}`}, false},
+		{"a line that does not parse", []string{`{"type":"user","message":{"content":"hi"}}`, `{"type":"assis`}, false},
+		{"a record with no type", []string{`{"message":{"content":"hi"}}`}, false},
+	} {
+		if got := activityOf(t, tc.lines).Complete(); got != tc.complete {
+			t.Errorf("%s: Complete %v, want %v", tc.name, got, tc.complete)
+		}
 	}
 }
 

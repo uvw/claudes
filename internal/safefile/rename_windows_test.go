@@ -51,11 +51,22 @@ func openSharingDelete(t *testing.T, path string) *os.File {
 	return f
 }
 
-func TestRenameReplacesAFileOpenWithDeleteSharing(t *testing.T) {
+// countSleeps replaces sleep for the test, and returns the count of waits.
+func countSleeps(t *testing.T) *int {
+	sleeps := 0
+	sleep = func(time.Duration) { sleeps++ }
+	t.Cleanup(func() { sleep = time.Sleep })
+	return &sleeps
+}
+
+// Agent view keeps pins.json open, with delete sharing, while claudes
+// replaces it.
+func TestRenameReplacesAFileOpenWithDeleteSharingAtOnce(t *testing.T) {
 	from, to := pair(t)
 	reader := openSharingDelete(t, to)
-	if err := renamePOSIX(from, to); err != nil {
-		t.Fatalf("POSIX rename over an open file: %v", err)
+	sleeps := countSleeps(t)
+	if err := rename(from, to); err != nil {
+		t.Fatalf("rename over an open file: %v", err)
 	}
 	wantContent(t, to, "new")
 	if _, err := os.Stat(from); !errors.Is(err, os.ErrNotExist) {
@@ -64,15 +75,9 @@ func TestRenameReplacesAFileOpenWithDeleteSharing(t *testing.T) {
 	if got, err := io.ReadAll(reader); err != nil || string(got) != "old" {
 		t.Fatalf("the open handle reads %q (%v), want the old file", got, err)
 	}
-}
-
-func TestRenameDoesNotWaitForAReaderSharingDelete(t *testing.T) {
-	from, to := pair(t)
-	openSharingDelete(t, to)
-	if err := rename(from, to); err != nil {
-		t.Fatal(err)
+	if *sleeps != 0 {
+		t.Fatalf("waited %d times for a reader that shares delete", *sleeps)
 	}
-	wantContent(t, to, "new")
 }
 
 func TestRenameWaitsForAReaderNotSharingDelete(t *testing.T) {
@@ -81,10 +86,6 @@ func TestRenameWaitsForAReaderNotSharingDelete(t *testing.T) {
 	reader, err := os.Open(to)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if err := renamePOSIX(from, to); !isOpen(err) {
-		reader.Close()
-		t.Fatalf("POSIX rename over a file open without delete sharing: %v, want access denied or a sharing violation", err)
 	}
 	go func() {
 		time.Sleep(30 * time.Millisecond)
@@ -96,38 +97,13 @@ func TestRenameWaitsForAReaderNotSharingDelete(t *testing.T) {
 	wantContent(t, to, "new")
 }
 
-func TestRenamePOSIXTakesARelativePath(t *testing.T) {
+func TestRenameTakesARelativePath(t *testing.T) {
 	from, to := pair(t)
 	t.Chdir(filepath.Dir(to))
-	if err := renamePOSIX(filepath.Base(from), filepath.Base(to)); err != nil {
+	if err := rename(filepath.Base(from), filepath.Base(to)); err != nil {
 		t.Fatal(err)
 	}
 	wantContent(t, to, "new")
-}
-
-func TestRenameFallsBackWithoutPOSIXSemantics(t *testing.T) {
-	for _, unsupported := range []error{windows.ERROR_INVALID_PARAMETER, windows.ERROR_NOT_SUPPORTED, windows.ERROR_INVALID_FUNCTION} {
-		t.Run(unsupported.Error(), func(t *testing.T) {
-			from, to := pair(t)
-			calls := 0
-			posix := func(string, string) error { calls++; return unsupported }
-			reader, err := os.Open(to)
-			if err != nil {
-				t.Fatal(err)
-			}
-			go func() {
-				time.Sleep(30 * time.Millisecond)
-				reader.Close()
-			}()
-			if err := replace(from, to, posix); err != nil {
-				t.Fatal(err)
-			}
-			wantContent(t, to, "new")
-			if calls < 2 {
-				t.Fatalf("POSIX rename tried %d times, want a try on each retry", calls)
-			}
-		})
-	}
 }
 
 func TestRenameGivesUpOnAFileThatStaysOpen(t *testing.T) {
@@ -137,9 +113,13 @@ func TestRenameGivesUpOnAFileThatStaysOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reader.Close()
+	sleeps := countSleeps(t)
 	if err := rename(from, to); !isOpen(err) {
 		t.Fatalf("err %v, want access denied or a sharing violation", err)
 	}
 	wantContent(t, to, "old")
 	wantContent(t, from, "new")
+	if *sleeps != renameAttempts-1 {
+		t.Fatalf("slept %d times over %d attempts, want one fewer", *sleeps, renameAttempts)
+	}
 }

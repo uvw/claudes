@@ -2,6 +2,7 @@ package safefile
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -22,6 +23,48 @@ func TestWriteFileReplacesTheFile(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(filepath.Dir(path)); len(entries) != 1 {
 		t.Fatalf("temp files left behind: %v", entries)
+	}
+}
+
+func TestRenameNoReplaceKeepsWhatIsThere(t *testing.T) {
+	dir := t.TempDir()
+	write := func(path, data string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	from, to := filepath.Join(dir, "new"), filepath.Join(dir, "old")
+	write(from, "new")
+	write(to, "old")
+	if err := RenameNoReplace(from, to); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("err %v, want one that matches fs.ErrExist", err)
+	}
+	if got, _ := os.ReadFile(to); string(got) != "old" {
+		t.Fatalf("the file there was replaced: %q", got)
+	}
+	fromDir, toDir := filepath.Join(dir, "a"), filepath.Join(dir, "b")
+	write(filepath.Join(fromDir, "f"), "a")
+	if err := os.Mkdir(toDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := RenameNoReplace(fromDir, toDir); !errors.Is(err, fs.ErrExist) {
+		t.Fatalf("an empty directory there: err %v, want one that matches fs.ErrExist", err)
+	}
+	if err := os.Remove(toDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := RenameNoReplace(fromDir, toDir); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(toDir, "f")); string(got) != "a" {
+		t.Fatalf("the directory did not move: %q", got)
+	}
+	if err := RenameNoReplace(from, filepath.Join(dir, "free")); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -2,13 +2,17 @@ package transcripts
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/uvw/claudes/internal/safefile"
 )
 
 func TestFolder(t *testing.T) {
@@ -293,7 +297,65 @@ func TestACorruptMovesFileIsKept(t *testing.T) {
 	if data, _ := os.ReadFile(moves); string(data) != "{not json" {
 		t.Fatalf("the moves file was replaced: %q", data)
 	}
+	if entries, _ := os.ReadDir(filepath.Join(dir, "-b")); len(entries) != 0 {
+		t.Fatalf("a copy with no record of where it belongs was left: %v", entries)
+	}
 	if _, err := st.List(); err != nil {
 		t.Fatalf("list: %v", err)
+	}
+}
+
+func TestCopyLeavesNothingBehindWhenItFails(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs a file its owner cannot read")
+	}
+	dir := t.TempDir()
+	src := filepath.Join(dir, "-a", sid+".jsonl")
+	write(t, src, time.Now(), line(t, map[string]any{"type": "user", "sessionId": sid, "cwd": "/a"}))
+	unreadable := filepath.Join(dir, "-a", sid, "subagents", "agent-1.jsonl")
+	write(t, unreadable, time.Now(), "secret\n")
+	if err := os.Chmod(unreadable, 0); err != nil {
+		t.Fatal(err)
+	}
+	st := Store{Dir: dir, Moves: filepath.Join(t.TempDir(), "moves.json")}
+	s, err := summarize(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Copy(s, "/b", nil); err == nil {
+		t.Fatal("copied a subagent transcript it cannot read")
+	}
+	if entries, _ := os.ReadDir(filepath.Join(dir, "-b")); len(entries) != 0 {
+		t.Fatalf("a part of the copy was left: %v", entries)
+	}
+	if _, err := os.Stat(st.Moves); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("the move was recorded: %v", err)
+	}
+	if err := os.Chmod(unreadable, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Copy(s, "/b", nil); err != nil {
+		t.Fatalf("a second try: %v", err)
+	}
+}
+
+func TestMovesWaitForTheLock(t *testing.T) {
+	st := Store{Dir: t.TempDir(), Moves: filepath.Join(t.TempDir(), "moves.json")}
+	release, err := safefile.Lock{Path: st.Moves + ".lock", Stale: time.Minute}.Acquire()
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error)
+	go func() { done <- st.recordMove(filepath.Join(st.Dir, "-b", sid+".jsonl"), sid, move{Dir: "/b"}) }()
+	time.Sleep(100 * time.Millisecond)
+	if _, err := os.Stat(st.Moves); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("the moves file changed while another run held the lock: %v", err)
+	}
+	release()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if moves, err := st.loadMoves(); err != nil || len(moves) != 1 {
+		t.Fatalf("moves %v, err %v", moves, err)
 	}
 }

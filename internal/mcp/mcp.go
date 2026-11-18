@@ -78,11 +78,19 @@ func DefaultStore() (Store, error) {
 // back.
 func (s Store) Servers(dir string) ([]Server, []error) {
 	var r reader
+	return r.servers(s, dir, nil), r.problems
+}
+
+// servers is Servers with ~/.claude.json already read into cfg, or with cfg
+// nil to read it.
+func (r *reader) servers(s Store, dir string, cfg *claudeConfig) []Server {
 	if managed := r.managed(s.Managed); managed != nil {
 		// A managed file takes exclusive control of MCP servers.
-		return list(managed), r.problems
+		return list(managed)
 	}
-	cfg := r.claudeJSON(s.ConfigFile)
+	if cfg == nil {
+		cfg = new(r.claudeJSON(s.ConfigFile))
+	}
 	proj := cfg.project(dir)
 	settings := r.settings(s.Home, dir)
 
@@ -116,7 +124,7 @@ func (s Store) Servers(dir string) ([]Server, []error) {
 		}
 		found[name] = srv
 	}
-	return list(found), r.problems
+	return list(found)
 }
 
 // Known is every server name claudes can find: dir's servers, any directory's
@@ -125,12 +133,11 @@ func (s Store) Servers(dir string) ([]Server, []error) {
 // servers, which a profile may name.
 func (s Store) Known(dir string) map[string]bool {
 	known := map[string]bool{}
-	servers, _ := s.Servers(dir)
-	for _, srv := range servers {
-		known[srv.Name] = true
-	}
 	var r reader
 	cfg := r.claudeJSON(s.ConfigFile)
+	for _, srv := range r.servers(s, dir, &cfg) {
+		known[srv.Name] = true
+	}
 	for _, raw := range objectOf(cfg.top["projects"]) {
 		proj := objectOf(raw)
 		for name := range objectOf(proj["mcpServers"]) {
@@ -165,6 +172,9 @@ func list(found map[string]Server) []Server {
 // reader reads JSON files and collects what it could not read.
 type reader struct{ problems []error }
 
+// readFile is os.ReadFile, which tests replace to count the reads.
+var readFile = os.ReadFile
+
 // object reads a JSON object from path, or nil when the file is missing or is
 // not an object. A relative path comes from a Store with a field unset, and
 // would read the current directory, so it reads nothing.
@@ -172,7 +182,7 @@ func (r *reader) object(path string) map[string]json.RawMessage {
 	if !filepath.IsAbs(path) {
 		return nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := readFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}

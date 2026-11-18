@@ -94,10 +94,11 @@ func Alive(pid int) bool {
 	return err == nil || errors.Is(err, syscall.EPERM)
 }
 
-// same reports whether pid is still the process that started at started.
+// same reports whether pid is still the process that started at started. Its
+// command line can be empty, as it is for a child in the middle of exec.
 func same(pid int, started time.Time) bool {
-	command, now, err := lookup(pid)
-	return err == nil && command != "" && now.Equal(started)
+	_, now, err := lookup(pid)
+	return err == nil && !now.IsZero() && now.Equal(started)
 }
 
 func signal(pid int, sig syscall.Signal) error {

@@ -136,18 +136,28 @@ func (t term) find(text string) []int {
 
 // startsWord reports whether a word starts at text[i]: at the start of text,
 // after a character that is not a letter or a digit, such as a space, a
-// slash, or an underscore, or at an upper-case letter after a lower-case one,
-// as in camelCase.
+// slash, or an underscore, at an upper-case letter after a lower-case one, as
+// in camelCase, or next to a script written without spaces between words.
 func startsWord(text string, i int) bool {
 	if i == 0 {
 		return true
 	}
 	prev, _ := utf8.DecodeLastRuneInString(text[:i])
-	if !unicode.IsLetter(prev) && !unicode.IsDigit(prev) {
+	next, _ := utf8.DecodeRuneInString(text[i:])
+	switch {
+	case !unicode.IsLetter(prev) && !unicode.IsDigit(prev), unspaced(prev), unspaced(next):
 		return true
 	}
-	next, _ := utf8.DecodeRuneInString(text[i:])
 	return unicode.IsLower(prev) && unicode.IsUpper(next)
+}
+
+// unspaced reports whether r belongs to a script written without spaces
+// between words, where any character can start one. The needle a word-start
+// term uses is ASCII, and such a character before it is a byte of a UTF-8
+// sequence or a \u escape, which mayStartWord already lets through.
+func unspaced(r rune) bool {
+	return unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul, unicode.Thai,
+		unicode.Lao, unicode.Khmer, unicode.Myanmar)
 }
 
 // matcher is a compiled query.

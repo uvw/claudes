@@ -135,6 +135,32 @@ func TestEmptyIsATranscriptWithNoConversation(t *testing.T) {
 	}
 }
 
+func TestEmptyTakesOnlyBookkeepingClaudesKnows(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		lines []string
+		empty bool
+	}{
+		{"bookkeeping and a blank line", []string{`{"type":"mode","sessionId":"` + sid + `"}`, ``, `{"type":"permission-mode"}`, `{"type":"session-owner"}`}, true},
+		{"a renamed conversation record", []string{`{"type":"mode"}`, `{"type":"user-turn","message":{"role":"user","content":"hi"}}`}, false},
+		{"a type claudes does not know", []string{`{"type":"mode"}`, `{"type":"handoff"}`}, false},
+		{"a known type with a message", []string{`{"type":"system","message":{"content":"hi"}}`}, false},
+		{"an API request", []string{`{"type":"api-request"}`}, false},
+		{"a line that does not parse", []string{`{"type":"mode"}`, `{"type":"user","mess`}, false},
+		{"a record with no type", []string{`{"sessionId":"` + sid + `"}`}, false},
+	} {
+		path := filepath.Join(t.TempDir(), "-a", sid+".jsonl")
+		write(t, path, time.Now(), strings.Join(tc.lines, "\n")+"\n")
+		s, err := summarize(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s.Empty != tc.empty {
+			t.Errorf("%s: Empty %v, want %v", tc.name, s.Empty, tc.empty)
+		}
+	}
+}
+
 func TestSessionFilesListsWhatExists(t *testing.T) {
 	root := t.TempDir()
 	st := Store{Dir: filepath.Join(root, "projects"), Home: root}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -376,6 +377,40 @@ func TestKnownCoversOtherDirectoriesAndDisabledPlugins(t *testing.T) {
 	}
 	if known["nobody"] {
 		t.Error("an unknown name is known")
+	}
+}
+
+func TestKnownReadsClaudeJSONOnce(t *testing.T) {
+	f := newFixture(t)
+	f.claudeJSON(map[string]any{"mcpServers": map[string]any{"helper": map[string]any{"command": "x"}}})
+	reads := 0
+	readFile = func(path string) ([]byte, error) {
+		if path == f.store.ConfigFile {
+			reads++
+		}
+		return os.ReadFile(path)
+	}
+	t.Cleanup(func() { readFile = os.ReadFile })
+	if !f.store.Known(f.dir())["helper"] {
+		t.Fatal("helper is not known")
+	}
+	if reads != 1 {
+		t.Fatalf("read %s %d times", f.store.ConfigFile, reads)
+	}
+}
+
+func TestManagedFilesAreThisPlatformsOnly(t *testing.T) {
+	want := map[string]string{
+		"darwin":  "/Library/Application Support/ClaudeCode/managed-mcp.json",
+		"linux":   "/etc/claude-code/managed-mcp.json",
+		"windows": `C:\Program Files\ClaudeCode\managed-mcp.json`,
+	}[runtime.GOOS]
+	if want == "" {
+		t.Skip("no managed file path to check on " + runtime.GOOS)
+	}
+	t.Setenv("ProgramFiles", `C:\Program Files`)
+	if got := managedFiles(); len(got) != 1 || got[0] != want {
+		t.Fatalf("managed files %q, want only %q", got, want)
 	}
 }
 

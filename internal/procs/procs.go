@@ -61,6 +61,13 @@ func isFile(path string) bool {
 // rounding and clock adjustments.
 const startSlack = 2 * time.Second
 
+// listSlack is how much later than listedAt a process that started before it
+// may seem to start. On Linux a start time is the boot clock plus an offset
+// read once, and NTP slews the wall clock against the boot clock by at most
+// 500 ppm, so 100 ms covers over three minutes of drift. macOS and Windows
+// never read a start time late.
+const listSlack = 100 * time.Millisecond
+
 // checkStart refuses a process whose PID was reused, so it is not the
 // session's: one that started after the session did (sessionStarted, from
 // claude agents --json), or after claudes listed the sessions (listedAt). A
@@ -70,7 +77,7 @@ func checkStart(pid int, started, sessionStarted, listedAt time.Time) error {
 		return fmt.Errorf("pid %d belongs to a process started %s after the session did, not to the session",
 			pid, started.Sub(sessionStarted).Round(time.Second))
 	}
-	if !listedAt.IsZero() && started.After(listedAt) {
+	if !listedAt.IsZero() && started.After(listedAt.Add(listSlack)) {
 		return fmt.Errorf("pid %d belongs to a process started after the sessions were listed, not to the session", pid)
 	}
 	return nil

@@ -66,7 +66,8 @@ func (app *App) sessionGcCommand() *cobra.Command {
 		Long: `Remove past sessions from ~/.claude, with everything Claude Code keeps for each:
 its transcript, subagent transcripts and tool results, older copies, file
 history, session-env directory, and debug log. They go to the system trash, so a
-mistake can be undone; --purge deletes them for good.
+mistake can be undone; --purge deletes them for good. Windows deletes an item too
+big for the Recycle Bin, or on a drive without one, for good.
 
 Without flags or targets, removes:
 
@@ -291,10 +292,11 @@ func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
 
 // trivial reports whether p holds nothing worth keeping: it changed no file,
 // made no tool call, was not named with /rename or started by an agent team,
-// and either only ran commands or got exactly one prompt.
+// and either only ran commands or got exactly one prompt. A transcript claudes
+// could not read all of is never trivial.
 func trivial(p pastSession) bool {
 	a := p.Activity
-	if a == nil || p.Empty || a.Edits > 0 || a.ToolCalls > 0 || a.Teammate || p.NameSource == "custom" || p.Disk.FileHistory > 0 {
+	if a == nil || !a.Complete() || p.Empty || a.Edits > 0 || a.ToolCalls > 0 || a.Teammate || p.NameSource == "custom" || p.Disk.FileHistory > 0 {
 		return false
 	}
 	return a.Prompts == 1 || a.Prompts == 0 && a.Commands > 0
