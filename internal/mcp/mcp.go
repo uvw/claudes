@@ -1,8 +1,7 @@
 // Package mcp reads which MCP servers Claude Code gives a directory, and
-// whether each is on. It reads ~/.claude.json, the settings files, .mcp.json
-// files, installed plugins, and the managed file, and writes none of them. It
-// is the one reader of ~/.claude.json, so it also reads the feature flags
-// Claude Code caches there.
+// whether each is on. It reads the settings files, .mcp.json files, installed
+// plugins, and the managed file, and writes none of them. It reads
+// ~/.claude.json through internal/claude, which owns that file.
 //
 // A server's command, arguments, environment, headers, and URL can carry
 // tokens, so this package keeps only each server's name and kind.
@@ -20,6 +19,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/paths"
 )
 
@@ -85,7 +85,7 @@ func (s Store) Servers(dir string) ([]Server, []error) {
 
 // servers is Servers with ~/.claude.json already read into cfg, or with cfg
 // nil to read it.
-func (r *reader) servers(s Store, dir string, cfg *claudeConfig) []Server {
+func (r *reader) servers(s Store, dir string, cfg *claude.Config) []Server {
 	if managed := r.managed(s.Managed); managed != nil {
 		// A managed file takes exclusive control of MCP servers.
 		return list(managed)
@@ -93,7 +93,7 @@ func (r *reader) servers(s Store, dir string, cfg *claudeConfig) []Server {
 	if cfg == nil {
 		cfg = new(r.claudeJSON(s.ConfigFile))
 	}
-	proj := cfg.project(dir)
+	proj := cfg.Project(dir)
 	settings := r.settings(s.Home, dir)
 
 	found := map[string]Server{}
@@ -107,7 +107,7 @@ func (r *reader) servers(s Store, dir string, cfg *claudeConfig) []Server {
 	add(Local, objectOf(proj["mcpServers"]))
 	project := r.projectServers(dir)
 	add(Project, project)
-	add(User, objectOf(cfg.top["mcpServers"]))
+	add(User, objectOf(cfg.Key("mcpServers")))
 	add(Plugin, r.pluginServers(s.Home, dir, settings))
 
 	approved, rejected := approvals(proj, settings)
@@ -140,7 +140,7 @@ func (s Store) Known(dir string) map[string]bool {
 	for _, srv := range r.servers(s, dir, &cfg) {
 		known[srv.Name] = true
 	}
-	for _, raw := range objectOf(cfg.top["projects"]) {
+	for _, raw := range objectOf(cfg.Key("projects")) {
 		proj := objectOf(raw)
 		for name := range objectOf(proj["mcpServers"]) {
 			known[name] = true
@@ -174,9 +174,6 @@ func list(found map[string]Server) []Server {
 // reader reads JSON files and collects what it could not read.
 type reader struct{ problems []error }
 
-// readFile is os.ReadFile, which tests replace to count the reads.
-var readFile = os.ReadFile
-
 // object reads a JSON object from path, or nil when the file is missing or is
 // not an object. A relative path comes from a Store with a field unset, and
 // would read the current directory, so it reads nothing.
@@ -184,7 +181,7 @@ func (r *reader) object(path string) map[string]json.RawMessage {
 	if !filepath.IsAbs(path) {
 		return nil
 	}
-	data, err := readFile(path)
+	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -200,60 +197,17 @@ func (r *reader) object(path string) map[string]json.RawMessage {
 	return m
 }
 
-// Feature reads a flag from the features Claude Code caches in ~/.claude.json.
-// found is false when the file or the flag is missing. Any value but false or
-// null counts as on.
-func (s Store) Feature(flag string) (on, found bool, err error) {
-	var r reader
-	features := objectOf(r.object(s.ConfigFile)["cachedGrowthBookFeatures"])
-	if len(r.problems) > 0 {
-		return false, false, r.problems[0]
+// readConfig is claude.ReadConfig, which tests replace to count the reads.
+var readConfig = claude.ReadConfig
+
+// claudeJSON reads ~/.claude.json, and notes it as a problem when it cannot.
+func (r *reader) claudeJSON(path string) claude.Config {
+	cfg, err := readConfig(path)
+	if err != nil {
+		r.problems = append(r.problems, err)
 	}
-	value, found := features[flag]
-	if !found {
-		return false, false, nil
-	}
-	switch string(value) {
-	case "false", "null":
-		return false, true, nil
-	}
-	return true, true, nil
+	return cfg
 }
-
-// claudeConfig is ~/.claude.json.
-type claudeConfig struct{ top map[string]json.RawMessage }
-
-func (r *reader) claudeJSON(path string) claudeConfig {
-	return claudeConfig{top: r.object(path)}
-}
-
-// project is the entry ~/.claude.json keeps for dir. Claude Code keys a
-// directory in a git repository by the repository's main worktree, and keys
-// any other directory by itself.
-func (c claudeConfig) project(dir string) map[string]json.RawMessage {
-	projects := objectOf(c.top["projects"])
-	if len(projects) == 0 {
-		return nil
-	}
-	byDir := map[string]json.RawMessage{}
-	for key, raw := range projects {
-		byDir[configKey(key)] = raw
-	}
-	// Claude Code follows links before it looks for the repository.
-	if real, err := filepath.EvalSymlinks(dir); err == nil {
-		dir = real
-	}
-	for _, d := range []string{gitRoot(dir), dir} {
-		if raw, ok := byDir[configKey(d)]; ok && d != "" {
-			return objectOf(raw)
-		}
-	}
-	return nil
-}
-
-// configKey is a directory as ~/.claude.json's projects name it, with forward
-// slashes, which Claude Code writes on Windows too.
-func configKey(dir string) string { return filepath.ToSlash(filepath.Clean(dir)) }
 
 // settingsFiles are the user's settings.json, then the project's committed
 // and local settings in dir, each overriding the one before.
@@ -393,7 +347,7 @@ func installPath(raw json.RawMessage, dir string) string {
 		}
 		path, _ := in.InstallPath.(string)
 		project, _ := in.ProjectPath.(string)
-		if filepath.IsAbs(path) && (project == "" || configKey(project) == configKey(dir)) {
+		if filepath.IsAbs(path) && (project == "" || claude.ProjectKey(project) == claude.ProjectKey(dir)) {
 			return path
 		}
 	}
@@ -512,51 +466,4 @@ func stringsOf(raw json.RawMessage) []string {
 func boolOf(raw json.RawMessage) bool {
 	var b bool
 	return json.Unmarshal(raw, &b) == nil && b
-}
-
-// gitRoot is the root of the main worktree of the git repository dir is in,
-// or "" outside one. A linked worktree's .git file names its git directory,
-// whose commondir file leads to the main one.
-func gitRoot(dir string) string {
-	for d := dir; ; {
-		dotGit := filepath.Join(d, ".git")
-		info, err := os.Stat(dotGit)
-		switch {
-		case err == nil && info.IsDir():
-			return d
-		case err == nil:
-			return linkedRoot(d, dotGit)
-		}
-		parent := filepath.Dir(d)
-		if parent == d {
-			return ""
-		}
-		d = parent
-	}
-}
-
-// linkedRoot follows a .git file in dir. A submodule's has no commondir, so
-// the submodule is its own root.
-func linkedRoot(dir, dotGit string) string {
-	data, err := os.ReadFile(dotGit)
-	if err != nil {
-		return dir
-	}
-	gitDir, ok := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir:")
-	if !ok {
-		return dir
-	}
-	gitDir = strings.TrimSpace(gitDir)
-	if !filepath.IsAbs(gitDir) {
-		gitDir = filepath.Join(dir, gitDir)
-	}
-	common, err := os.ReadFile(filepath.Join(gitDir, "commondir"))
-	if err != nil {
-		return dir
-	}
-	commonDir := strings.TrimSpace(string(common))
-	if !filepath.IsAbs(commonDir) {
-		commonDir = filepath.Join(gitDir, commonDir)
-	}
-	return filepath.Dir(filepath.Clean(commonDir))
 }

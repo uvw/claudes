@@ -42,7 +42,7 @@ var allowed = map[string][]string{
 	"internal/jobs":          {"internal/files", "internal/paths"},
 	"internal/layout":        nil,
 	"internal/lock":          {"internal/files"},
-	"internal/mcp":           {"internal/paths"},
+	"internal/mcp":           {"internal/claude", "internal/paths"},
 	"internal/park":          {"internal/claude", "internal/files", "internal/paths", "internal/shell"},
 	"internal/paths":         nil,
 	"internal/procs":         nil,

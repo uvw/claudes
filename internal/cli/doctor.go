@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/exit"
@@ -177,7 +178,7 @@ func (app *App) checkPinsLock() check {
 	if app.MCP.ConfigFile == "" {
 		return checkWarn(name, "cannot find Claude Code's settings file, so cannot tell how it writes pins.json")
 	}
-	on, found, err := app.MCP.Feature(compat.PinsFlag)
+	on, found, err := claude.Feature(app.MCP.ConfigFile, compat.PinsFlag)
 	switch {
 	case err != nil:
 		return checkWarn(name, fmt.Sprintf("cannot read %s, so cannot tell how Claude Code writes pins.json: %v", app.MCP.ConfigFile, err))

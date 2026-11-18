@@ -24,6 +24,7 @@ adds what an agent needs on top of them.
 | ls and where                              | `internal/cli/ls.go`, `internal/cli/where.go`               |
 | gc                                        | `internal/cli/gc.go`                                        |
 | The calls to the `claude` command line    | `internal/claude/client.go`                                 |
+| Reading `~/.claude.json`                  | `internal/claude/config.go`                                 |
 | Agent view's pins and per-job versions    | `internal/jobs/jobs.go`                                     |
 | The version a running session runs        | `internal/procs`, `internal/cli/app_compat.go`              |
 | Comparing versions, and claudes' own      | `internal/version`                                          |

@@ -16,7 +16,7 @@
    | `~/.claude/jobs/`, `pins.json` and each job's `state.json` among them                                                  | `internal/jobs`        |
    | `~/.claude/projects/`, and each session's `file-history`, `session-env`, and `debug` log                               | `internal/transcripts` |
    | `~/.claude/teams/` and `~/.claude/tasks/`                                                                              | `internal/teams`       |
-   | `~/.claude.json`, for its MCP keys and the feature flags Claude Code caches                                            | `internal/mcp`         |
+   | `~/.claude.json`, for its MCP keys and the feature flags Claude Code caches                                            | `internal/claude`      |
    | `~/.claude/settings.json`, and a directory's `.claude/settings.json` and `.claude/settings.local.json`                 | `internal/mcp`         |
    | `.mcp.json` files                                                                                                      | `internal/mcp`         |
    | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |

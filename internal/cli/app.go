@@ -57,8 +57,8 @@ type App struct {
 	Trash func(path string) error
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
-	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads, and
-	// the one reader of ~/.claude.json, whose feature flags doctor reports.
+	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads. Its
+	// ConfigFile is ~/.claude.json, whose feature flags doctor reports.
 	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
