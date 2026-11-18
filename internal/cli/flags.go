@@ -2,6 +2,8 @@ package cli
 
 import (
 	"errors"
+	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -118,3 +120,46 @@ func (v *days) Set(s string) error {
 }
 
 func (v *days) Type() string { return "duration" }
+
+// countFlag is a flag that takes a whole number, 0 or more.
+type countFlag struct{ n int }
+
+func (c *countFlag) String() string { return strconv.Itoa(c.n) }
+
+func (c *countFlag) Set(s string) error {
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return fmt.Errorf("must be a whole number, 0 or more, not %q", s)
+	}
+	c.n = n
+	return nil
+}
+
+func (c *countFlag) Type() string { return "int" }
+
+// choiceFlag is a flag that takes one of a few words, so a typo fails when the
+// flags are parsed.
+type choiceFlag struct {
+	value string
+	of    []string
+}
+
+func (c *choiceFlag) String() string { return c.value }
+
+func (c *choiceFlag) Set(s string) error {
+	if !slices.Contains(c.of, s) {
+		return fmt.Errorf("must be %s, not %q", orList(c.of), s)
+	}
+	c.value = s
+	return nil
+}
+
+func (c *choiceFlag) Type() string { return "string" }
+
+// orList joins words as "a or b", or "a, b, or c".
+func orList(words []string) string {
+	if len(words) < 3 {
+		return strings.Join(words, " or ")
+	}
+	return strings.Join(words[:len(words)-1], ", ") + ", or " + words[len(words)-1]
+}

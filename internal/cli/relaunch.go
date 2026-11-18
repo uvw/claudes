@@ -134,8 +134,10 @@ func (app *App) resumeSession(ctx context.Context, sessionID, cwd, prompt string
 	return app.resumeAs(ctx, sessionID, cwd, prompt, claude.NewJob{})
 }
 
-// resumeAs is resumeSession for a session with no background job, which
-// starts one with job's name and options.
+// resumeAs resumes a session with claude --bg --resume and waits for it to show
+// as running. For a session with no background job, job gives the new job's
+// name and options; resumeSession passes none, and Claude Code wakes a job
+// with the options it started with.
 func (app *App) resumeAs(ctx context.Context, sessionID, cwd, prompt string, job claude.NewJob) error {
 	out, err := app.Agents.Resume(ctx, sessionID, cwd, prompt, job)
 	if err != nil {

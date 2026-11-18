@@ -31,9 +31,9 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 			if out.format != "text" {
 				return out.encode(app.Out, picked)
 			}
-			found := make([][3]string, len(picked))
+			found := make([]dirRow, len(picked))
 			for i, s := range picked {
-				found[i] = [3]string{s.Label(), s.ID(), s.Cwd}
+				found[i] = dirRow{id: s.ID(), dir: s.Cwd, name: s.Label()}
 			}
 			return app.printDirs(found)
 		},

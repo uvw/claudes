@@ -12,7 +12,8 @@ import (
 )
 
 func (app *App) sessionLsCommand() *cobra.Command {
-	var in, sortBy string
+	var in string
+	sortBy := choiceFlag{value: "active", of: []string{"active", "size"}}
 	var since days
 	var out outputFlag
 	cmd := &cobra.Command{
@@ -35,12 +36,8 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 			if list, err = app.filterPast(list, args, in, since.d); err != nil {
 				return err
 			}
-			switch sortBy {
-			case "active":
-			case "size":
+			if sortBy.value == "size" {
 				slices.SortStableFunc(list, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
-			default:
-				return fmt.Errorf("--sort takes active or size, not %q", sortBy)
 			}
 			if out.format != "text" {
 				return out.encode(app.Out, list)
@@ -62,8 +59,8 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 		},
 	}
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
-	cmd.Flags().StringVar(&sortBy, "sort", "active", "order by active, newest first, or by size, biggest first")
-	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions([]cobra.Completion{"active", "size"}, cobra.ShellCompDirectiveNoFileComp))
+	cmd.Flags().Var(&sortBy, "sort", "order by active, newest first, or by size, biggest first")
+	cmd.RegisterFlagCompletionFunc("sort", cobra.FixedCompletions(sortBy.of, cobra.ShellCompDirectiveNoFileComp))
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
 	out.add(cmd, app.Config.Output.Format)

@@ -119,7 +119,7 @@ var Keys = []Key{
 		}
 		return time.Duration(c.Wait.Timeout).String()
 	}, false},
-	{"output.format", "the default -o of commands that print sessions: text, json, or yaml", func(c Config) string { return c.Output.Format }, false},
+	{"output.format", "the default -o of the commands that list or report: text, json, or yaml", func(c Config) string { return c.Output.Format }, false},
 	{"output.dirs", "how text tables shorten a directory too long for its column: middle, fish, or full", func(c Config) string { return c.Output.Dirs }, false},
 	{"mcp.profiles", "MCP server profiles: each name and the servers that stay on in it", profilesValue, true},
 }

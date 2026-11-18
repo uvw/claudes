@@ -48,9 +48,9 @@ is exactly a name picks the newest session with that name.`,
 			if out.format != "text" {
 				return out.encode(app.Out, picked)
 			}
-			found := make([][3]string, len(picked))
+			found := make([]dirRow, len(picked))
 			for i, p := range picked {
-				found[i] = [3]string{p.Label(), p.ShortID, p.Cwd}
+				found[i] = dirRow{id: p.ShortID, dir: p.Cwd, name: p.Label()}
 			}
 			return app.printDirs(found)
 		},

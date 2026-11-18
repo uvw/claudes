@@ -35,17 +35,22 @@ type pastSession struct {
 	// Activity is what the session did, or nil when its transcript was not
 	// read in full.
 	Activity *transcripts.Activity `json:"activity"`
+	// activityErr is why reading the activity failed.
+	activityErr error
 }
 
 // readActivity counts what p did, unless its transcript is bigger than
 // transcripts.ActivityLimit, or force reads it whatever its size.
 func readActivity(p *pastSession, force bool) {
-	if p.Activity != nil || !force && p.Size > transcripts.ActivityLimit {
+	if p.Activity != nil || p.activityErr != nil || !force && p.Size > transcripts.ActivityLimit {
 		return
 	}
-	if a, err := transcripts.ReadActivity(p.Path); err == nil {
-		p.Activity = &a
+	a, err := transcripts.ReadActivity(p.Path)
+	if err != nil {
+		p.activityErr = err
+		return
 	}
+	p.Activity = &a
 }
 
 func refOf(p pastSession) sessionRef {

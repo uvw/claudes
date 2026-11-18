@@ -16,7 +16,7 @@ import (
 	"github.com/uvw/claudes/internal/style"
 )
 
-// outputFlag is -o/--output for the commands that print sessions. It is a
+// outputFlag is -o/--output for the commands that list or report. It is a
 // pflag.Value, so a bad format fails when the flags are parsed.
 type outputFlag struct{ format string }
 
@@ -140,16 +140,20 @@ func homeShort(path string) string {
 	return "~" + string(filepath.Separator) + rel
 }
 
+// dirRow is one row of the table where and session where print.
+type dirRow struct{ id, dir, name string }
+
 // printDirs prints one directory bare, so cd "$(claudes where NAME)" works, or
-// several as name, id, and directory, so sessions that share a name stay apart.
-func (app *App) printDirs(found [][3]string) error {
+// several as a table of id, directory, and name, so sessions that share a name
+// stay apart.
+func (app *App) printDirs(found []dirRow) error {
 	if len(found) == 1 {
-		_, err := fmt.Fprintln(app.Out, shell.Printable(found[0][2]))
+		_, err := fmt.Fprintln(app.Out, shell.Printable(found[0].dir))
 		return err
 	}
-	table := make([][]string, 0, len(found))
+	table := [][]string{{"ID", "DIR", "NAME"}}
 	for _, f := range found {
-		table = append(table, []string{shell.Printable(f[0]), f[1], dirCell(f[2])})
+		table = append(table, []string{f.id, dirCell(f.dir), nameCell(f.name)})
 	}
 	return app.writeTable(app.Out, table, tableFit{})
 }

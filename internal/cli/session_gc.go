@@ -223,28 +223,30 @@ func (app *App) gcKeep(ctx context.Context, list []pastSession) (map[string]stri
 	return keep, nil
 }
 
-// gcPick finds what session gc removes without targets.
+// gcPick finds what session gc removes without targets. With --trivial, it
+// reads the activity of the sessions it weighs into list.
 func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([]gcItem, error) {
 	now := app.Now()
 	recent := now.Add(-gcFloor)
 	var items []gcItem
-	for _, p := range list {
+	for i := range list {
+		p := &list[i]
 		if _, kept := keep[p.SessionID]; kept || p.LastActive.After(recent) {
 			continue
 		}
 		if f.trivial && !p.Empty {
-			readActivity(&p, false)
+			readActivity(p, false)
 		}
 		whole := len(items)
 		switch {
 		case f.empty && p.Empty:
-			items = append(items, app.wholeSession(p, kindEmpty))
-		case f.trivial && trivial(p):
-			items = append(items, app.wholeSession(p, kindTrivial))
+			items = append(items, app.wholeSession(*p, kindEmpty))
+		case f.trivial && trivial(*p):
+			items = append(items, app.wholeSession(*p, kindTrivial))
 		case f.gone && dirGone(p.Cwd):
-			items = append(items, app.wholeSession(p, kindGone))
+			items = append(items, app.wholeSession(*p, kindGone))
 		case f.olderThan.d > 0 && !f.sidecars && p.LastActive.Before(now.Add(-f.olderThan.d)):
-			items = append(items, app.wholeSession(p, kindOld))
+			items = append(items, app.wholeSession(*p, kindOld))
 		case f.copies:
 			for _, c := range p.Copies {
 				if changed := transcripts.Changed(c); !changed.IsZero() && changed.Before(recent) {
@@ -257,7 +259,7 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 		removed := len(items) > whole && items[whole].why != kindCopy
 		if f.sidecars && !removed {
 			old := f.olderThan.d > 0 && p.LastActive.Before(now.Add(-f.olderThan.d))
-			if it, ok := sidecarItem(p, old); ok {
+			if it, ok := sidecarItem(*p, old); ok {
 				items = append(items, it)
 			}
 		}

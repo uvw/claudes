@@ -43,7 +43,7 @@ type duReport struct {
 func (app *App) sessionDuCommand() *cobra.Command {
 	var in string
 	var since days
-	var top int
+	var top countFlag
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "du [TARGET...]",
@@ -81,7 +81,7 @@ session.`,
 				return err
 			}
 			report := duTally(list, leftovers)
-			report.Top = duTop(list, top)
+			report.Top = duTop(list, top.n)
 			if out.format != "text" {
 				return out.encode(app.Out, report)
 			}
@@ -126,7 +126,7 @@ session.`,
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
-	cmd.Flags().IntVarP(&top, "top", "t", 0, "also list the N sessions that take the most space")
+	cmd.Flags().VarP(&top, "top", "t", "also list the N sessions that take the most space")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
 }

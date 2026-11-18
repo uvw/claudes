@@ -51,7 +51,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				fmt.Fprintf(tw, "%s:\t%s\n", kv[0], dash(shell.Printable(kv[1])))
 			}
 			for _, c := range p.Copies {
-				fmt.Fprintf(tw, "older copy:\t%s\n", c)
+				fmt.Fprintf(tw, "older copy:\t%s\n", shell.Printable(c))
 			}
 			return tw.Flush()
 		},
