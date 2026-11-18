@@ -380,3 +380,19 @@ func TestResumeKeepsANameThatStartsWithADashOneArgument(t *testing.T) {
 		t.Fatalf("args %q", r.calls[0])
 	}
 }
+
+func TestWithoutSessionVarsKeepsTheUsersOwnSettings(t *testing.T) {
+	env := []string{
+		"CLAUDE_CODE_CHILD_NOTES_DIR=/tmp/notes",
+		"CLAUDE_EFFORT=high",
+		"CLAUDE_CODE_SESSION_ID=abc",
+		"CLAUDE_CODE_SCROLL_SPEED=3",
+		"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1",
+		"HOME=/home/me",
+	}
+	got := withoutSessionVars(env)
+	want := []string{"CLAUDE_CODE_SCROLL_SPEED=3", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1", "HOME=/home/me"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
