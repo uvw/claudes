@@ -91,7 +91,7 @@ func TestDefaultFileIgnoresARelativeStateHome(t *testing.T) {
 
 func TestFromSessionRecordsWhatResumeNeeds(t *testing.T) {
 	s := claude.Session{JobID: "7f8f7d77", SessionID: "deadbeef-1111", Cwd: "/x", Kind: "background", Status: "waiting"}
-	e := FromSession(s, "2026-11-14T00:00:00Z")
+	e := FromSession(s, true, "2026-11-14T00:00:00Z")
 	want := Entry{SessionID: s.SessionID, JobID: s.JobID, Name: "7f8f7d77", Cwd: "/x", Kind: "background", WasBusy: true, PausedAt: "2026-11-14T00:00:00Z"}
 	if diff := cmp.Diff(want, e); diff != "" {
 		t.Fatalf("entry (-want +got):\n%s", diff)
@@ -102,7 +102,7 @@ func TestFromSessionRecordsWhatResumeNeeds(t *testing.T) {
 	if !strings.Contains(e.ManualCommand(), "--bg --resume deadbeef-1111") {
 		t.Fatalf("command %q", e.ManualCommand())
 	}
-	tty := FromSession(claude.Session{SessionID: "cafe0000-2222", Name: "tty", Kind: "interactive", Status: "idle"}, "")
+	tty := FromSession(claude.Session{SessionID: "cafe0000-2222", Name: "tty", Kind: "interactive", Status: "idle"}, false, "")
 	if !tty.Interactive() || tty.WasBusy || strings.Contains(tty.ManualCommand(), "--bg") {
 		t.Fatalf("interactive entry %+v, command %q", tty, tty.ManualCommand())
 	}

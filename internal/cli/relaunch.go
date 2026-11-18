@@ -233,8 +233,7 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []fai
 // parkOne records a session in the park file before it is stopped, so a crash
 // or a failed resume leaves it for claudes resume.
 func (app *App) parkOne(s claude.Session, wasBusy bool) error {
-	e := park.FromSession(s, app.Now().UTC().Format(time.RFC3339))
-	e.WasBusy = wasBusy
+	e := park.FromSession(s, wasBusy, app.Now().UTC().Format(time.RFC3339))
 	return app.Park.Update(func(entries []park.Entry) []park.Entry { return park.Merge(entries, []park.Entry{e}) })
 }
 

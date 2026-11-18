@@ -32,15 +32,17 @@ type Entry struct {
 	PausedAt  string `json:"paused_at"`
 }
 
-// FromSession records a session about to be paused.
-func FromSession(s claude.Session, pausedAt string) Entry {
+// FromSession records a session about to be paused. wasBusy is whether resume
+// --ping prompts it, which the caller decides, since a lead whose teammates
+// are at work counts though its own status may be idle.
+func FromSession(s claude.Session, wasBusy bool, pausedAt string) Entry {
 	return Entry{
 		SessionID: s.SessionID,
 		JobID:     s.JobID,
 		Name:      s.Label(),
 		Cwd:       s.Cwd,
 		Kind:      s.Kind,
-		WasBusy:   s.MidTurn(),
+		WasBusy:   wasBusy,
 		PausedAt:  pausedAt,
 	}
 }

@@ -433,7 +433,7 @@ func TestSessionMvLeavesAJobThatIsNotStoppedOrIsPaused(t *testing.T) {
 			s.PID, s.Status, s.State = 4242, "idle", "done"
 		}},
 		{"paused", "it is paused", func(h *harness, s *claude.Session) {
-			if err := h.app.Park.Save([]park.Entry{park.FromSession(*s, h.now.Format(time.RFC3339))}); err != nil {
+			if err := h.app.Park.Save([]park.Entry{park.FromSession(*s, false, h.now.Format(time.RFC3339))}); err != nil {
 				t.Fatal(err)
 			}
 		}},

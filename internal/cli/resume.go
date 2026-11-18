@@ -125,8 +125,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 	if len(targets) > 0 {
 		for _, s := range listed {
 			if !parkedIDs[s.SessionID] {
-				e := park.FromSession(s, "")
-				e.WasBusy = true
+				e := park.FromSession(s, true, "")
 				candidates = append(candidates, resumable{Entry: e})
 			}
 		}
