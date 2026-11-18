@@ -96,6 +96,8 @@ are missing, opens each token's page with its fields filled in, checks the token
 you paste, and saves it as a secret of the `release` environment
 ([Repository settings](#repository-settings)). When a token expires, run it
 again with the secret's name, such as `hack/release-tokens.sh WINGET_TOKEN`.
+Each token's name ends in the day it was made, since GitHub refuses a name
+another of your tokens has. Revoke the old token once the new secret is saved.
 
 komac adds versions only to a package winget already has, so the first version
 of `uvw.claudes` is submitted by hand, on any machine with komac:
