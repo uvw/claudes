@@ -33,6 +33,8 @@ Restarting 2 session(s):
   51572bb7  idle    ~/src/docs          docs
   restarted  api-refactor and pinged
   restarted  docs
+
+Pinned, not restarted: release-notes. Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.
 ```
 
 `api-refactor` was mid-turn, so claudes stopped it, resumed it on the new Claude
@@ -91,8 +93,8 @@ and the resume commands `pause` printed bring back interactive ones.
 
 ## Install
 
-claudes needs Claude Code with `claude agents` on `PATH`. It is tested with
-Claude Code 2.1.325, and `claudes doctor` says whether yours works with it.
+claudes needs Claude Code with `claude agents` on `PATH`. `claudes doctor` names
+the Claude Code versions claudes was tested with, and says whether yours works.
 
 macOS and Linux:
 
@@ -106,22 +108,17 @@ Windows, in PowerShell:
 irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
 ```
 
-The script checks the download against the release's checksums and, with the
-[GitHub CLI](https://cli.github.com) signed in, its build provenance, then
-installs into `~/.local/bin`, or `%LOCALAPPDATA%\Programs\claudes` on Windows.
-Run `claudes upgrade` later to move to a newer release.
-
-With Homebrew on macOS or Linux, winget on Windows (once Microsoft has approved
-its first version), or Go:
+The script checks the download and installs it into `~/.local/bin`, or
+`%LOCALAPPDATA%\Programs\claudes` on Windows. `claudes upgrade` moves to a newer
+release later. With Homebrew on macOS or Linux, or with Go:
 
 ```bash
 brew install uvw/tap/claudes
-winget install uvw.claudes
 go install github.com/uvw/claudes/cmd/claudes@latest
 ```
 
 [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)
-covers picking a version or a directory, installing by hand, checking a
+covers winget, picking a version or a directory, installing by hand, checking a
 download, and uninstalling. Then run `claudes doctor`.
 
 ### Shell setup
@@ -143,15 +140,11 @@ pattern such as `plan*` away from the shell.
 
 ### Agent skill
 
-A skill teaches a coding agent to use claudes, so you can ask it to "pin the
-docs session" or "restart my agents after the update". It carries the install
-steps too, so an agent can set claudes up itself.
-
-```bash
-claudes skill --install           # install or update it for Claude Code
-npx skills add uvw/claudes        # or install it from the repository
-claudes skill                     # print it
-```
+`claudes skill --install` installs a skill that teaches a coding agent to use
+claudes, so you can ask it to "pin the docs session" or "restart my agents after
+the update".
+[Agent skill](https://github.com/uvw/claudes/blob/main/docs/install.md#agent-skill)
+covers the other ways to install it.
 
 ## Commands
 
@@ -215,10 +208,10 @@ Setup and diagnostics:
 | [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)               | Every way to install, shell setup, the agent skill, and uninstalling |
 | [Using claudes](https://github.com/uvw/claudes/blob/main/docs/guide.md)                      | Naming sessions, flags, safety, past sessions, teams, logs, and MCP  |
 | [Reference](https://github.com/uvw/claudes/blob/main/docs/reference.md)                      | Output, exit codes, troubleshooting, configuration, and files        |
-| [Agent skill](skills/claudes/SKILL.md)                                                       | How a coding agent uses claudes, as a skill                          |
+| [Agent skill](https://github.com/uvw/claudes/blob/main/skills/claudes/SKILL.md)              | How a coding agent uses claudes, as a skill                          |
 | [Security](https://github.com/uvw/claudes/blob/main/docs/security.md)                        | Reporting a problem, and checking a download                         |
 | [Contributing](https://github.com/uvw/claudes/blob/main/docs/contributing.md)                | Rules for changes, the checks, and releases                          |
-| [Agents](AGENTS.md)                                                                          | What coding agents need on top of the contributing guide             |
+| [Agents](https://github.com/uvw/claudes/blob/main/AGENTS.md)                                 | What coding agents need on top of the contributing guide             |
 | [Decisions](https://github.com/uvw/claudes/blob/main/docs/decisions.md)                      | Each settled choice, why, and the alternatives                       |
 | [Releasing](https://github.com/uvw/claudes/blob/main/docs/releasing.md)                      | How releases happen, recovering one, and repo settings               |
 | [Changelog](https://github.com/uvw/claudes/blob/main/docs/changelog.md)                      | What each release changed                                            |
@@ -255,9 +248,9 @@ Its non-goals:
 2. Other coding agents, such as Copilot, Codex, or Pi. claudes manages Claude
    Code only.
 
-[Decision 29](docs/decisions.md#29-claudes-is-a-tool-for-claude-code-and-nothing-else)
+[Decision 29](https://github.com/uvw/claudes/blob/main/docs/decisions.md#29-claudes-is-a-tool-for-claude-code-and-nothing-else)
 says why.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/uvw/claudes/blob/main/LICENSE)

@@ -3,8 +3,8 @@
 Every way to install claudes, set up your shell, and add the agent skill. The
 [README](../README.md#install) has the short version.
 
-claudes needs Claude Code with `claude agents` on `PATH`. It is tested with
-Claude Code 2.1.325, and `claudes doctor` says whether yours works with it.
+claudes needs Claude Code with `claude agents` on `PATH`. `claudes doctor` names
+the Claude Code versions claudes was tested with, and says whether yours works.
 
 ## The install script
 
@@ -45,18 +45,17 @@ irm https://github.com/uvw/claudes/releases/latest/download/install.ps1 | iex
 
 ## By hand
 
-By hand: download the archive for your platform from the latest release, check
-it against `checksums.txt`, and put `claudes` (`claudes.exe` on Windows) in a
-directory on `PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on
-`amd64` and `arm64`. The binaries are not signed, so one downloaded with a
-browser is blocked by Gatekeeper on macOS until you run
+Download the archive for your platform from the latest release, check it against
+`checksums.txt`, and put `claudes` (`claudes.exe` on Windows) in a directory on
+`PATH`. Archives cover macOS (`darwin`), Linux, and Windows, on `amd64` and
+`arm64`. The binaries are not signed, so one downloaded with a browser is
+blocked by Gatekeeper on macOS until you run
 `xattr -d com.apple.quarantine claudes`; the install script and `gh` are not.
 [Security](security.md) explains how to check a download's provenance.
 
 ## Homebrew and winget
 
-With Homebrew, on macOS or Linux, or winget on Windows, from the release after
-0.1.0 on (winget lists it once Microsoft has reviewed the first one):
+With Homebrew, on macOS or Linux, or winget on Windows:
 
 ```bash
 brew install uvw/tap/claudes
@@ -65,6 +64,9 @@ brew install uvw/tap/claudes
 ```powershell
 winget install uvw.claudes
 ```
+
+winget does not list claudes yet, since Microsoft reviews a package's first
+version by hand. Until it does, use the install script.
 
 ## With Go
 
@@ -89,8 +91,15 @@ Then run `claudes doctor`.
 
 ## Uninstalling
 
-Delete the binary, and the directories in [Files](reference.md#files) if you
-want its settings and park list gone too.
+1. Remove the binary: `brew uninstall claudes`, `winget uninstall uvw.claudes`,
+   or delete `claudes` from where the install script or `go install` put it.
+2. Remove the agent skill: delete `~/.claude/skills/claudes`, or the `claudes`
+   directory under the `--dir` you gave. A copy added with
+   `npx skills add uvw/claudes` goes with `npx skills remove claudes`.
+3. Remove the lines [Shell setup](#shell-setup) added to your shell's profile,
+   and the zsh completion file, `~/.zfunc/_claudes`.
+4. Delete the directories in [Files](reference.md#files) if you want the
+   settings and the park list gone too.
 
 ## Shell setup
 

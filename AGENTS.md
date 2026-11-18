@@ -66,12 +66,12 @@ holds the harness they share.
 
 ## The owner's sessions
 
-The owner's Claude Code sessions are live work. Never run `restart`, `pause`,
-`resume`, `ping`, `stop`, `gc`, `pin`, `unpin`, `session resume`, `session mv`,
-or `session gc` against them, and never edit `~/.claude/jobs/` or
-`~/.claude/projects/` by hand. Read-only commands are fine: `ls`, `where`,
-`doctor`, `session ls`, `session show`, `session where`, `session du`, and any
-command with `--dry-run`.
+The owner's Claude Code sessions and their claudes install are live work. On the
+owner's machine, run only the commands that "Before you change anything" in
+`skills/claudes/SKILL.md` lists as read-only. Every other command needs the
+owner's yes first, even one the skill lets an agent run when its user asks: that
+includes `upgrade`, `skill --install`, `config set`, `config edit`, and
+`gc --teams`. Never edit `~/.claude/jobs/` or `~/.claude/projects/` by hand.
 
 Tests drive the commands through the fake `claude.Agents` in
 `internal/cli/cli_test.go` and a temporary jobs directory, never the real
@@ -111,12 +111,13 @@ heredoc, and never run it through Prettier.
 2. **Only background sessions have a job id.** Interactive sessions are stopped
    through `procs.Terminate` and resumed with `claude --resume <session id>`.
 3. **`claude respawn` on a mid-turn session interrupts it, and it comes back
-   idle.** Mid-turn is `busy`, `waiting`, or `shell` (`Session.MidTurn`). A ping
-   is a stop, then `claude --bg --resume <id> "<prompt>"`, through
-   `App.relaunch`, which parks the session first and waits for the stop to land.
-   Resuming a session that still runs starts a copy. So does passing flags, such
-   as `--model`, to `--bg --resume`: Claude Code already wakes a background
-   session with the options it started with.
+   idle.** Mid-turn is `busy`, `waiting`, or `shell` (`Session.MidTurn`), and
+   `App.midTurn` adds a team lead with teammates at work. A ping is a stop, then
+   `claude --bg --resume <id> "<prompt>"`, through `App.relaunch`, which parks
+   the session first and waits for the stop to land. Resuming a session that
+   still runs starts a copy. So does passing flags, such as `--model`, to
+   `--bg --resume`: Claude Code already wakes a background session with the
+   options it started with.
 4. **`~/.claude/jobs/` and `claude agents --json` are not stable Claude Code
    interfaces.** `internal/compat` checks what claudes reads, and a write
    command refuses what it does not recognize. When the weekly Compatibility
@@ -141,19 +142,10 @@ heredoc, and never run it through Prettier.
    new session-scoped variable there.
 9. **Change the park file only through `park.File.Update`.** It holds the park
    file's lock, so two claudes runs cannot lose each other's entries.
-10. **Safeguards are opt-in.** `--wait`, `--confirm`, and `--dry-run` are flags,
-    never defaults: claudes is an emergency tool (decision 6).
-11. **Code that differs by platform lives in `_unix.go` and `_windows.go`
-    files.** Run `GOOS=windows go vet ./...` after touching `procs` or
-    `claude.Exec`.
-12. **`skills/claudes/SKILL.md` is the agent skill, and it ships in the
-    binary.** `claudes skill` prints it, and `npx skills add uvw/claudes` reads
-    it from the repository. Update it in the same change as any command, flag,
-    or safety rule it describes.
-13. **Every path a table shows goes through `dirCell`, and every table through
+10. **Every path a table shows goes through `dirCell`, and every table through
     `app.writeTable`.** A path that skips them wraps every row, and
     `TestTablesPutPathsThroughDirCell` fails.
-14. **A transcript record type claudes does not know keeps the session out of
+11. **A transcript record type claudes does not know keeps the session out of
     `session gc`'s empty and trivial kinds.** When Claude Code adds a type that
     holds no conversation, add it to `bookkeeping` in
     `internal/transcripts/transcripts.go`, or such sessions pile up.

@@ -42,6 +42,9 @@
 7. Unknown commands pass through to `claude agents`. A new claudes command name
    or alias hides a `claude agents` argument of the same name, so check
    `claude agents --help` before adding one.
+8. Safeguards, such as `--wait`, `--confirm`, and `--dry-run`, are flags, never
+   defaults: claudes is an emergency tool
+   ([decision 6](decisions.md#6-safeguards-are-opt-in)).
 
 ## Docs
 
@@ -55,12 +58,23 @@ Update a doc in the same change as the code it describes.
    output, exit codes, configuration, and files. The installers print a link to
    the README's `#shell-setup` section, so that heading stays in the README.
 2. `docs/decisions.md` records each settled choice, why, and the alternatives.
-   It is a living record: when a choice changes, rewrite its entry rather than
-   adding one that replaces it, and keep the index table in step.
+   It holds only what matters for the tool's design, behavior, critical
+   operations, and safety, and that the code and the other docs do not already
+   say. How claudes renders a path or a table, which library it uses, and how CI
+   and releases run are evident elsewhere and get no entry. Give each entry its
+   why and the alternatives weighed, with any measurements, and link the guide
+   or the reference for the rule itself. It is a living record: when a choice
+   changes, rewrite its entry rather than adding one that replaces it, and keep
+   the index table in step. Never reuse a number, since issues and pull requests
+   cite them.
 3. GitHub issues hold features, ideas, bugs, and other open work. Close one when
    it's done, or when a decision settles it.
 4. `docs/handoffs.md` holds work one machine leaves for another, such as a
    Windows check made on a Mac, and the prompt that resumes the work.
+5. `skills/claudes/SKILL.md` is the agent skill, and it ships in the binary:
+   `claudes skill` prints it, and `npx skills add uvw/claudes` reads it from the
+   repository. Update it in the same change as any command, flag, or safety rule
+   it describes.
 
 The README opens with `docs/demo/demo.gif`. When a command it shows changes its
 output, run `hack/demo.sh`, which needs Docker, to render it again from
@@ -110,7 +124,7 @@ for Windows provides. The Windows staticcheck line runs a staticcheck built for
 this machine, since `GOOS=windows go tool` would build one for Windows.
 
 Every tool the checks run has a pinned version. These pins are updated or
-checked each week (decision 31):
+checked each week:
 
 1. staticcheck, govulncheck, and go-licenses are `tool` lines in `tools/go.mod`,
    a module of its own, so their dependencies stay out of the `go.mod` claudes
@@ -162,9 +176,8 @@ race detector, which Go lacks there. The coverage floor of 80%
 and the notices, the Markdown checks, zizmor, and gitleaks on Linux. Each
 platform also builds and runs the release binary
 (`.github/workflows/hack/smoke.sh`) and installs it with its install script.
-macOS does that inside its Go job, since a macOS runner can take most of an hour
-to arrive, and runs on Intel, since GitHub's Apple silicon runners are short on
-capacity. The "CI (all green)" job is the one required check, and a finding from
+macOS does that inside its Go job, on Intel; `.github/workflows/ci.yaml` says
+why. The "CI (all green)" job is the one required check, and a finding from
 zizmor or gitleaks fails it. The weekly Security workflow
 (`.github/workflows/security.yaml`) runs CodeQL, and runs zizmor and govulncheck
 again for what arrives between pushes. Workflow steps longer than a few lines
@@ -208,11 +221,10 @@ With write access to the repository:
 1. Branch from `main`: `git switch -c fix/short-name`.
 2. Open the pull request with `gh pr create --fill`, then turn on auto-merge
    with `gh pr merge --squash --auto`. It merges once "CI (all green)" passes.
-3. Dependabot opens grouped pull requests weekly, titled `fix(deps): Bump ...`
-   for the modules claudes ships and `ci(deps): Bump ...` for the tools and
-   actions. The title check lets those through with their capital "Bump", from
-   Dependabot only. Read the changelog of anything that changes behavior before
-   you merge.
+3. Dependabot opens grouped pull requests weekly, and
+   [releasing.md](releasing.md#how-a-release-happens) says how their titles pass
+   the check. Read the changelog of anything that changes behavior before you
+   merge.
 
 ### From a fork
 
@@ -229,29 +241,19 @@ Without write access, work from a fork:
 
 ## Releases
 
-Releases are automated from `main`; [releasing.md](releasing.md) is the full
-runbook.
-
-1. release-please keeps a pull request titled `chore(main): release X.Y.Z` with
-   the next version and the `docs/changelog.md` entry.
-2. Merging it tags `vX.Y.Z` and runs `.github/workflows/release.yaml`, which
-   checks the tag is on `main`, runs CI on it, builds with goreleaser, smoke
-   tests the `linux_amd64`, `darwin_arm64`, and `windows_amd64` archives,
-   attests the build provenance, and publishes.
-3. Once immutable releases are turned on (releasing.md, "Repository settings"),
-   a published release cannot change. Fix a broken one by releasing the next
-   version.
+Releases are automated from `main`: release-please keeps a pull request titled
+`chore(main): release X.Y.Z`, and merging it tags, builds, and publishes the
+release. [releasing.md](releasing.md) is the runbook.
 
 ## Commits
 
 Use Conventional Commits with a scope: `type(scope): subject`, with the subject
-in lowercase imperative, for example `fix(cli): skip pinned sessions in gc`.
-Types are `feat`, `fix`, `perf`, `docs`, `test`, `refactor`, `ci`, and `chore`.
-`feat` and `fix` decide the next version and appear in the changelog. The scope
-names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `mcp`, `park`,
-`paths`, `target`, `transcripts`, `teams`, `procs`, `install`, `safefile`,
-`shell`, `selfupdate`, `style`, `trash`, and `version` for the packages under
-`internal/`; `e2e` for `test/e2e`; `skill` for `skills/claudes`; `hack` for the
-developer tools; `deps` for Dependabot's updates; and `release` or `docs`. Leave
-the scope out only when a commit spans several areas. Keep the body to one or
-two sentences about what changed and why.
+in lowercase imperative and no closing period, for example
+`fix(cli): skip pinned sessions in gc`. Types are `feat`, `fix`, `perf`, `docs`,
+`test`, `refactor`, `ci`, and `chore`. `feat` and `fix` decide the next version
+and appear in the changelog. The scope names the area: the package's name for
+code under `internal/`, such as `cli` or `transcripts`; `e2e` for `test/e2e`;
+`skill` for `skills/claudes`; `hack` for the developer tools; `deps` for
+Dependabot's updates; and `release` or `docs`. Leave the scope out only when a
+commit spans several areas. Keep the body to one or two sentences about what
+changed and why.
