@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/uvw/claudes/compare/v0.5.0...v0.6.0) (2026-11-18)
+
+
+### Features
+
+* **cli:** filter session ls by running state, and take today, yesterday, week, and month for durations ([#106](https://github.com/uvw/claudes/issues/106)) ([63f5d5b](https://github.com/uvw/claudes/commit/63f5d5b0bd7b19d0b1b4ddcf2b60c77322e983f6))
+
+
+### Bug fixes
+
+* **cli:** cut long branches and fit names to the terminal in every table ([#98](https://github.com/uvw/claudes/issues/98)) ([c4a081f](https://github.com/uvw/claudes/commit/c4a081f9c70e689b11bc4087e3cf8e202617ae26))
+* **cli:** show session ls's branch column only with --wide ([#100](https://github.com/uvw/claudes/issues/100)) ([11b58db](https://github.com/uvw/claudes/commit/11b58db6f5311b88a89f3276826afe77b2052628))
+
 ## [0.5.0](https://github.com/uvw/claudes/compare/v0.4.0...v0.5.0) (2026-11-18)
 
 ### Features
