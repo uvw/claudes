@@ -100,8 +100,11 @@ checked each week (decision 31):
 
 `goreleaser build` needs [goreleaser](https://goreleaser.com/install/) and
 builds every release target. `hack/notices.go` builds go-licenses from
-`tools/go.mod`, and fails on a license outside its allowlist. After a dependency
-change, run it without `--check` to rewrite `docs/third-party-notices.txt`.
+`tools/go.mod`, and fails on a license outside its allowlist. It lists each
+module's license, repository, and full license text, but no versions, so a
+version bump leaves the file unchanged. When a module comes or goes, or its
+license changes, run it without `--check` to rewrite
+`docs/third-party-notices.txt`.
 
 [golangci-lint](https://golangci-lint.run/welcome/install/) needs v2.15.0 or
 later, the first to read Go 1.27's packages. Run it with `GOOS=darwin` and
@@ -151,8 +154,11 @@ With write access to the repository:
 1. Branch from `main`: `git switch -c fix/short-name`.
 2. Open the pull request with `gh pr create --fill`, then turn on auto-merge
    with `gh pr merge --squash --auto`. It merges once "CI (all green)" passes.
-3. Dependabot opens grouped pull requests weekly. Read the changelog of anything
-   that changes behavior before you merge.
+3. Dependabot opens grouped pull requests weekly, titled `fix(deps): Bump ...`
+   for the modules claudes ships and `ci(deps): Bump ...` for the tools and
+   actions. The title check lets those through with their capital "Bump", from
+   Dependabot only. Read the changelog of anything that changes behavior before
+   you merge.
 
 ### From a fork
 
@@ -192,6 +198,6 @@ names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `park`, `paths`,
 `target`, `transcripts`, `teams`, `procs`, `install`, `safefile`, `shell`,
 `selfupdate`, `style`, `trash`, and `version` for the packages under
 `internal/`; `e2e` for `test/e2e`; `skill` for `skills/claudes`; `hack` for the
-developer tools; and `release` or `docs`. Leave the scope out only when a commit
-spans several areas. Keep the body to one or two sentences about what changed
-and why.
+developer tools; `deps` for Dependabot's updates; and `release` or `docs`. Leave
+the scope out only when a commit spans several areas. Keep the body to one or
+two sentences about what changed and why.

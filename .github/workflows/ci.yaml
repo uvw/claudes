@@ -206,9 +206,15 @@ jobs:
       - name: The title is a Conventional Commit
         env:
           TITLE: ${{ github.event.pull_request.title }}
+          # The pull request's author, not github.actor, who may be anyone that
+          # reran the checks.
+          AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           pattern='^(feat|fix|perf|refactor|docs|test|ci|chore)(\([a-z0-9-]+\))?!?: [a-z].*[^.]$'
           [[ "$TITLE" =~ $pattern ]] && exit 0
+          # Dependabot writes "Bump" with a capital, and has no setting to change it.
+          dependabot='^(fix|ci)\(deps\): Bump '
+          [[ "$AUTHOR" == "dependabot[bot]" && "$TITLE" =~ $dependabot ]] && exit 0
           echo "::error::Use type(scope): lowercase imperative subject, such as fix(cli): skip pinned sessions in gc"
           exit 1
 

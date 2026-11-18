@@ -1,7 +1,7 @@
 //go:build ignore
 
 // Notices writes docs/third-party-notices.txt: the license of every module
-// claudes ships.
+// claudes ships, with its repository.
 //
 // Usage: go run hack/notices.go [--check]
 //
@@ -10,6 +10,9 @@
 // only built on one. It fails when a module's license is not one of the
 // allowed ones. With --check, it writes nothing and fails when the committed
 // file is out of date.
+//
+// The file names no module versions, so Dependabot's version bumps, which
+// cannot rewrite it, leave it alone unless a license's text changes.
 package main
 
 import (
@@ -129,7 +132,11 @@ func modules(root string) (map[string]string, error) {
 			if _, seen := found[name]; name == ownModule || seen {
 				continue
 			}
-			found[name] = fmt.Sprintf("%s\n%s, %s\n\n%s\n", name, license, url, strings.TrimSpace(text))
+			repo, ok := repository(url)
+			if !ok {
+				return nil, fmt.Errorf("no repository in the license URL of %s: %s", name, url)
+			}
+			found[name] = fmt.Sprintf("%s\n%s, %s\n\n%s\n", name, license, repo, strings.TrimSpace(text))
 			if notice := noticeBeside(path); notice != "" {
 				found[name] += "\nNOTICE\n\n" + notice + "\n"
 			}
@@ -142,6 +149,18 @@ func modules(root string) (map[string]string, error) {
 		return nil, fmt.Errorf("licenses outside %s: %s", strings.Join(allowed, ", "), strings.Join(refused, ", "))
 	}
 	return found, nil
+}
+
+// repository cuts the version and the file's path from a license URL that
+// go-licenses gives, such as https://github.com/spf13/cobra/blob/v1.10.2/LICENSE.txt
+// or https://cs.opensource.google/go/x/sys/+/v0.50.0:LICENSE.
+func repository(licenseURL string) (string, bool) {
+	for _, marker := range []string{"/-/blob/", "/blob/", "/+/"} {
+		if repo, _, ok := strings.Cut(licenseURL, marker); ok && strings.HasPrefix(repo, "https://") {
+			return repo, true
+		}
+	}
+	return "", false
 }
 
 // toolPath builds a tool from tools/go.mod for this machine and returns the
@@ -173,7 +192,8 @@ func noticeBeside(licensePath string) string {
 func render(found map[string]string) string {
 	rule := strings.Repeat("=", 79)
 	parts := []string{"Third-party software in claudes\n\n" +
-		"claudes includes the following modules. Each is listed with its license.\n" +
+		"claudes includes the following modules. Each is listed with its license and\n" +
+		"its repository.\n" +
 		"Regenerate this file with: go run hack/notices.go\n"}
 	for _, name := range slices.Sorted(maps.Keys(found)) {
 		parts = append(parts, rule+"\n"+found[name])

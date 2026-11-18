@@ -307,7 +307,10 @@ allows squash merges only. Auto-merge lands a pull request once it is green.
 
 Why: the checks only protect `main` if they run before a change lands. Squash
 merging makes each pull request title one Conventional Commit, which is what
-release-please reads.
+release-please reads. The title check takes Dependabot's titles, such as
+`fix(deps): Bump ...`, with their capital "Bump", since Dependabot has no
+setting to lower it. It takes that shape only from a pull request Dependabot
+opened.
 
 Weighed: committing to `main` with CI afterwards, which finds a break only once
 it has landed; and merge commits, which put every branch commit into the

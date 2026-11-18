@@ -22,7 +22,8 @@ updates:
         patterns: ["*"]
 
   # The tools the checks run. They never reach the shipped binary, so their
-  # updates make no release.
+  # updates make no release. Each prefix holds the deps scope itself, so their
+  # titles start ci(deps): as the ones above start fix(deps):.
   - package-ecosystem: gomod
     directory: /tools
     schedule:
@@ -37,7 +38,7 @@ updates:
       - dependency-name: golang.org/x/vuln
       - dependency-name: honnef.co/go/tools
     commit-message:
-      prefix: ci
+      prefix: ci(deps)
     groups:
       go-tools:
         patterns: ["*"]
@@ -49,7 +50,7 @@ updates:
     cooldown:
       default-days: 7
     commit-message:
-      prefix: ci
+      prefix: ci(deps)
     groups:
       npm-tools:
         patterns: ["*"]
@@ -61,7 +62,7 @@ updates:
     cooldown:
       default-days: 7
     commit-message:
-      prefix: ci
+      prefix: ci(deps)
     groups:
       actions:
         patterns: ["*"]
