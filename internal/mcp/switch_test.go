@@ -59,6 +59,13 @@ func TestMatchTakesGlobsAndExactNames(t *testing.T) {
 	}
 }
 
+func TestProfileWantKeepsOnlyTheProfilesServers(t *testing.T) {
+	want, missing := ProfileWant([]Server{{Name: "browser"}, {Name: "web"}}, []string{"web", "gone"})
+	if len(want) != 2 || want["browser"] != Off || want["web"] != On || !slices.Equal(missing, []string{"gone"}) {
+		t.Fatalf("want %v, missing %q", want, missing)
+	}
+}
+
 func TestVerbAndWant(t *testing.T) {
 	if Verb(On) != "enable" || Verb(Off) != "disable" {
 		t.Fatal(Verb(On), Verb(Off))

@@ -3,11 +3,14 @@
 // plugins, and the managed file, and writes none of them. It reads
 // ~/.claude.json through internal/claude, which owns that file. It also
 // matches the servers against the profiles in config.yaml, for claudes mcp ls
-// and claudes mcp profiles, and plans and records what claudes mcp on and off
-// change.
+// and claudes mcp profiles, plans and records what claudes mcp on, off, and
+// use change, and writes the settings file claudes agents --profile passes to
+// Claude Code.
 //
 // A server's command, arguments, environment, headers, and URL can carry
-// tokens, so this package keeps only each server's name and kind.
+// tokens, so this package keeps only each server's name and kind. Allowed
+// keeps more, and what it builds goes only into a settings file that only the
+// user can read.
 package mcp
 
 import (
@@ -61,6 +64,9 @@ type Store struct {
 	Home string
 	// Managed lists the places an administrator's managed-mcp.json can be.
 	Managed []string
+	// Profiles is the directory in claudes' state directory where claudes
+	// agents --profile writes each profile's settings file.
+	Profiles string
 }
 
 // DefaultStore is the Store for $CLAUDE_CONFIG_DIR or the home directory.
@@ -73,7 +79,11 @@ func DefaultStore() (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	return Store{ConfigFile: file, Home: home, Managed: managedFiles()}, nil
+	state, err := paths.State()
+	if err != nil {
+		return Store{}, err
+	}
+	return Store{ConfigFile: file, Home: home, Managed: managedFiles(), Profiles: filepath.Join(state, "profiles")}, nil
 }
 
 // Servers lists the servers Claude Code gives a session in dir, an absolute
@@ -263,6 +273,21 @@ func approvals(proj map[string]json.RawMessage, settings settingsFiles) (approve
 // plugin:PLUGIN:SERVER as Claude Code names them. With no settings, it reads
 // every installed plugin's.
 func (r *reader) pluginServers(home, dir string, settings settingsFiles) map[string]json.RawMessage {
+	out := map[string]json.RawMessage{}
+	for _, p := range r.plugins(home, dir, settings) {
+		for name, raw := range r.pluginConfig(p.root) {
+			out["plugin:"+p.name+":"+name] = raw
+		}
+	}
+	return out
+}
+
+// pluginDir is an installed plugin's name and the directory it runs from.
+type pluginDir struct{ name, root string }
+
+// plugins lists the plugins the settings enable, or with no settings every
+// installed plugin, with the directory each runs from.
+func (r *reader) plugins(home, dir string, settings settingsFiles) []pluginDir {
 	installed := objectOf(r.object(filepath.Join(home, "plugins", "installed_plugins.json"))["plugins"])
 	var ids []string
 	if settings == nil {
@@ -282,7 +307,7 @@ func (r *reader) pluginServers(home, dir string, settings settingsFiles) map[str
 			}
 		}
 	}
-	out := map[string]json.RawMessage{}
+	var out []pluginDir
 	for _, id := range ids {
 		plugin, marketplace, ok := strings.Cut(id, "@")
 		if !ok || plugin == "" {
@@ -292,11 +317,8 @@ func (r *reader) pluginServers(home, dir string, settings settingsFiles) map[str
 		if root == "" {
 			root = newestDir(filepath.Join(home, "plugins", "cache", marketplace, plugin))
 		}
-		if root == "" {
-			continue
-		}
-		for name, raw := range r.pluginConfig(root) {
-			out["plugin:"+plugin+":"+name] = raw
+		if root != "" {
+			out = append(out, pluginDir{name: plugin, root: root})
 		}
 	}
 	return out

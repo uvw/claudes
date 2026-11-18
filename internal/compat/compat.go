@@ -88,7 +88,7 @@ func CheckPins(ids []string) []string {
 var (
 	commands    = []string{"agents", "attach", "logs", "plugin", "respawn", "rm", "stop"}
 	flags       = []string{"--bg", "--resume", "--version"}
-	agentsFlags = []string{"--json", "--all"}
+	agentsFlags = []string{"--json", "--all", "--settings"}
 )
 
 var commandLine = regexp.MustCompile(`^  ([a-z][a-z|-]*)`)

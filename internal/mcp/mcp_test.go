@@ -365,11 +365,13 @@ func TestManagedFilesAreThisPlatformsOnly(t *testing.T) {
 func TestDefaultStoreFollowsClaudeConfigDir(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("CLAUDE_CONFIG_DIR", dir)
+	t.Setenv("XDG_STATE_HOME", dir)
 	s, err := DefaultStore()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Home != dir || s.ConfigFile != filepath.Join(dir, ".claude.json") || len(s.Managed) == 0 {
+	if s.Home != dir || s.ConfigFile != filepath.Join(dir, ".claude.json") || len(s.Managed) == 0 ||
+		s.Profiles != filepath.Join(dir, "claudes", "profiles") {
 		t.Fatalf("%+v", s)
 	}
 	t.Setenv("CLAUDE_CONFIG_DIR", "relative")

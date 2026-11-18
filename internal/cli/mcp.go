@@ -15,6 +15,6 @@ which can carry tokens.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(app.mcpLsCommand(), app.mcpProfilesCommand(), app.mcpOnCommand(), app.mcpOffCommand())
+	cmd.AddCommand(app.mcpLsCommand(), app.mcpProfilesCommand(), app.mcpOnCommand(), app.mcpOffCommand(), app.mcpUseCommand())
 	return cmd
 }

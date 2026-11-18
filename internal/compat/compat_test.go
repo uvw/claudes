@@ -86,7 +86,7 @@ func TestCheckHelpIgnoresMentionsInSentences(t *testing.T) {
 	want := []string{
 		"claude attach", "claude logs", "claude plugin", "claude respawn", "claude rm", "claude stop",
 		"claude --bg", "claude --resume", "claude --version",
-		"claude agents --json", "claude agents --all",
+		"claude agents --json", "claude agents --all", "claude agents --settings",
 	}
 	if got := CheckHelp(root, ""); !slices.Equal(got, want) {
 		t.Fatalf("missing\n got: %q\nwant: %q", got, want)
