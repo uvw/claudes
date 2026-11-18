@@ -50,7 +50,7 @@ func (app *App) stopSession(ctx context.Context, s claude.Session) error {
 		return errors.New("not running")
 	}
 	if s.Interactive() {
-		return app.Terminate(s.PID, app.listedAt)
+		return app.Terminate(s.PID, s.Started(), app.listedAt)
 	}
 	if s.JobID == "" {
 		return errors.New("claude agents gave no job id for this session")

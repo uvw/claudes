@@ -273,12 +273,14 @@ type harness struct {
 	out, err   *cutWriter
 	root       string
 	terminated []int
-	execs      [][]string
-	chdirs     []string
-	trashed    []string
-	sleeps     []time.Duration
-	hostPID    int
-	now        time.Time
+	// terminatedSince is the session start time each Terminate was given.
+	terminatedSince []time.Time
+	execs           [][]string
+	chdirs          []string
+	trashed         []string
+	sleeps          []time.Duration
+	hostPID         int
+	now             time.Time
 	// interrupt cancels the running command's context, as a first Ctrl-C does.
 	interrupt context.CancelFunc
 	// lingers is how many more checks each PID stays alive after its stop.
@@ -325,8 +327,9 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 			}
 			return false
 		},
-		Terminate: func(pid int, _ time.Time) error {
+		Terminate: func(pid int, sessionStarted, _ time.Time) error {
 			h.terminated = append(h.terminated, pid)
+			h.terminatedSince = append(h.terminatedSince, sessionStarted)
 			for _, snap := range h.agents.snapshots {
 				for _, s := range snap {
 					if s.PID == pid {
@@ -692,6 +695,9 @@ func TestRestartInteractiveStopsAndPrintsTheCommand(t *testing.T) {
 
 	h.ok(t, "restart", "--interactive", "--ping")
 
+	if len(h.terminatedSince) != 1 || !h.terminatedSince[0].Equal(term.Started()) || term.Started().IsZero() {
+		t.Fatalf("Terminate got the session start %v, want %v", h.terminatedSince, term.Started())
+	}
 	if !slices.Equal(h.terminated, []int{term.PID}) {
 		t.Fatalf("terminated %v", h.terminated)
 	}

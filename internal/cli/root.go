@@ -90,7 +90,7 @@ type App struct {
 	In        io.Reader
 	Now       func() time.Time
 	Sleep     func(ctx context.Context, d time.Duration) error
-	Terminate func(pid int, listedAt time.Time) error
+	Terminate func(pid int, sessionStarted, listedAt time.Time) error
 	// Started is when a process started, if it runs.
 	Started func(pid int) (time.Time, bool)
 	// RunningVersion is the Claude Code version a process runs, read from its

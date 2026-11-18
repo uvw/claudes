@@ -18,9 +18,9 @@ const (
 // Terminate sends SIGTERM to a claude process, then SIGKILL after a grace
 // period, and then does the same to every process it started that outlived
 // it, such as shells and MCP servers, as Windows does. It refuses a process
-// that is not claude, or that started after listedAt. A process that is
-// already gone is not an error.
-func Terminate(pid int, listedAt time.Time) error {
+// that is not claude, or that started after the session or after listedAt
+// (checkStart). A process that is already gone is not an error.
+func Terminate(pid int, sessionStarted, listedAt time.Time) error {
 	command, started, err := lookup(pid)
 	if err != nil || command == "" {
 		return err
@@ -28,7 +28,7 @@ func Terminate(pid int, listedAt time.Time) error {
 	if !isClaudeCommand(command) {
 		return fmt.Errorf("pid %d is not a claude process: %.60s", pid, command)
 	}
-	if err := checkStart(pid, started, listedAt); err != nil {
+	if err := checkStart(pid, started, sessionStarted, listedAt); err != nil {
 		return err
 	}
 	// Taken first: once claude exits, its children belong to init. claudes

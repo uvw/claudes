@@ -258,14 +258,19 @@ On Windows, `stop` and `--interactive` kill the session's `claude.exe` and every
 process it started, then wait for it to exit. On macOS and Linux it gets
 SIGTERM, then SIGKILL after ten seconds, and so does each process it started
 that outlives it, found from a process list taken before the first signal.
-Either way, claudes first checks that the process is Claude Code and started
-before the sessions were listed, and signals a child only while its start time
+Either way, claudes first checks that the process is Claude Code, and that it
+started no later than the session's `startedAt`, with two seconds of slack, and
+before the sessions were listed. It signals a child only while its start time
 still matches. On macOS and Linux, Claude Code is the native binary or the npm
 package under node; on Windows, only the native `claude.exe`.
 
 Why: Windows has no SIGTERM for console programs. Stopping only the session's
 own process orphaned its shells and MCP servers. A reused PID must never be
-killed.
+killed. A session's process always starts first: measured, an interactive
+session records `startedAt` about two seconds after its process starts, and a
+background session runs in a spare process started ahead of time, minutes or
+hours before. So only a process that started after the session is refused, and
+the gap is never required to be small.
 
 Weighed for macOS and Linux: signalling the process group, which misses a child
 that started a group of its own.

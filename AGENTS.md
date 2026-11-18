@@ -109,9 +109,10 @@ ruleset on `main` refuses a direct push.
    ends the command, so every report, resume command, and park write must come
    first. The tests model this: `harness.host` cuts all output after the host
    stops.
-7. **`procs.Terminate` needs the time the sessions were listed.** It refuses a
-   process that started later, since its PID was reused. List through
-   `App.listed`, which records that time.
+7. **`procs.Terminate` needs the session's start and the time the sessions were
+   listed.** It refuses a process that started after either, since its PID was
+   reused. Pass `Session.Started()`, and list through `App.listed`, which
+   records the other.
 8. **`claude` runs without the calling session's variables.** `execRunner` drops
    `CLAUDECODE`, `CLAUDE_JOB_DIR`, and the rest of `sessionVars`, so a session
    claudes starts is not taken for a child of the one claudes runs in. Add any
