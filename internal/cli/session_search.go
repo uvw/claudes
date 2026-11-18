@@ -46,11 +46,13 @@ calls: the commands it ran, and the paths and patterns it used. It skips slash
 commands, what the tools returned, and the text Claude Code adds, such as
 reminders and compaction summaries.
 
-A session ranks by its best match: one prompt, reply, or tool call that holds
-every word, or better, the words next to each other, ranks well above words
-scattered over several. A match in the name ranks above one in your prompts, a
-prompt above a reply, and a reply above a tool call. More matches and recent
-activity rank a session a little higher.
+A session ranks by its best record: its name, or one prompt, reply, or tool
+call. Each of those places weighs twice as much as the next. A record that holds
+the words next to each other, in order, scores three times its place's weight,
+one that holds every word twice, and one that holds some only their share. So a
+prompt about a lock race outranks a session that says lock in one prompt and
+race in another, and a prompt that holds both words outranks a reply that holds
+the phrase. More matches and recent activity rank a session a little higher.
 
 -e takes a regular expression in Go's RE2 syntax: Perl's, without lookaround or
 backreferences. It matches anywhere, and is case-sensitive unless it starts with

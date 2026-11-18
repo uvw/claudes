@@ -45,7 +45,8 @@ func TestLogsTailCountsRecordsInJSON(t *testing.T) {
 	}
 }
 
-// Named subagents of a session that leads no team are taken for teammates.
+// Named subagents of a session that leads no team are not taken for teammates,
+// and a teammate the team lacks is a target that names nothing, exit 2.
 func TestLogsLeadSlashNameNeedsATeam(t *testing.T) {
 	h := newHarness(t)
 	solo := h.bg("solo", "busy")
@@ -53,10 +54,8 @@ func TestLogsLeadSlashNameNeedsATeam(t *testing.T) {
 	path := h.logLines(t, solo, `{"type":"user","message":{"content":"go"}}`)
 	writeFile(t, filepath.Join(strings.TrimSuffix(path, ".jsonl"), "subagents", "agent-adeps-d27ce76e9061ede7.jsonl"),
 		`{"type":"assistant","message":{"content":[{"type":"text","text":"a subagent"}]}}`+"\n")
-	code := h.run("logs", "solo/deps")
-	if code == 0 {
-		t.Fatalf("logs solo/deps showed a subagent as a teammate of a session with no team:\n%s", h.out)
-	}
+	h.exits(t, exitNoMatch, "logs", "solo/deps")
+	h.exits(t, exitNoMatch, "logs", "solo/nobody")
 }
 
 // Session names often hold a slash, like a branch name.
