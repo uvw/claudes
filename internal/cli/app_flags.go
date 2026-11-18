@@ -163,3 +163,20 @@ func orList(words []string) string {
 	}
 	return strings.Join(words[:len(words)-1], ", ") + ", or " + words[len(words)-1]
 }
+
+// waitTimeout is the default of --timeout: wait.timeout from the config, or 30
+// minutes.
+func (app *App) waitTimeout() time.Duration {
+	if d := time.Duration(app.Config.Wait.Timeout); d > 0 {
+		return d
+	}
+	return 30 * time.Minute
+}
+
+// pingPrompt is ping.text from the config, or builtin.
+func (app *App) pingPrompt(builtin string) string {
+	if app.Config.Ping.Text != "" {
+		return app.Config.Ping.Text
+	}
+	return builtin
+}

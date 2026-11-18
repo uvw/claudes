@@ -277,3 +277,30 @@ func TestARunningSessionWithoutAStatusIsRefused(t *testing.T) {
 	assertCalls(t, h)
 	assertContains(t, h.err.String(), "running but has no status")
 }
+
+func (h *harness) corruptPins(t *testing.T) {
+	t.Helper()
+	if err := os.MkdirAll(h.app.Jobs.Dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(h.app.Jobs.Dir, "pins.json"), []byte("{oops"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBulkCommandsRefuseWhenPinsCannotBeRead(t *testing.T) {
+	for _, args := range [][]string{{"restart"}, {"pause"}, {"gc"}} {
+		t.Run(args[0], func(t *testing.T) {
+			h := newHarness(t)
+			old := stopped(h.bg("old", ""))
+			old.StartedAt = h.now.Add(-30 * 24 * time.Hour).UnixMilli()
+			h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
+			h.agents.finished = []claude.Session{old}
+			h.corruptPins(t)
+
+			h.fails(t, args...)
+			assertCalls(t, h)
+			assertContains(t, h.err.String(), "cannot read pins, so cannot tell which sessions to protect")
+		})
+	}
+}

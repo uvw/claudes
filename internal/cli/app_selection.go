@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/version"
 )
@@ -228,4 +229,16 @@ func (app *App) splitHost(sessions []claude.Session) ([]claude.Session, *claude.
 		}
 	}
 	return sessions, nil
+}
+
+// listMatch keeps the rows any of targets match. A target that matches
+// nothing is noted on stderr and leaves the rest as they are, so a listing
+// shows what it found, as kubectl get does for a selector; where and the
+// commands that act still fail on it.
+func listMatch[T target.Ref](app *App, targets []string, rows []T) ([]T, error) {
+	out, missed, err := target.Filter(targets, rows)
+	for _, token := range missed {
+		app.warn("claudes: no session matches %q", shell.Printable(token))
+	}
+	return out, err
 }

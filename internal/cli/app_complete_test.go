@@ -77,3 +77,12 @@ func TestResumeOffersParkedSessionsThenStoppedOnes(t *testing.T) {
 	assertOffers(t, h.complete(t, "resume", "--forget", ""), "alpha")
 	assertOffers(t, h.complete(t, "resume", "--skip", ""), "alpha")
 }
+
+func TestWhereAndLsCompleteMoreThanOneName(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.bg("bravo", "idle")}}
+
+	assertOffers(t, h.complete(t, "where", "alpha", ""), "bravo")
+	assertOffers(t, h.complete(t, "ls", "alpha", ""), "bravo")
+	assertOffers(t, h.complete(t, "ls", "-o", ""), "text", "json", "yaml")
+}

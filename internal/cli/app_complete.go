@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/config"
 )
 
 // sessionKind picks the sessions a command can act on, so completion offers
@@ -118,4 +119,37 @@ func (app *App) completeResumeSkip(cmd *cobra.Command, _ []string, _ string) ([]
 
 func describeForCompletion(s claude.Session) string {
 	return fmt.Sprintf("%s %s %s", s.ID(), kind(s), dash(s.State))
+}
+
+func completeKeys(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	out := make([]cobra.Completion, 0, len(config.Keys))
+	for _, k := range config.Keys {
+		out = append(out, cobra.CompletionWithDesc(k.Name, k.About))
+	}
+	return out, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (app *App) completePast(single bool) cobra.CompletionFunc {
+	return func(cmd *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		if single && len(args) > 0 {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		list, err := app.pastSessions(cmd.Context())
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		var out []cobra.Completion
+		for _, p := range list {
+			state := "-"
+			if p.Running {
+				state = "running"
+			}
+			out = append(out, cobra.CompletionWithDesc(p.Label(),
+				fmt.Sprintf("%s %s %s", p.ShortID, state, homeShort(p.Cwd))))
+		}
+		return out, cobra.ShellCompDirectiveNoFileComp
+	}
 }

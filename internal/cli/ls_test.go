@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/style"
@@ -184,4 +188,240 @@ func TestTokenCountReadsAsAgentViewDoes(t *testing.T) {
 	if got := tokenCount(nil); got != "-" {
 		t.Errorf("unknown tokens show %q", got)
 	}
+}
+
+func TestLsPutsPinnedFirstAndMarksThem(t *testing.T) {
+	h := newHarness(t)
+	idle, busy, pinned := h.bg("idle-one", "idle"), h.bg("busy-one", "busy"), h.bg("pinned-one", "idle")
+	h.agents.snapshots = [][]claude.Session{{idle, busy, pinned}}
+	h.pin(t, pinned)
+
+	h.ok(t, "ls")
+
+	lines := strings.Split(h.out.String(), "\n")
+	if !strings.HasPrefix(lines[0], "ID ") || !strings.Contains(lines[1], " yes ") || !strings.HasSuffix(lines[1], "pinned-one") {
+		t.Fatalf("pinned row is not first and marked:\n%s", h.out)
+	}
+	if !strings.Contains(lines[2], "busy-one") {
+		t.Fatalf("busy row is not second:\n%s", h.out)
+	}
+	if !strings.Contains(lines[2], " - ") || strings.Contains(h.out.String(), "* pinned") {
+		t.Fatalf("unpinned row or footer wrong:\n%s", h.out)
+	}
+}
+
+func TestLsMarksSessionsBehindTheInstalledVersion(t *testing.T) {
+	h := newHarness(t)
+	old := h.bg("old-one", "idle")
+	h.agents.snapshots = [][]claude.Session{{old}}
+	writeState(t, h, old.JobID, "2.1.322")
+
+	h.ok(t, "ls")
+
+	assertContains(t, h.out.String(), "2.1.322 (old)")
+}
+
+func TestTheRunningExecutableOutranksAStaleCliVersion(t *testing.T) {
+	h := newHarness(t)
+	respawned, unknown := h.bg("respawned", "idle"), h.bg("npm", "idle")
+	h.agents.snapshots = [][]claude.Session{{respawned, unknown}}
+	// Claude Code keeps the old cliVersion until a respawned session takes a
+	// turn; the executable it runs already names the new version.
+	writeState(t, h, respawned.JobID, "2.1.322")
+	writeState(t, h, unknown.JobID, "2.1.322")
+	h.app.RunningVersion = func(pid int) string {
+		if pid == respawned.PID {
+			return "2.1.325"
+		}
+		return ""
+	}
+
+	h.ok(t, "ls")
+	out := h.out.String()
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(line, "respawned") && strings.Contains(line, "(old)"):
+			t.Fatalf("a session running the installed version is marked old:\n%s", out)
+		case strings.Contains(line, "npm") && !strings.Contains(line, "2.1.322 (old)"):
+			t.Fatalf("a session with no version in its path lost its cliVersion:\n%s", out)
+		}
+	}
+
+	h.ok(t, "restart", "--outdated")
+	assertCalls(t, h, "respawn "+unknown.JobID)
+}
+
+func TestListingsShowNoMatchAsAnEmptyList(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+
+	h.ok(t, "ls", "tour*")
+	assertContains(t, h.out.String(), "No sessions.")
+	h.out.Reset()
+	h.ok(t, "ls", "tour*", "-o", "json")
+	if got := strings.TrimSpace(h.out.String()); got != "[]" {
+		t.Fatalf("json %q", got)
+	}
+	h.ok(t, "session", "ls", "tour*")
+	h.exits(t, exitNoMatch, "where", "tour*")
+}
+
+func TestLsShowsWhichSessionsLeadATeam(t *testing.T) {
+	h := newHarness(t)
+	lead, solo := h.bg("lead", "idle"), h.bg("solo", "idle")
+	h.agents.snapshots = [][]claude.Session{{lead, solo}}
+	h.team(t, lead, "writer", "tester")
+
+	h.ok(t, "ls")
+	assertContains(t, h.out.String(), "lead+2")
+	h.out.Reset()
+	h.ok(t, "ls", "lead", "-o", "json")
+	var rows []struct{ Teammates []string }
+	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 || !slices.Equal(rows[0].Teammates, []string{"writer", "tester"}) {
+		t.Fatalf("rows %+v, err %v\n%s", rows, err, h.out)
+	}
+}
+
+func TestLsTextIsColoredWithCLICOLORFORCEAndLinesUpAsWithout(t *testing.T) {
+	h := newHarness(t)
+	lsWorld(t, h)
+	h.ok(t, "ls", "-o", "text")
+	plain := h.out.String()
+	assertPlain(t, "ls without CLICOLOR_FORCE", plain)
+
+	h.out.Reset()
+	h.env("CLICOLOR_FORCE=1")
+	h.ok(t, "ls", "-o", "text")
+
+	out := h.out.String()
+	for _, want := range []string{
+		h.app.colors.Blue("yes"), h.app.colors.Green("busy"), h.app.colors.Magenta("waiting"),
+		h.app.colors.Cyan("shell"), h.app.colors.Yellow("2.1.322 (old)"),
+	} {
+		assertContains(t, out, want)
+	}
+	if !strings.Contains(out, "\x1b[2m") {
+		t.Fatalf("CWD is not faint:\n%q", out)
+	}
+	if strings.Contains(out, h.app.colors.Green("idle")) || !h.app.colors.Colors() {
+		t.Fatalf("idle is colored, or colors are off:\n%q", out)
+	}
+	if got := sgr.ReplaceAllString(out, ""); got != plain {
+		t.Fatalf("colored ls without its colors:\n%s\nwant:\n%s", got, plain)
+	}
+}
+
+func TestLsNarrowsToTheTargets(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.bg("plan-a", "idle"), h.bg("plan-b", "idle")}}
+
+	h.ok(t, "ls", "plan*")
+
+	out := h.out.String()
+	if !strings.Contains(out, "plan-a") || !strings.Contains(out, "plan-b") || strings.Contains(out, "alpha") {
+		t.Fatalf("output:\n%s", out)
+	}
+}
+
+func TestLsPrintsASessionOnceWhenTwoTargetsMatchIt(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("plan-a", "idle")}}
+
+	h.ok(t, "ls", "plan*", "plan-a", "-o", "json")
+
+	var rows []map[string]any
+	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 {
+		t.Fatalf("rows %v, err %v", rows, err)
+	}
+}
+
+func TestLsYAMLAndJSONHaveTheSameFields(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.tty("terminal", "busy")}}
+
+	h.ok(t, "ls", "-o", "json")
+	var fromJSON []map[string]any
+	if err := json.Unmarshal(h.out.Bytes(), &fromJSON); err != nil {
+		t.Fatal(err)
+	}
+	h.out.Reset()
+	h.ok(t, "ls", "-o", "yaml")
+	var fromYAML []map[string]any
+	if err := yaml.Unmarshal(h.out.Bytes(), &fromYAML); err != nil {
+		t.Fatalf("%v:\n%s", err, h.out)
+	}
+	if strings.Contains(h.out.String(), "{") {
+		t.Fatalf("yaml is not in block style:\n%s", h.out)
+	}
+	if len(fromJSON) != 2 {
+		t.Fatalf("json %v", fromJSON)
+	}
+	if diff := cmp.Diff(normalize(t, fromJSON), normalize(t, fromYAML)); diff != "" {
+		t.Fatalf("yaml differs from json (-json +yaml):\n%s", diff)
+	}
+}
+
+// normalize round-trips through JSON so YAML's ints compare equal to JSON's
+// floats.
+func normalize(t *testing.T, v any) any {
+	t.Helper()
+	data, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out any
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func TestLsJSONFlagStillWorks(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
+	h.ok(t, "ls", "--json")
+	short := h.out.String()
+	h.out.Reset()
+	h.ok(t, "ls", "-o", "json")
+	if short != h.out.String() || !strings.HasPrefix(short, "[") {
+		t.Fatalf("--json:\n%s\n-o json:\n%s", short, h.out)
+	}
+}
+
+func TestJSONHasEveryKeyForEverySession(t *testing.T) {
+	h := newHarness(t)
+	term := h.tty("terminal", "idle")
+	term.Name = ""
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "busy"), term}}
+	h.agents.finished = []claude.Session{stopped(h.bg("gone", ""))}
+
+	h.ok(t, "ls", "-a", "-o", "json")
+
+	var rows []map[string]any
+	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 3 {
+		t.Fatalf("rows %v, err %v", rows, err)
+	}
+	keys := []string{"id", "sessionId", "name", "cwd", "kind", "state", "status", "pid", "startedAt", "pinned", "version", "outdated", "teammates", "subagents", "shells", "tokens", "prs", "doing"}
+	for _, r := range rows {
+		if len(r) != len(keys) {
+			t.Errorf("%v has %d keys, want %d", r, len(r), len(keys))
+		}
+		for _, k := range keys {
+			if _, ok := r[k]; !ok {
+				t.Errorf("%v has no %q", r, k)
+			}
+		}
+	}
+}
+
+func TestLsShowsWhatSomeTargetsMatchAndNotesTheRest(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle"), h.bg("docs", "idle")}}
+
+	h.ok(t, "ls", "api", "nothing", "-o", "json")
+	var rows []map[string]any
+	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 || rows[0]["name"] != "api" {
+		t.Fatalf("rows %v, err %v\n%s", rows, err, h.out)
+	}
+	assertContains(t, h.err.String(), `no session matches "nothing"`)
 }

@@ -14,90 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-
-	"go.yaml.in/yaml/v4"
-
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/style"
 )
-
-func TestLsNarrowsToTheTargets(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.bg("plan-a", "idle"), h.bg("plan-b", "idle")}}
-
-	h.ok(t, "ls", "plan*")
-
-	out := h.out.String()
-	if !strings.Contains(out, "plan-a") || !strings.Contains(out, "plan-b") || strings.Contains(out, "alpha") {
-		t.Fatalf("output:\n%s", out)
-	}
-}
-
-func TestLsPrintsASessionOnceWhenTwoTargetsMatchIt(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("plan-a", "idle")}}
-
-	h.ok(t, "ls", "plan*", "plan-a", "-o", "json")
-
-	var rows []map[string]any
-	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 {
-		t.Fatalf("rows %v, err %v", rows, err)
-	}
-}
-
-func TestLsYAMLAndJSONHaveTheSameFields(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.tty("terminal", "busy")}}
-
-	h.ok(t, "ls", "-o", "json")
-	var fromJSON []map[string]any
-	if err := json.Unmarshal(h.out.Bytes(), &fromJSON); err != nil {
-		t.Fatal(err)
-	}
-	h.out.Reset()
-	h.ok(t, "ls", "-o", "yaml")
-	var fromYAML []map[string]any
-	if err := yaml.Unmarshal(h.out.Bytes(), &fromYAML); err != nil {
-		t.Fatalf("%v:\n%s", err, h.out)
-	}
-	if strings.Contains(h.out.String(), "{") {
-		t.Fatalf("yaml is not in block style:\n%s", h.out)
-	}
-	if len(fromJSON) != 2 {
-		t.Fatalf("json %v", fromJSON)
-	}
-	if diff := cmp.Diff(normalize(t, fromJSON), normalize(t, fromYAML)); diff != "" {
-		t.Fatalf("yaml differs from json (-json +yaml):\n%s", diff)
-	}
-}
-
-// normalize round-trips through JSON so YAML's ints compare equal to JSON's
-// floats.
-func normalize(t *testing.T, v any) any {
-	t.Helper()
-	data, err := json.Marshal(v)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out any
-	if err := json.Unmarshal(data, &out); err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-
-func TestLsJSONFlagStillWorks(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
-	h.ok(t, "ls", "--json")
-	short := h.out.String()
-	h.out.Reset()
-	h.ok(t, "ls", "-o", "json")
-	if short != h.out.String() || !strings.HasPrefix(short, "[") {
-		t.Fatalf("--json:\n%s\n-o json:\n%s", short, h.out)
-	}
-}
 
 func TestUnknownOutputIsAUsageError(t *testing.T) {
 	for _, args := range [][]string{{"ls", "-o", "xml"}, {"where", "alpha", "-o", "xml"}} {
@@ -109,90 +28,6 @@ func TestUnknownOutputIsAUsageError(t *testing.T) {
 			t.Fatalf("%v printed:\n%s", args, h.out)
 		}
 	}
-}
-
-func TestWhereOneMatchPrintsTheBareFolder(t *testing.T) {
-	h := newHarness(t)
-	a := h.bg("alpha", "idle")
-	h.agents.snapshots = [][]claude.Session{{a, h.bg("bravo", "idle")}}
-
-	h.ok(t, "where", "alpha")
-
-	if h.out.String() != a.Cwd+"\n" {
-		t.Fatalf("output %q", h.out.String())
-	}
-}
-
-func TestWherePatternPrintsEveryMatch(t *testing.T) {
-	h := newHarness(t)
-	a, b := h.bg("plan-a", "idle"), h.bg("plan-b", "idle")
-	h.agents.snapshots = [][]claude.Session{{a, b, h.bg("other", "idle")}}
-
-	h.ok(t, "where", "plan*")
-
-	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
-	if len(lines) != 3 || !regexp.MustCompile(`^ID +DIR +NAME$`).MatchString(lines[0]) ||
-		!strings.HasPrefix(lines[1], a.ID()) || !strings.HasSuffix(lines[1], "plan-a") || !strings.Contains(lines[1], style.Middle(homeShort(a.Cwd), style.MaxDir)) ||
-		!strings.HasPrefix(lines[2], b.ID()) || !strings.HasSuffix(lines[2], "plan-b") || !strings.Contains(lines[2], style.Middle(homeShort(b.Cwd), style.MaxDir)) {
-		t.Fatalf("output:\n%s", h.out)
-	}
-}
-
-func TestWhereJSON(t *testing.T) {
-	h := newHarness(t)
-	a := h.bg("alpha", "idle")
-	h.agents.snapshots = [][]claude.Session{{a}}
-
-	h.ok(t, "where", "alpha", "-o", "json")
-
-	fromWhere := h.out.String()
-	h.out.Reset()
-	h.ok(t, "ls", "alpha", "-o", "json")
-	if fromWhere != h.out.String() {
-		t.Fatalf("where:\n%s\nls:\n%s", fromWhere, h.out)
-	}
-	var got []map[string]any
-	if err := json.Unmarshal([]byte(fromWhere), &got); err != nil || len(got) != 1 {
-		t.Fatalf("got %v, err %v", got, err)
-	}
-	if got[0]["sessionId"] != a.SessionID || got[0]["cwd"] != a.Cwd {
-		t.Fatalf("got %v", got[0])
-	}
-}
-
-func TestJSONHasEveryKeyForEverySession(t *testing.T) {
-	h := newHarness(t)
-	term := h.tty("terminal", "idle")
-	term.Name = ""
-	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "busy"), term}}
-	h.agents.finished = []claude.Session{stopped(h.bg("gone", ""))}
-
-	h.ok(t, "ls", "-a", "-o", "json")
-
-	var rows []map[string]any
-	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 3 {
-		t.Fatalf("rows %v, err %v", rows, err)
-	}
-	keys := []string{"id", "sessionId", "name", "cwd", "kind", "state", "status", "pid", "startedAt", "pinned", "version", "outdated", "teammates", "subagents", "shells", "tokens", "prs", "doing"}
-	for _, r := range rows {
-		if len(r) != len(keys) {
-			t.Errorf("%v has %d keys, want %d", r, len(r), len(keys))
-		}
-		for _, k := range keys {
-			if _, ok := r[k]; !ok {
-				t.Errorf("%v has no %q", r, k)
-			}
-		}
-	}
-}
-
-func TestWhereAndLsCompleteMoreThanOneName(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.bg("bravo", "idle")}}
-
-	assertOffers(t, h.complete(t, "where", "alpha", ""), "bravo")
-	assertOffers(t, h.complete(t, "ls", "alpha", ""), "bravo")
-	assertOffers(t, h.complete(t, "ls", "-o", ""), "text", "json", "yaml")
 }
 
 func TestYAMLQuotesOnlyWhatNeedsIt(t *testing.T) {
@@ -210,18 +45,6 @@ func TestYAMLQuotesOnlyWhatNeedsIt(t *testing.T) {
 	if buf.String() != want {
 		t.Fatalf("got:\n%s\nwant:\n%s", buf.String(), want)
 	}
-}
-
-func TestLsShowsWhatSomeTargetsMatchAndNotesTheRest(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle"), h.bg("docs", "idle")}}
-
-	h.ok(t, "ls", "api", "nothing", "-o", "json")
-	var rows []map[string]any
-	if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil || len(rows) != 1 || rows[0]["name"] != "api" {
-		t.Fatalf("rows %v, err %v\n%s", rows, err, h.out)
-	}
-	assertContains(t, h.err.String(), `no session matches "nothing"`)
 }
 
 // deepHarness is a harness whose home is its root, with two background
@@ -342,48 +165,6 @@ func TestDirectoriesFitTheTerminal(t *testing.T) {
 	}
 }
 
-func TestSessionLsShowsABranchOnlyWithWideAndFitsIt(t *testing.T) {
-	h, deep, _ := deepHarness(t)
-	branch, name := "feat/ledger-rounding-for-every-currency", "reconcile the ledger totals for each month"[:maxName]
-	h.said(t, name, deep, time.Hour, fmt.Sprintf(`{"type":"user","gitBranch":%q,"message":{"content":"go"}}`, branch))
-	cells := func(out string) (string, string) {
-		for n, b := range column(t, out, "BRANCH") {
-			if strings.HasPrefix(n, "reconcile") {
-				return b, n
-			}
-		}
-		t.Fatalf("no row for %q:\n%s", name, out)
-		return "", ""
-	}
-
-	out := runTable(t, h, deep, []string{"session", "ls"})
-	if strings.Contains(out, branchHeader) || strings.Contains(out, "ledger-rounding") {
-		t.Errorf("without --wide: a BRANCH column:\n%s", out)
-	}
-	for _, format := range []string{"json", "yaml"} {
-		if out := runTable(t, h, deep, []string{"session", "ls", "-o", format}); !strings.Contains(out, branch) {
-			t.Errorf("-o %s: no whole branch:\n%s", format, out)
-		}
-	}
-	out = runTable(t, h, deep, []string{"session", "ls", "--wide"})
-	if b, n := cells(out); b != style.Branch(branch, maxBranch) || n != name {
-		t.Errorf("off a terminal: BRANCH %q and NAME %q, want %q and the whole name:\n%s", b, n, style.Branch(branch, maxBranch), out)
-	}
-	for _, width := range []int{90, 100, 120} {
-		h.app.Width = func() int { return width }
-		out := runTable(t, h, deep, []string{"session", "ls", "--wide"})
-		for line := range strings.Lines(out) {
-			if w := style.Width(strings.TrimRight(line, "\n")); w > width {
-				t.Errorf("width %d: a line of %d columns:\n%s", width, w, out)
-			}
-		}
-		// cut drops the space before its …, so a name can end a column short.
-		if b, n := cells(out); style.Width(b) < minBranch || style.Width(n) < minName-1 || style.Width(n) >= maxName {
-			t.Errorf("width %d: BRANCH %q, NAME %q:\n%s", width, b, n, out)
-		}
-	}
-}
-
 func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 	h, deep, short := deepHarness(t)
 	for _, tc := range []struct {
@@ -426,14 +207,14 @@ func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 
 // TestTablesPutPathsThroughDirCell reads the package's source, so a new table
 // cannot show a path that the terminal's width and output.dirs leave alone.
-// Only output.go calls style.Table, homeShort runs only there and in
+// Only app_output.go calls style.Table, homeShort runs only there and in
 // completions, and a table cell that names a path must be dirCell's. Key and
 // value lists, which print directories whole for scripts, use tabwriter.
 func TestTablesPutPathsThroughDirCell(t *testing.T) {
 	allowed := map[string][]string{
-		"style.Table":          {"output.go"},
-		"homeShort":            {"output.go", "session.go"}, // session.go: completion descriptions
-		"tabwriter.NewWriter":  {"config.go", "doctor_env.go", "session_show.go"},
+		"style.Table":          {"app_output.go"},
+		"homeShort":            {"app_output.go", "app_complete.go"}, // app_complete.go: completion descriptions
+		"tabwriter.NewWriter":  {"config_get.go", "doctor_env.go", "session_show.go"},
 		"path in a table cell": {},
 	}
 	pathNames := []string{"Cwd", "Dir", "Folder", "Path", "cwd", "dir", "folder", "path"}
@@ -585,6 +366,115 @@ func TestHomeShort(t *testing.T) {
 	} {
 		if got := homeShort(path); got != want {
 			t.Errorf("%s: got %s, want %s", path, got, want)
+		}
+	}
+}
+
+func TestVerboseLogsTheStepsToStderr(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+
+	h.ok(t, "ls")
+	if strings.Contains(h.err.String(), "level=DEBUG") {
+		t.Fatalf("logged without -v:\n%s", h.err)
+	}
+	h.ok(t, "stop", "-v", "api")
+	assertContains(t, h.err.String(), "level=DEBUG msg=\"took the run lock\"")
+	assertContains(t, h.out.String(), "stopped")
+}
+
+func TestClaudesLogSetsTheLevel(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+
+	t.Setenv("CLAUDES_LOG", "debug")
+	h.ok(t, "ls")
+	assertContains(t, h.err.String(), "level=DEBUG")
+
+	h.err.Reset()
+	t.Setenv("CLAUDES_LOG", "loud")
+	h.ok(t, "ls")
+	assertContains(t, h.err.String(), "CLAUDES_LOG must be debug, info, warn, or error")
+}
+
+// The harness writes to buffers, so each case is a pipe.
+func TestColorVariablesOnAPipe(t *testing.T) {
+	for _, tc := range []struct {
+		env     []string
+		colored bool
+	}{
+		{[]string{"CLICOLOR=1"}, false},
+		{[]string{"CLICOLOR_FORCE=1"}, true},
+		{[]string{"CLICOLOR_FORCE=0"}, false},
+		{[]string{"CLICOLOR_FORCE="}, false},
+		{[]string{"CLICOLOR=0", "CLICOLOR_FORCE=1"}, true},
+		{[]string{"CLICOLOR_FORCE=1", "NO_COLOR=1"}, false},
+		{[]string{"CLICOLOR=1", "NO_COLOR=1"}, false},
+		{[]string{"FORCE_COLOR=1"}, true},
+		{[]string{"FORCE_COLOR=0"}, false},
+		{[]string{"CLICOLOR=0", "FORCE_COLOR=1"}, true},
+		{[]string{"FORCE_COLOR=1", "NO_COLOR=1"}, false},
+	} {
+		t.Run(strings.Join(tc.env, " "), func(t *testing.T) {
+			h := newHarness(t)
+			lsWorld(t, h)
+			h.env(tc.env...)
+			h.ok(t, "ls")
+			out := h.out.String()
+			h.exits(t, exitNoMatch, "where", "nobody")
+			errOut := h.err.String()
+			if !tc.colored {
+				assertPlain(t, "stdout", out)
+				assertPlain(t, "stderr", errOut)
+				return
+			}
+			assertContains(t, out, h.app.colors.Green("busy"))
+			if !strings.HasPrefix(errOut, "\x1b[31mclaudes: ") {
+				t.Fatalf("the error is not red:\n%q", errOut)
+			}
+		})
+	}
+}
+
+func TestJSONYAMLCompletionInitAndSkillAreNeverColored(t *testing.T) {
+	for _, args := range [][]string{
+		{"ls", "-o", "json"}, {"ls", "--json"}, {"ls", "-o", "yaml"}, {"where", "pinned-one", "asking", "-o", "json"},
+		{"doctor", "-o", "yaml"}, {"session", "ls", "-o", "json"}, {"restart", "--dry-run", "-o", "json"},
+		{"__complete", "ls", ""}, {"completion", "bash"}, {"init", "zsh"}, {"skill"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			h := newHarness(t)
+			lsWorld(t, h)
+			h.env("CLICOLOR_FORCE=1")
+			h.run(args...)
+			assertPlain(t, "stdout", h.out.String())
+		})
+	}
+}
+
+func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
+	h := newHarness(t)
+	long := strings.Repeat("A long title Claude Code wrote ", 3)
+	live := h.bg("live", "idle")
+	live.Name = long
+	h.transcriptAs(t, live.SessionID, long, live.Cwd, 2*time.Hour)
+	h.agents.snapshots = [][]claude.Session{{live}}
+
+	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+(NOTE|DOING))?$`)
+	name := regexp.MustCompile(regexp.QuoteMeta(strings.TrimSpace(long[:maxName-1])+"…") + `(\s\s+\S+)?$`)
+	for _, args := range [][]string{{"ls"}, {"ls", "--wide"}, {"session", "ls"}, {"session", "ls", "--wide"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
+		h.out.Reset()
+		h.ok(t, args...)
+		var headed, short bool
+		for line := range strings.Lines(h.out.String()) {
+			line = strings.TrimSpace(line)
+			headed = headed || header.MatchString(line)
+			if strings.Contains(line, long[:20]) {
+				short = name.MatchString(line)
+			}
+		}
+		if !headed || !short {
+			t.Errorf("%v: want ID first, then DIR, a name cut to %d characters, and at most a note:\n%s", args, maxName, h.out)
 		}
 	}
 }
