@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"context"
-	"fmt"
+	"bytes"
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -25,11 +25,7 @@ import (
 // inParentsFile are the commands whose code lives in another command's file,
 // each with why.
 var inParentsFile = map[string]string{
-	"claudes unpin":        "pinCommand builds pin and unpin, which differ only in what they write",
-	"claudes config path":  "a few lines, so it stays in config.go",
-	"claudes config get":   "a few lines, so it stays in config.go",
-	"claudes config set":   "a few lines, so it stays in config.go",
-	"claudes mcp profiles": "a few lines, so it stays in mcp.go",
+	"claudes unpin": "pinCommand builds pin and unpin, which differ only in what they write",
 }
 
 // TestEachCommandLivesInItsFile walks the command tree and finds the file of
@@ -61,23 +57,6 @@ func TestEachCommandLivesInItsFile(t *testing.T) {
 		}
 	}
 	walk(newHarness(t).app.rootCommand())
-}
-
-type panicky struct{ *fakeAgents }
-
-func (p panicky) Respawn(context.Context, string) error { panic("boom") }
-
-func TestAPanicFreesTheRunLock(t *testing.T) {
-	h := newHarness(t)
-	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
-	h.app.Agents = panicky{h.agents}
-	func() {
-		defer func() { _ = recover() }()
-		h.run("restart", "api")
-	}()
-	if _, err := os.Stat(h.app.LockPath); err == nil {
-		t.Fatal("the run lock outlived a panic")
-	}
 }
 
 // docs/reference.md: exit 4 is "Refused before any change: the wrong kind of
@@ -115,45 +94,6 @@ func TestBuildVersionPrefersTheReleaseVersion(t *testing.T) {
 	}
 }
 
-// A claudes suspended mid-run, such as by a closed laptop lid, stops
-// refreshing the run lock. The lock names its process, so it stays while that
-// process runs, and goes once it has ended.
-func TestTheRunLockOutlivesASuspendButNotItsOwner(t *testing.T) {
-	h := newHarness(t)
-	s := h.bg("api", "idle")
-	h.agents.snapshots = [][]claude.Session{{s}}
-	if err := os.MkdirAll(h.app.LockPath, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	writeFile(t, filepath.Join(h.app.LockPath, "owner"), fmt.Sprintf("4242 %s\n", start.Format(time.RFC3339Nano)))
-	old := time.Now().Add(-time.Hour)
-	if err := os.Chtimes(h.app.LockPath, old, old); err != nil {
-		t.Fatal(err)
-	}
-	h.app.Alive = func(pid int, started time.Time) bool { return pid == 4242 && started.Equal(start) }
-
-	h.exits(t, exitBusy, "stop", "api")
-	assertCalls(t, h)
-
-	h.app.Alive = func(int, time.Time) bool { return false }
-	h.ok(t, "stop", "api")
-	assertCalls(t, h, "stop "+s.JobID)
-}
-
-func TestTheRunLockNamesItsProcess(t *testing.T) {
-	h := newHarness(t)
-	owner := h.app.lockOwner()
-	h.app.Alive = func(pid int, started time.Time) bool { return pid == os.Getpid() && started.Equal(start) }
-	if h.app.lockOwnerGone(owner) {
-		t.Fatalf("owner %q of this process reads as gone", owner)
-	}
-	for _, bad := range []string{"", "x", "0 " + start.Format(time.RFC3339Nano), "42 yesterday"} {
-		if !h.app.lockOwnerGone([]byte(bad)) {
-			t.Errorf("owner %q reads as running", bad)
-		}
-	}
-}
-
 // maxHelpWidth is the widest line help may print, so it reads in an
 // 80-column terminal without wrapping.
 const maxHelpWidth = 80
@@ -188,13 +128,9 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
 var notYetMoved = []string{
-	"cells.go", "cells_test.go", "cli_test.go", "colors_test.go", "compat.go",
-	"compat_test.go", "completion.go", "completion_test.go",
-	"config_edit_unix.go", "config_edit_windows.go", "dirs.go", "errors.go",
-	"failures_test.go", "flags.go", "flags_test.go", "lifecycle_test.go",
-	"log.go", "output.go", "output_test.go", "plan.go", "relaunch.go",
-	"report.go", "report_test.go", "selection.go", "selection_test.go",
-	"signals_unix.go", "signals_unix_test.go", "signals_windows.go", "version.go",
+	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go",
+	"dirs.go", "errors.go", "signals_unix.go", "signals_unix_test.go",
+	"signals_windows.go", "version.go",
 }
 
 // commandFiles are the names, without .go, that a command's file takes: its
@@ -316,6 +252,18 @@ var plumbingFuncs = map[string]string{
 	"reports":     "marks a command that prints a report for -o json and -o yaml",
 }
 
+// plumbingTypes are the types other than App whose methods the app files may
+// declare, each with why.
+var plumbingTypes = map[string]string{
+	"lifecycleFlags": "the flags of restart, pause, and resume",
+	"planFlags":      "--dry-run and --confirm",
+	"outputFlag":     "-o, which every command that prints data takes",
+	"days":           "a flag value that also takes days, such as 7d",
+	"countFlag":      "a flag value that takes a whole number",
+	"choiceFlag":     "a flag value that takes one of a few words",
+	"errWriter":      "writes the log to App.Err, which tests swap",
+}
+
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
 var notYetHelpers = []string{
@@ -325,12 +273,11 @@ var notYetHelpers = []string{
 	"duTally", "duTop", "editFile", "entryOf", "exitCode", "firstLine",
 	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "interruptContext",
 	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
-	"leftovers", "lifecycleFlags.selectOpts", "listMatch", "managedBy",
-	"nameCell", "nameWithSource", "named", "noProfile", "notReached", "noteOf",
-	"oneEach", "orList", "pickPast", "printCommands", "printManual",
-	"printableList", "readTally", "realDir", "refOf", "refused", "relWithin",
-	"removeCommand", "reports", "requireFinished", "requireRunning", "resolved",
-	"runningIn", "sameDir", "sameName", "sidecarItem", "sizeDetail", "skipSet",
+	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
+	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
+	"realDir", "refOf", "refused", "relWithin", "removeCommand",
+	"requireFinished", "requireRunning", "resolved", "runningIn", "sameDir",
+	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
 	"sleep", "stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
 	"trivial", "trueFirst", "withOptions", "within", "zeroIfKnown",
 }
@@ -356,8 +303,12 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 			case fn.Recv != nil && isApp(fn.Recv.List[0].Type):
 				fits = true
 			case isPlumbing(name):
-				_, excepted := plumbingFuncs[fn.Name.Name]
-				fits = fn.Recv == nil && (takesApp(fn) || excepted)
+				if fn.Recv != nil {
+					_, fits = plumbingTypes[recvType(fn)]
+				} else {
+					_, excepted := plumbingFuncs[fn.Name.Name]
+					fits = takesApp(fn) || excepted
+				}
 			default:
 				// A command file's own flag and output types may have methods.
 				fits = fn.Recv != nil && local[recvType(fn)]
@@ -382,21 +333,8 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.acquire", "App.addForce", "App.checkBack", "App.claudePath",
-	"App.compatible", "App.completePast", "App.completeResumable",
-	"App.completeResumeSkip", "App.completeSessions", "App.completeSkip",
-	"App.configPathErr", "App.countParked", "App.current", "App.dirIn",
-	"App.dryRunDone", "App.filterPast", "App.gate", "App.gcKeep", "App.gcPick",
-	"App.ghProvenance", "App.handOff", "App.installedVersion", "App.lastWords",
-	"App.listedJob", "App.log", "App.midTurn", "App.onePast", "App.parkAndStop",
-	"App.pastSessions", "App.printDirs", "App.printLeftOut", "App.printPlan",
-	"App.printPlanOf", "App.printReport", "App.progress", "App.progressFailed",
-	"App.protectedPins", "App.record", "App.refuse", "App.relaunch",
-	"App.remover", "App.reportFailures", "App.resumeAs", "App.resumePast",
-	"App.resumeSession", "App.rows", "App.sessionVersion", "App.setLogLevel",
-	"App.splitHost", "App.startReport", "App.stopFailed", "App.stopHost",
-	"App.stopSession", "App.teamNote", "App.unpark", "App.warnTeams",
-	"App.writeTable", "listMatch", "notReached", "printManual",
+	"App.claudePath", "App.gcKeep", "App.gcPick", "App.ghProvenance",
+	"App.installedVersion", "App.remover", "App.sessionVersion",
 }
 
 // builder is the method that builds the command a file is named for, such as
@@ -460,4 +398,86 @@ func TestSharedAppMethodsLiveInAppFiles(t *testing.T) {
 			t.Errorf("%s is no longer shared: take it off notYetShared", name)
 		}
 	}
+}
+
+func TestPassThrough(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want []string
+	}{
+		{nil, []string{"claude", "agents"}},
+		{[]string{"--cwd", ".", "--model", "opus"}, []string{"claude", "agents", "--cwd", ".", "--model", "opus"}},
+		{[]string{"--"}, []string{"claude", "agents"}},
+		{[]string{"--", "ls", "--json"}, []string{"claude", "agents", "ls", "--json"}},
+		{[]string{"--", "--", "x"}, []string{"claude", "agents", "--", "x"}},
+	} {
+		h := newHarness(t)
+		h.ok(t, tc.args...)
+		if len(h.execs) != 1 || !slices.Equal(h.execs[0], tc.want) {
+			t.Fatalf("%v: execs %q", tc.args, h.execs)
+		}
+	}
+}
+
+func TestOwnCommandsAndHelpDoNotPassThrough(t *testing.T) {
+	for _, args := range [][]string{{"ls"}, {"list"}, {"--help"}, {"help"}, {"--version"}} {
+		h := newHarness(t, nil)
+		h.ok(t, args...)
+		if len(h.execs) != 0 {
+			t.Fatalf("%v passed through", args)
+		}
+	}
+}
+
+func TestAMissingHomeFolderStopsEveryCommand(t *testing.T) {
+	for _, name := range []string{"HOME", "USERPROFILE", "CLAUDE_CONFIG_DIR", "XDG_STATE_HOME"} {
+		t.Setenv(name, "")
+	}
+	app := newApp()
+	var errOut bytes.Buffer
+	app.Err = &errOut
+	app.Agents = &fakeAgents{}
+	if code := app.Run([]string{"restart"}); code != 1 {
+		t.Fatalf("exit %d", code)
+	}
+	assertContains(t, errOut.String(), "cannot find")
+}
+
+func TestExitCodesSayWhatHappened(t *testing.T) {
+	h := newHarness(t)
+	one, two := h.bg("review-one", "idle"), h.bg("review-two", "idle")
+	bad := h.bg("bad", "idle")
+	h.agents.snapshots = [][]claude.Session{{one, two, bad}}
+
+	h.exits(t, exitNoMatch, "stop", "nothing-like-it")
+	h.exits(t, exitNoMatch, "stop", "review")
+
+	h.agents.failures = map[string]string{"stop " + bad.JobID: "boom"}
+	h.exits(t, exitSomeFailed, "stop", "bad")
+
+	odd := h.bg("odd", "idle")
+	odd.Kind = "daemon"
+	h.agents.snapshots = [][]claude.Session{{odd}}
+	h.exits(t, exitRefused, "stop", "odd")
+}
+
+func TestVerboseFirstStillRunsClaudesCommands(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+	for _, flag := range []string{"-v", "--verbose", "--verbose=true"} {
+		h.out.Reset()
+		h.ok(t, flag, "ls")
+		assertContains(t, h.out.String(), "api")
+	}
+	if len(h.execs) != 0 {
+		t.Fatalf("passed through to claude agents: %q", h.execs)
+	}
+}
+
+func TestPassThroughThatCannotRunClaude(t *testing.T) {
+	h := newHarness(t)
+	h.app.Exec = func(string, ...string) error { return errors.New("executable file not found") }
+
+	h.fails(t, "--some-agents-flag")
+	assertContains(t, h.err.String(), "claudes: cannot run claude agents: executable file not found")
 }

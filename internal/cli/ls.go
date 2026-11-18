@@ -1,11 +1,8 @@
 package cli
 
 import (
-	"cmp"
-	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -13,29 +10,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/target"
-	"github.com/uvw/claudes/internal/version"
 )
-
-// row is a session as `claudes ls` shows it.
-type row struct {
-	claude.Session
-	Pinned bool `json:"pinned"`
-	// Version is the Claude Code version the session last ran, when known.
-	Version  string `json:"version"`
-	Outdated bool   `json:"outdated"`
-	// Teammates are the agent team members the session leads that run now.
-	Teammates []string `json:"teammates"`
-	// Subagents and Shells count the subagents and background shells the
-	// session runs now. Tokens is agent view's running total of the tokens it
-	// used, PRs the pull requests it opened, and Doing agent view's one-line
-	// status. Each is null when unknown, as for an interactive session.
-	Subagents *int    `json:"subagents"`
-	Shells    *int    `json:"shells"`
-	Tokens    *int64  `json:"tokens"`
-	PRs       *int    `json:"prs"`
-	Doing     *string `json:"doing"`
-}
 
 // agentsHeader heads the column that shows a session's agent team and the
 // subagents it runs.
@@ -82,43 +57,6 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 	out.add(cmd, app.Config.Output.Format)
 	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	return cmd
-}
-
-// rows lists sessions for ls and where. installed is the installed
-// Claude Code version, or "" when unknown, which marks no session outdated.
-func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, error) {
-	sessions, err := app.Agents.Sessions(ctx, all)
-	if err != nil {
-		return nil, err
-	}
-	pins, err := app.Jobs.PinSet()
-	if err != nil {
-		app.warn("claudes: cannot read pins: %v", err)
-	}
-	rows := make([]row, 0, len(sessions))
-	for _, s := range sessions {
-		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
-		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
-		a := app.Jobs.Live(s.JobID)
-		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
-		if !s.Running() {
-			// state.json can still list what ran when the process ended.
-			r.Subagents, r.Shells = zeroIfKnown(r.Subagents), zeroIfKnown(r.Shells)
-		}
-		rows = append(rows, r)
-	}
-	slices.SortStableFunc(rows, func(a, b row) int {
-		return cmp.Or(trueFirst(a.Pinned, b.Pinned), trueFirst(a.Busy(), b.Busy()), cmp.Compare(b.StartedAt, a.StartedAt))
-	})
-	return rows, nil
-}
-
-// zeroIfKnown is 0 for a known count, and nil for an unknown one.
-func zeroIfKnown(n *int) *int {
-	if n == nil {
-		return nil
-	}
-	return new(int)
 }
 
 func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
@@ -234,16 +172,4 @@ func kind(s claude.Session) string {
 		return "tty"
 	}
 	return "bg"
-}
-
-// listMatch keeps the rows any of targets match. A target that matches
-// nothing is noted on stderr and leaves the rest as they are, so a listing
-// shows what it found, as kubectl get does for a selector; where and the
-// commands that act still fail on it.
-func listMatch[T target.Ref](app *App, targets []string, rows []T) ([]T, error) {
-	out, missed, err := target.Filter(targets, rows)
-	for _, token := range missed {
-		app.warn("claudes: no session matches %q", shell.Printable(token))
-	}
-	return out, err
 }

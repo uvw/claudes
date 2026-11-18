@@ -190,3 +190,24 @@ func TestForgetReportsWhatItDropped(t *testing.T) {
 		t.Fatalf("results (-want +got):\n%s", diff)
 	}
 }
+
+func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
+	h := newHarness(t)
+	bad, good := stopped(h.bg("bad", "")), stopped(h.bg("good", ""))
+	h.agents.finished = []claude.Session{bad, good}
+	h.agents.failures = map[string]string{"rm " + bad.JobID: "worktree has changes"}
+	h.env("CLICOLOR_FORCE=1")
+
+	h.fails(t, "gc", "bad", "good")
+
+	assertContains(t, h.out.String(), "  "+h.app.colors.Green("removed")+"    good")
+	assertContains(t, h.err.String(), "  "+h.app.errColors.Red("FAILED")+"     bad")
+	assertContains(t, h.err.String(), h.app.errColors.Red("1 session(s) need attention:"))
+	assertContains(t, h.err.String(), h.app.errColors.Red("  bad: worktree has changes"))
+
+	h.err.Reset()
+	h.exits(t, exitNoMatch, "where", "nobody")
+	if !strings.HasPrefix(h.err.String(), "\x1b[31mclaudes: ") {
+		t.Fatalf("the error is not red:\n%q", h.err)
+	}
+}

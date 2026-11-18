@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -152,4 +153,119 @@ func TestGCTeamsTrashesUnlessPurged(t *testing.T) {
 	}
 	h.fails(t, "gc", "--purge")
 	assertContains(t, h.err.String(), "--purge goes with --teams")
+}
+
+func TestGCRemovesOldFinishedSessionsExceptPinnedOnes(t *testing.T) {
+	h := newHarness(t)
+	old, recent, oldPinned, live := stopped(h.bg("old", "")), stopped(h.bg("recent", "")), stopped(h.bg("old-pinned", "")), h.bg("live", "idle")
+	old.StartedAt = h.now.Add(-10 * 24 * time.Hour).UnixMilli()
+	oldPinned.StartedAt = old.StartedAt
+	h.agents.snapshots = [][]claude.Session{{live}}
+	h.agents.finished = []claude.Session{old, recent, oldPinned}
+	h.pin(t, oldPinned)
+
+	h.ok(t, "gc", "--dry-run")
+	assertCalls(t, h)
+
+	h.ok(t, "gc")
+	assertCalls(t, h, "rm "+old.JobID)
+}
+
+func TestGCPinnedRemovesPinnedSessionsToo(t *testing.T) {
+	h := newHarness(t)
+	oldPinned := stopped(h.bg("old-pinned", ""))
+	oldPinned.StartedAt = h.now.Add(-10 * 24 * time.Hour).UnixMilli()
+	h.agents.snapshots = [][]claude.Session{{}}
+	h.agents.finished = []claude.Session{oldPinned}
+	h.pin(t, oldPinned)
+
+	h.ok(t, "gc")
+	assertCalls(t, h)
+
+	h.ok(t, "gc", "--pinned")
+	assertCalls(t, h, "rm "+oldPinned.JobID)
+}
+
+func TestGCOlderThanAcceptsDays(t *testing.T) {
+	var d days
+	if err := d.Set("3d"); err != nil || d.d != 72*time.Hour {
+		t.Fatalf("3d: %v %v", d.d, err)
+	}
+	if err := d.Set("12h"); err != nil || d.d != 12*time.Hour {
+		t.Fatalf("12h: %v %v", d.d, err)
+	}
+	if err := d.Set("soon"); err == nil {
+		t.Fatal("accepted soon")
+	}
+}
+
+func TestGCTeamsRemovesOnlyOldFoldersOfSessionsThatAreGone(t *testing.T) {
+	h := newHarness(t)
+	live := h.bg("live", "idle")
+	h.agents.snapshots = [][]claude.Session{{live}}
+	old := h.now.Add(-30 * 24 * time.Hour)
+	for _, p := range []string{
+		filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa", "config.json"),
+		filepath.Join(h.app.Teams.Tasks, "session-aaaaaaaa", "1.json"),
+		filepath.Join(h.app.Teams.Tasks, teams.Name(live.SessionID), "1.json"),
+	} {
+		writeFile(t, p, "{}")
+		if err := os.Chtimes(p, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	h.ok(t, "gc", "--teams", "--dry-run")
+	assertContains(t, h.out.String(), "Removing 2 team dir(s) and task list(s)")
+	if _, err := os.Stat(filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa")); err != nil {
+		t.Fatalf("a dry run removed a directory: %v", err)
+	}
+
+	h.ok(t, "gc", "--teams")
+	for _, gone := range []string{filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa"), filepath.Join(h.app.Teams.Tasks, "session-aaaaaaaa")} {
+		if _, err := os.Stat(gone); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s is still there: %v", gone, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(h.app.Teams.Tasks, teams.Name(live.SessionID))); err != nil {
+		t.Fatalf("a running session's task list went: %v", err)
+	}
+	h.fails(t, "gc", "--teams", "live")
+}
+
+func TestGCRefusesWhenTheParkFileCannotBeRead(t *testing.T) {
+	h := newHarness(t)
+	old := stopped(h.bg("old", ""))
+	old.StartedAt = h.now.Add(-30 * 24 * time.Hour).UnixMilli()
+	h.agents.finished = []claude.Session{old}
+	os.MkdirAll(filepath.Dir(h.app.Park.Path), 0o755)
+	os.WriteFile(h.app.Park.Path, []byte("{oops"), 0o644)
+
+	h.fails(t, "gc")
+	assertCalls(t, h)
+	assertContains(t, h.err.String(), "cannot read the park file")
+}
+
+func TestGCReportsASessionItCouldNotRemove(t *testing.T) {
+	h := newHarness(t)
+	bad, good := stopped(h.bg("bad", "")), stopped(h.bg("good", ""))
+	h.agents.finished = []claude.Session{bad, good}
+	h.agents.failures = map[string]string{"rm " + bad.JobID: "worktree has changes"}
+
+	h.fails(t, "gc", "bad", "good")
+	assertCalls(t, h, "rm "+bad.JobID, "rm "+good.JobID)
+	assertContains(t, h.out.String(), "removed    good")
+	assertContains(t, h.err.String(), "bad: worktree has changes")
+}
+
+func TestGCNeverFallsThroughToAnotherSession(t *testing.T) {
+	h := newHarness(t)
+	running := h.bg("api", "idle")
+	other := stopped(h.bg("api-gw", ""))
+	h.agents.snapshots = [][]claude.Session{{running}}
+	h.agents.finished = []claude.Session{other}
+
+	h.fails(t, "gc", "api")
+	assertCalls(t, h)
+	assertContains(t, h.err.String(), "api is still running: gc removes only finished background sessions. Stop it first")
 }
