@@ -209,10 +209,13 @@ Pins come from files under `~/.claude/jobs/`, read and written only in
 `internal/jobs`. The Claude Code version a session runs comes from the path of
 its process's executable, where the native installer names each version
 (`…/claude/versions/2.1.326`), and otherwise from the job's `cliVersion` there.
+`session mv` reads a stopped job's saved options, `respawnFlags`, before it
+removes the job.
 
-Why: `claude agents --json` has neither, and pins and `restart --outdated` need
-both. `cliVersion` alone is stale after a respawn: Claude Code keeps the old
-value until the session takes a turn, so a freshly restarted idle session looked
+Why: `claude agents --json` has none of these, and pins, `restart --outdated`,
+and the new job `session resume --bg` starts after a move need them.
+`cliVersion` alone is stale after a respawn: Claude Code keeps the old value
+until the session takes a turn, so a freshly restarted idle session looked
 outdated and `--outdated` would restart it again. An npm install runs as `node`,
 whose path names no version, so it still relies on `cliVersion`.
 
@@ -350,20 +353,30 @@ writes the title and the last prompt again every few turns. It reads the whole
 file only when neither end names the session's directory, or to count what a
 session did: `session show` reads its one transcript, and `session gc --trivial`
 reads every transcript up to 2 MB. It never changes a transcript. `session mv`
-copies one, keeps the original, and prints the command that removes it. A name
-picks the newest session with it, since sessions reuse names over time.
+copies one, keeps the original, and prints the command that removes it. For a
+stopped background session, it also removes the job with `claude rm` and keeps
+the job's saved options in `moves.json`. `session resume --bg` passes them to
+the new job, and only when no job exists. A name picks the newest session with
+it, since sessions reuse names over time.
 
 Why: reading both ends lists 50 sessions in about 12 ms, so no index is needed
 to list them. Counting needs every line, and a session with more than 2 MB in it
 is not trivial anyway: reading the 170 transcripts under 2 MB here adds about a
 second, so that needs no index either. Copying instead of moving keeps the
 session resumable from its old directory if the copy goes wrong, and a running
-session keeps writing to its old transcript anyway.
+session keeps writing to its old transcript anyway. `claude --bg --resume` wakes
+an existing job in the directory it started in, wherever it runs from. A live
+check removed the job and ran the same command from the new directory. It
+resumed the session itself under the same id, continued the copy's transcript,
+and saved the options passed to the new job. Passing options to a job that still
+exists starts a copy instead.
 
 Weighed: reading each transcript in full, which reads hundreds of megabytes to
 list sessions; moving the transcript, which loses the session if the new
-directory is wrong; and rewriting the directory recorded inside the transcript,
-which `claude --resume` does not need.
+directory is wrong; rewriting the directory recorded inside the transcript,
+which `claude --resume` does not need; and keeping the job, which left
+`session resume --bg` refusing the session until `claudes gc` removed it and its
+options with it.
 
 ## 21. `claudes cd` is a shell function
 

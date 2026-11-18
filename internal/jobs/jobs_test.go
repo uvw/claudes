@@ -260,3 +260,20 @@ func TestFolderBelongsToItsSession(t *testing.T) {
 		t.Fatalf("another session's directory %q", got)
 	}
 }
+
+func TestOptionsBelongToTheirSession(t *testing.T) {
+	s := newStore(t)
+	writeJobFile(t, s, "aaaaaaaa", "state.json", `{"sessionId":"aaaaaaaa-1","respawnFlags":["--model","m","--permission-mode","plan"]}`)
+	writeJobFile(t, s, "bbbbbbbb", "state.json", `{"sessionId":"bbbbbbbb-1"}`)
+	if got, ok := s.Options("aaaaaaaa", "aaaaaaaa-1"); !ok || !slices.Equal(got, []string{"--model", "m", "--permission-mode", "plan"}) {
+		t.Fatalf("options %q, %v", got, ok)
+	}
+	if got, ok := s.Options("bbbbbbbb", "bbbbbbbb-1"); !ok || len(got) != 0 {
+		t.Fatalf("a job with no saved options has %q, %v", got, ok)
+	}
+	for _, c := range [][2]string{{"aaaaaaaa", "other"}, {"cccccccc", "cccccccc-1"}, {"../x", "x"}} {
+		if got, ok := s.Options(c[0], c[1]); ok || got != nil {
+			t.Fatalf("Options(%q, %q) = %q, %v", c[0], c[1], got, ok)
+		}
+	}
+}

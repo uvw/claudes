@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 // On Windows a project directory can exist in another case than Folder(dir)
@@ -28,7 +30,7 @@ func TestAMoveIntoAFolderInAnotherCaseIsFound(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.Copy(s, `C:\x\Repo`); err != nil {
+	if _, err := st.Copy(s, `C:\x\Repo`, nil); err != nil {
 		t.Fatal(err)
 	}
 	list, err := st.List()
@@ -49,7 +51,7 @@ func TestARelocationAfterAMoveWins(t *testing.T) {
 	write(t, src, at, line(t, map[string]any{"type": "user", "sessionId": sid, "cwd": "/a"}))
 	st := Store{Dir: dir, Moves: filepath.Join(t.TempDir(), "moves.json")}
 	s, _ := summarize(src)
-	dest, err := st.Copy(s, "/b")
+	dest, err := st.Copy(s, "/b", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,5 +63,50 @@ func TestARelocationAfterAMoveWins(t *testing.T) {
 	list, _ := st.List()
 	if len(list) != 1 || list[0].Cwd != "/c" {
 		t.Fatalf("listed %+v", list)
+	}
+}
+
+// A move with options is a record of its own in moves.json; one without stays
+// the directory alone, so a moves file that holds only directories still reads.
+func TestAMoveKeepsTheJobOptions(t *testing.T) {
+	dir := t.TempDir()
+	moves := filepath.Join(t.TempDir(), "moves.json")
+	other := "bbbbbbbb-1111-2222-3333-444455556666"
+	write(t, moves, time.Now(), `{"-x/`+other+`": "/x"}`)
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	src := filepath.Join(dir, "-a", sid+".jsonl")
+	write(t, src, at, line(t, map[string]any{"type": "user", "sessionId": sid, "cwd": "/a"}))
+	write(t, filepath.Join(dir, "-x", other+".jsonl"), at, line(t, map[string]any{"type": "user", "sessionId": other, "cwd": "/a"}))
+	st := Store{Dir: dir, Moves: moves}
+	s, _ := summarize(src)
+	if _, err := st.Copy(s, "/b", []string{"--model", "m"}); err != nil {
+		t.Fatal(err)
+	}
+
+	data, _ := os.ReadFile(moves)
+	want := `{
+  "-b/` + sid + `": {
+    "dir": "/b",
+    "options": [
+      "--model",
+      "m"
+    ]
+  },
+  "-x/` + other + `": "/x"
+}
+`
+	if diff := cmp.Diff(want, string(data)); diff != "" {
+		t.Fatalf("moves.json (-want +got):\n%s", diff)
+	}
+	list, err := st.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	for _, s := range list {
+		got[s.Cwd] = s.JobOptions()
+	}
+	if diff := cmp.Diff(map[string][]string{"/b": {"--model", "m"}, "/x": nil}, got); diff != "" {
+		t.Fatalf("cwd and options (-want +got):\n%s", diff)
 	}
 }

@@ -309,6 +309,12 @@ already has a copy, tell the user rather than removing that copy: it may hold
 work the original lacks. Pass `--rm` only when the user asked to delete the
 original; it never applies to your own session.
 
+For a stopped background session, `session mv` also removes its job with
+`claude rm` and keeps the job's options, such as `--model`. Afterwards,
+`claudes session resume --bg ID` starts a new job in DIR with those options. If
+`mv` says it kept the job, `session resume --bg` refuses until the job is gone:
+tell the user, and run the `claudes gc` command it prints only when they say so.
+
 `claudes session gc` removes past sessions. Run it with `--dry-run` first and
 show the user the plan; run it for real only when they say so. `--trivial` adds
 sessions that only ran slash commands, or got one prompt and made no tool call.

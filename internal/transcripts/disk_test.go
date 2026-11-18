@@ -166,17 +166,17 @@ func TestForgetMoveDropsOnlyThatCopy(t *testing.T) {
 	root := t.TempDir()
 	st := Store{Dir: filepath.Join(root, "projects"), Moves: filepath.Join(root, "moves.json")}
 	a, b := filepath.Join(st.Dir, "-a", sid+".jsonl"), filepath.Join(st.Dir, "-b", sid+".jsonl")
-	if err := st.recordMove(a, sid, "/a"); err != nil {
+	if err := st.recordMove(a, sid, move{Dir: "/a"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := st.recordMove(b, sid, "/b"); err != nil {
+	if err := st.recordMove(b, sid, move{Dir: "/b"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.ForgetMove(a, sid); err != nil {
 		t.Fatal(err)
 	}
 	moves, err := st.loadMoves()
-	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)] != "/b" {
+	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)].Dir != "/b" {
 		t.Fatalf("moves %v, err %v", moves, err)
 	}
 	if err := st.ForgetMove(a, sid); err != nil {

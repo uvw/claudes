@@ -23,11 +23,11 @@ type Agents interface {
 	Stop(ctx context.Context, jobID string) error
 	Remove(ctx context.Context, jobID string) error
 	// Resume continues a session in the background from its directory, with an
-	// optional prompt, and returns what the command printed.
-	// name, when set, names a session that has no background job yet. It is
-	// left out otherwise: an existing job wakes with its own saved options,
-	// and any option passed then starts a copy.
-	Resume(ctx context.Context, sessionID, cwd, prompt, name string) (string, error)
+	// optional prompt, and returns what the command printed. job is for a
+	// session with no background job yet, and empty otherwise: an existing job
+	// wakes with its own saved options, and any option passed then starts a
+	// copy.
+	Resume(ctx context.Context, sessionID, cwd, prompt string, job NewJob) (string, error)
 	// Version is the installed Claude Code version, such as "2.1.325".
 	Version(ctx context.Context) (string, error)
 	// Help is the output of `claude --help`, or of `claude COMMAND --help`.
@@ -35,6 +35,16 @@ type Agents interface {
 	// CheckPrompt refuses a prompt that claude would not receive as one
 	// argument, so a command can refuse it before it stops any session.
 	CheckPrompt(prompt string) error
+}
+
+// NewJob is what claude --bg --resume gets for a session that has no
+// background job, which Claude Code would otherwise start with no name and
+// none of the options the session ran with.
+type NewJob struct {
+	Name string
+	// Options are command-line options, such as --model, as Claude Code
+	// saves them for a job.
+	Options []string
 }
 
 // Runner runs the claude binary and captures its output.
@@ -238,7 +248,7 @@ func CheckOption(prompt string) error {
 var copyNotice = regexp.MustCompile(`(?i)\ba copy\b`)
 
 // Resume implements Agents.
-func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt, name string) (string, error) {
+func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt string, job NewJob) (string, error) {
 	// Run checks the arguments against the binary as well.
 	if err := CheckOption(prompt); err != nil {
 		return "", err
@@ -247,9 +257,16 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt, name string
 		return "", fmt.Errorf("directory %s is gone", cwd)
 	}
 	args := []string{"--bg"}
-	if name != "" {
-		args = append(args, "--name="+name)
+	options := job.Options
+	if job.Name != "" {
+		args = append(args, "--name="+job.Name)
+		// Claude Code saves --name with a job's options, so a saved one
+		// would name the job twice.
+		options = withoutName(options)
 	}
+	// The options go before --resume, which ends an option that takes a list,
+	// such as --add-dir, before it can take the prompt.
+	args = append(args, options...)
 	args = append(args, "--resume", sessionID)
 	if prompt != "" {
 		args = append(args, prompt)
@@ -264,6 +281,22 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt, name string
 			label, strings.TrimSpace(stdout+" "+stderr))
 	}
 	return stdout, nil
+}
+
+// withoutName is options without --name or -n and its value.
+func withoutName(options []string) []string {
+	var out []string
+	for i := 0; i < len(options); i++ {
+		o := options[i]
+		switch {
+		case o == "--name" || o == "-n":
+			i++
+		case strings.HasPrefix(o, "--name=") || strings.HasPrefix(o, "-n="):
+		default:
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 // FolderExists reports whether dir is an existing directory.
