@@ -521,6 +521,47 @@ server on.
 
 `mcp ls` and `mcp profiles` only read.
 
+### Turning servers on and off
+
+`claudes mcp off PATTERN... TARGET` turns servers off in a running session, as
+`/mcp disable` typed there would, and `claudes mcp on` turns them back on. A
+pattern is a server name or a glob, such as `'sql-*'`; `--all` takes every
+server `mcp ls` lists. Name the session last.
+
+```console
+$ claudes mcp off browser 'issue-*' api
+MCP servers of api, in ~/src/api, through its claudes mod:
+NAME           RESULT      NOTE
+browser        turned off
+issue-tracker  already     already off
+```
+
+1. **Through the mod.** By default claudes asks the session's
+   [claudes mod](#the-claudes-mod) to run `/mcp`, so the session keeps running
+   and its next turn has the change. The mod waits for the session to go idle,
+   and claudes waits up to `--timeout`, two minutes by default. Then claudes
+   reads `disabledMcpServers` in `~/.claude.json` to check that each change
+   took. A session that has not loaded the mod is refused, with what would load
+   it.
+2. **With `--restart`.** claudes stops the session, writes the directory's
+   `disabledMcpServers` itself, and resumes it, as `claudes ping` does without a
+   prompt. A turn in progress ends there. An interactive session takes
+   `--interactive`, which stops it and prints its resume command, or
+   `--interactive-bg`, which resumes it in the background.
+3. **With `--in DIR`.** claudes writes the directory's list and touches no
+   session, so the next session there starts with it. It refuses while a session
+   runs there, since a running session keeps the servers it loaded.
+
+The setting is per project: Claude Code keys it by the git repository's root, so
+every session in one repository shares it. A server already in the state asked
+for is left alone. In the session running claudes, the mod runs the command once
+the current turn ends, so claudes queues it and returns.
+
+When claudes writes `~/.claude.json` itself, it changes only that directory's
+`disabledMcpServers`, and leaves every other byte as it was. Claude Code writes
+the file often, so claudes reads it, makes the change, and replaces the file
+only if it is unchanged since the read, keeping its mode.
+
 ## The claudes mod
 
 Without help, claudes reaches a running session only from outside: it stops it,

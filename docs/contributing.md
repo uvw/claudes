@@ -22,7 +22,7 @@
    | `~/.claude/jobs/`, `pins.json` and each job's `state.json` among them                                                  | `internal/jobs`        |
    | `~/.claude/projects/`, and each session's `file-history`, `session-env`, and `debug` log                               | `internal/transcripts` |
    | `~/.claude/teams/` and `~/.claude/tasks/`                                                                              | `internal/teams`       |
-   | `~/.claude.json`, for its MCP keys and the feature flags Claude Code caches                                            | `internal/claude`      |
+   | `~/.claude.json`, for its MCP keys, the feature flags Claude Code caches, and a project's `disabledMcpServers`         | `internal/claude`      |
    | `~/.claude/settings.json`, and a directory's `.claude/settings.json` and `.claude/settings.local.json`                 | `internal/mcp`         |
    | `.mcp.json` files                                                                                                      | `internal/mcp`         |
    | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |
@@ -37,8 +37,10 @@
    | The installed agent skill                                                                                              | `internal/cli`         |
    | `mod/`, the directory claudes and the claudes mod share, in claudes' state directory                                   | `internal/mod`         |
 
-   Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
-   files, plugin files, or `managed-mcp.json`.
+   In `~/.claude.json`, claudes writes only a directory's `disabledMcpServers`,
+   through `claude.SetDisabled`, with a compare-and-swap. Nothing in claudes
+   writes the settings files, `.mcp.json` files, plugin files, or
+   `managed-mcp.json`.
 
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, exec, and the environment) are fields on `cli.App`, and only

@@ -169,17 +169,3 @@ func (app *App) restartOne(ctx context.Context, s claude.Session, prompt string,
 		return restartRespawned, app.Agents.Respawn(ctx, s.JobID)
 	}
 }
-
-// restartHost restarts the session running claudes, which ends this command.
-func (app *App) restartHost(ctx context.Context, host claude.Session) error {
-	if host.Interactive() {
-		return app.stopHost(ctx, host, "Stopping", false)
-	}
-	if host.JobID == "" {
-		return errors.New("claude agents gave no job id for this session")
-	}
-	app.say("")
-	app.say("Restarting this session (%s) last. Output ends here.", host.Label())
-	app.lastWords(host, "restarting")
-	return app.Agents.Respawn(ctx, host.JobID)
-}
