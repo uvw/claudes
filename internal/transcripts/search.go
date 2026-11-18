@@ -186,17 +186,13 @@ type needle struct {
 // such run. Go's case folding also matches k to the Kelvin sign and s to the
 // long s, which the needle misses.
 func newNeedle(literals []string, cut string) *needle {
+	split := func(r rune) bool { return r >= utf8.RuneSelf || !plain(byte(r)) || strings.ContainsRune(cut, r) }
 	best := ""
 	for _, s := range literals {
-		start := 0
-		for i := 0; i <= len(s); i++ {
-			if i < len(s) && plain(s[i]) && strings.IndexByte(cut, s[i]) < 0 {
-				continue
+		for _, run := range strings.FieldsFunc(s, split) {
+			if len(run) > len(best) {
+				best = run
 			}
-			if i-start > len(best) {
-				best = s[start:i]
-			}
-			start = i + 1
 		}
 	}
 	if best == "" {
