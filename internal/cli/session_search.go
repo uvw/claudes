@@ -1,0 +1,149 @@
+package cli
+
+import (
+	"cmp"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/uvw/claudes/internal/shell"
+	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/transcripts"
+)
+
+// searchHit is a session search found, as -o json prints it.
+type searchHit struct {
+	ID         string              `json:"id"`
+	SessionID  string              `json:"sessionId"`
+	Name       string              `json:"name"`
+	Cwd        string              `json:"cwd"`
+	Score      float64             `json:"score"`
+	LastActive time.Time           `json:"lastActive"`
+	Matches    []transcripts.Match `json:"matches"`
+}
+
+type searchFlags struct {
+	pattern, who, ran, touched, branch, in string
+	tools                                  bool
+	since                                  days
+	limit                                  int
+}
+
+func (app *App) sessionSearchCommand() *cobra.Command {
+	var f searchFlags
+	var out outputFlag
+	cmd := &cobra.Command{
+		Use:     "search QUERY...",
+		Aliases: []string{"grep"},
+		Short:   "Find past sessions by what was said in them",
+		Long: `Find the sessions whose transcripts match every word of QUERY, best first. A
+word matches part of a word, in any case, and quoted words match as a phrase.
+It looks in the session's name, the prompts you typed, Claude's replies, and
+Claude's tool calls: the commands it ran, and the paths and patterns it used.
+It skips slash commands, what the tools returned, and the text Claude Code adds,
+such as reminders and compaction summaries.
+
+A match in the name ranks above one in your prompts, a prompt above a reply, and
+a reply above a tool call. More matches and recent activity rank a session a
+little higher.
+
+-e takes a regular expression in Go's RE2 syntax: Perl's, without lookaround or
+backreferences. It is case-sensitive unless it starts with (?i). --ran matches
+only the commands of the Bash tool, and --touched only the paths of the files
+Claude edited or wrote. -e, --ran, and --touched each work without QUERY.
+
+Each line shows the best match. -o json gives each session's matches. Resume
+one with claudes session resume ID.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hits, more, err := app.search(args, f)
+			if err != nil {
+				return err
+			}
+			if out.format != "text" {
+				return out.encode(app.Out, hits)
+			}
+			if len(hits) == 0 {
+				fmt.Fprintln(app.Out, "No sessions match.")
+				return nil
+			}
+			table := [][]string{{"ID", "ACTIVE", "WHERE", "DIR", "NAME", "MATCH"}}
+			for _, h := range hits {
+				best := h.Matches[0]
+				table = append(table, []string{h.ID, age(app.Now(), h.LastActive), best.Where,
+					app.colors.Faint(homeShort(h.Cwd)), nameCell(cmp.Or(h.Name, h.ID)), shell.Printable(best.Snippet)})
+			}
+			if err := style.Table(app.Out, table); err != nil {
+				return err
+			}
+			if more > 0 {
+				app.say("\n%d more matched; --limit 0 shows them all.", more)
+			}
+			app.say("\nResume the first with:\n  claudes session resume %s", hits[0].ID)
+			return nil
+		},
+	}
+	cmd.Flags().StringVarP(&f.pattern, "regexp", "e", "", "a regular expression to match, in Go's RE2 syntax")
+	cmd.Flags().StringVar(&f.who, "who", "", "match QUERY only in your prompts (you) or Claude's replies (claude)")
+	cmd.RegisterFlagCompletionFunc("who", cobra.FixedCompletions([]cobra.Completion{"you", "claude"}, cobra.ShellCompDirectiveNoFileComp))
+	cmd.Flags().BoolVar(&f.tools, "tools", false, "also search what the tools returned")
+	cmd.MarkFlagsMutuallyExclusive("who", "tools")
+	cmd.Flags().StringVar(&f.ran, "ran", "", "only sessions where Claude ran a shell command containing this")
+	cmd.Flags().StringVar(&f.touched, "touched", "", "only sessions where Claude edited or wrote a file whose path contains this")
+	cmd.Flags().StringVar(&f.branch, "branch", "", "only sessions on this git branch")
+	cmd.Flags().StringVarP(&f.in, "in", "i", "", "only sessions run in this directory or below it")
+	cmd.Flags().VarP(&f.since, "since", "l", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().Lookup("since").DefValue = ""
+	cmd.Flags().IntVar(&f.limit, "limit", 20, "show at most this many sessions; 0 shows all")
+	out.add(cmd, app.Config.Output.Format)
+	return cmd
+}
+
+// search returns the best sessions that match, and how many more matched
+// beyond --limit.
+func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) {
+	switch {
+	case len(words) == 0 && f.pattern == "" && f.ran == "" && f.touched == "":
+		return nil, 0, errors.New("name something to search for: QUERY, -e PATTERN, --ran, or --touched")
+	case f.who != "" && f.who != "you" && f.who != "claude":
+		return nil, 0, fmt.Errorf("--who takes you or claude, not %q", f.who)
+	case f.limit < 0:
+		return nil, 0, fmt.Errorf("--limit takes 0 or more, not %d", f.limit)
+	}
+	list, err := app.Transcripts.List()
+	if err != nil {
+		return nil, 0, err
+	}
+	past := make([]pastSession, len(list))
+	for i, s := range list {
+		past[i] = pastSession{ShortID: s.ID(), Session: s}
+	}
+	if past, err = app.filterPast(past, nil, f.in, f.since.d); err != nil {
+		return nil, 0, err
+	}
+	var sessions []transcripts.Session
+	for _, p := range past {
+		if f.branch == "" || p.Branch == f.branch {
+			sessions = append(sessions, p.Session)
+		}
+	}
+	results, err := transcripts.Search(sessions, transcripts.Query{
+		Words: words, Pattern: f.pattern, Who: f.who, Tools: f.tools, Ran: f.ran, Touched: f.touched, Now: app.Now(),
+	})
+	if err != nil {
+		if f.pattern != "" {
+			return nil, 0, fmt.Errorf("-e: %w", err)
+		}
+		return nil, 0, err
+	}
+	more := 0
+	if f.limit > 0 && len(results) > f.limit {
+		results, more = results[:f.limit], len(results)-f.limit
+	}
+	hits := make([]searchHit, len(results))
+	for i, r := range results {
+		hits[i] = searchHit{ID: r.ID(), SessionID: r.SessionID, Name: r.Name, Cwd: r.Cwd, Score: r.Score, LastActive: r.LastActive, Matches: r.Matches}
+	}
+	return hits, more, nil
+}

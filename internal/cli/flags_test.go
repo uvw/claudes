@@ -57,7 +57,7 @@ func TestEachShortFlagMeansOneThingEverywhere(t *testing.T) {
 			}
 		}
 	}
-	for letter, want := range map[string]string{"u": "outdated", "i": "in", "l": "since", "b": "bg", "r": "resume"} {
+	for letter, want := range map[string]string{"u": "outdated", "i": "in", "l": "since", "b": "bg", "r": "resume", "e": "regexp"} {
 		if _, ok := letters[letter][want]; !ok {
 			t.Errorf("-%s is not short for --%s: %v", letter, want, letters[letter])
 		}

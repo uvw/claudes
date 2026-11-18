@@ -36,10 +36,13 @@ type Activity struct {
 var editTools = map[string]bool{"Edit": true, "MultiEdit": true, "Write": true, "NotebookEdit": true}
 
 type activityRecord struct {
-	Type             string          `json:"type"`
-	IsMeta           bool            `json:"isMeta"`
-	IsCompactSummary bool            `json:"isCompactSummary"`
-	Message          json.RawMessage `json:"message"`
+	Type             string `json:"type"`
+	IsMeta           bool   `json:"isMeta"`
+	IsCompactSummary bool   `json:"isCompactSummary"`
+	// IsSidechain is a subagent's record, which older Claude Code versions
+	// wrote into the main transcript.
+	IsSidechain bool            `json:"isSidechain"`
+	Message     json.RawMessage `json:"message"`
 }
 
 // ReadActivity reads the transcript at path in full and counts what happened
@@ -85,29 +88,15 @@ func (a *Activity) take(line []byte, spoke *bool) {
 			}
 		}
 	case "user":
-		bs := blocks(r.Message)
-		var text strings.Builder
-		image := false
-		for _, b := range bs {
-			switch b.Type {
-			case "tool_result":
-				return
-			case "text":
-				text.WriteString(b.Text)
-			case "image":
-				image = true
-			}
-		}
-		typed := strings.TrimSpace(text.String())
+		kind, typed, image := classifyUser(blocks(r.Message))
 		switch {
-		case strings.HasPrefix(typed, "<command-"), strings.HasPrefix(typed, "<bash-input"):
+		case kind == userCommand:
 			a.Commands++
 			*spoke = true
-		case strings.HasPrefix(typed, "<teammate-message"):
+		case kind == userTeammate:
 			a.Teammate = a.Teammate || !*spoke
 			*spoke = true
-		case claudeNote.MatchString(typed), strings.HasPrefix(typed, "[Request interrupted"):
-		case typed != "" || image:
+		case kind == userPrompt && (typed != "" || image):
 			a.Prompts++
 			*spoke = true
 			if a.Prompts == 1 {
@@ -115,6 +104,48 @@ func (a *Activity) take(line []byte, spoke *bool) {
 			}
 		}
 	}
+}
+
+// userKind is what a user record holds.
+type userKind int
+
+const (
+	// userPrompt is what the user typed, or an image they pasted.
+	userPrompt userKind = iota
+	userToolResult
+	// userCommand is a slash command, its output, or a ! shell command.
+	userCommand
+	// userTeammate is a message from an agent team's lead or members.
+	userTeammate
+	// userNote is text Claude Code added, such as a reminder, or an
+	// interruption.
+	userNote
+)
+
+// classifyUser sorts a user record by its blocks. typed is its text with the
+// ends trimmed, and image is whether it holds an image.
+func classifyUser(bs []block) (kind userKind, typed string, image bool) {
+	var text strings.Builder
+	for _, b := range bs {
+		switch b.Type {
+		case "tool_result":
+			return userToolResult, "", false
+		case "text":
+			text.WriteString(b.Text)
+		case "image":
+			image = true
+		}
+	}
+	typed = strings.TrimSpace(text.String())
+	switch {
+	case strings.HasPrefix(typed, "<command-"), strings.HasPrefix(typed, "<bash-input"):
+		return userCommand, typed, image
+	case strings.HasPrefix(typed, "<teammate-message"):
+		return userTeammate, typed, image
+	case claudeNote.MatchString(typed), strings.HasPrefix(typed, "[Request interrupted"):
+		return userNote, typed, image
+	}
+	return userPrompt, typed, image
 }
 
 // cut is s with its runs of white space made single spaces, cut to at most

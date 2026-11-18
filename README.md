@@ -184,6 +184,7 @@ Every session with a transcript, past or running (`claudes s` and
 | Command                          | What it does                                             |
 | -------------------------------- | -------------------------------------------------------- |
 | `session ls [TARGET...]`         | List them, newest activity first, with their size        |
+| `session search QUERY...`        | Find them by their prompts, replies, and tool calls      |
 | `session show TARGET`            | Directory, branch, version, times, size, and last prompt |
 | `session where TARGET...`        | Print their directories                                  |
 | `session resume TARGET [PROMPT]` | Resume one in its own directory, from anywhere           |
