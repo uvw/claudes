@@ -5,16 +5,15 @@
 //
 // Usage: go run hack/notices.go [--check]
 //
-// It runs go-licenses (on PATH, or the binary named by $GO_LICENSES) for each
-// platform claudes is released for, because some modules, such as
-// golang.org/x/sys, are only built on one. It fails when a module's license is
-// not one of the allowed ones. With --check, it writes nothing and fails when
-// the committed file is out of date.
+// It runs go-licenses, from the tools module in tools/go.mod, for each platform
+// claudes is released for, because some modules, such as golang.org/x/sys, are
+// only built on one. It fails when a module's license is not one of the
+// allowed ones. With --check, it writes nothing and fails when the committed
+// file is out of date.
 package main
 
 import (
 	"bytes"
-	"cmp"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -102,7 +101,10 @@ func modules(root string) (map[string]string, error) {
 	if err := tpl.Close(); err != nil {
 		return nil, err
 	}
-	goLicenses := cmp.Or(os.Getenv("GO_LICENSES"), "go-licenses")
+	goLicenses, err := toolPath(root, "go-licenses")
+	if err != nil {
+		return nil, err
+	}
 	found := map[string]string{}
 	var refused []string
 	for _, goos := range platforms {
@@ -140,6 +142,21 @@ func modules(root string) (map[string]string, error) {
 		return nil, fmt.Errorf("licenses outside %s: %s", strings.Join(allowed, ", "), strings.Join(refused, ", "))
 	}
 	return found, nil
+}
+
+// toolPath builds a tool from tools/go.mod for this machine and returns the
+// binary's path. go tool would build it for $GOOS, which may not run here.
+func toolPath(root, name string) (string, error) {
+	cmd := exec.Command("go", "tool", "-modfile=tools/go.mod", "-n", name)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOOS=", "GOARCH=")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("building %s: %w\n%s", name, err, stderr.String())
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 // noticeBeside is the NOTICE file next to a module's license, which the

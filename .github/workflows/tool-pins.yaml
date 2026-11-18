@@ -1,0 +1,36 @@
+name: Tool pins
+
+# Dependabot updates go.mod, tools/, and the actions, but not the tool versions
+# the workflows pass to actions or download themselves. This compares each with
+# its latest release every week, and keeps one issue open listing the ones that
+# are behind.
+on:
+  schedule:
+    - cron: "29 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Tool pins against their latest releases
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Open, update, or close the tool pins issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/workflows/hack/tool-pins.sh "$RUN_URL"

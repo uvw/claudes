@@ -81,6 +81,9 @@ managers. Each is skipped with a notice when its secret is missing.
    `public_repo`: a fine-grained one cannot open pull requests on another
    owner's public repository.
 
+The weekly Tool pins workflow opens an issue when komac, goreleaser, or syft has
+a release newer than its pin ([contributing.md](contributing.md#checks)).
+
 `hack/release-tokens.sh` sets both up: it creates the tap and the fork if they
 are missing, opens each token's page with its fields filled in, checks the token
 you paste, and saves it as a secret. When a token expires, run it again with the

@@ -44,6 +44,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install Prettier
+        if: steps.release.outputs.release_created != 'true'
+        run: npm ci --prefix tools --ignore-scripts
       - name: Format the changelog in the release pull request
         if: steps.release.outputs.release_created != 'true'
         env:
