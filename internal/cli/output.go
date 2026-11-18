@@ -80,9 +80,13 @@ func clearStyle(n *yaml.Node) {
 	}
 }
 
-// dirCell is a table cell that shows the directory path. Every path a table
-// shows goes through it, so writeTable can shorten and fade it.
-func dirCell(path string) string { return style.DirCell(homeShort(path)) }
+// dirCell is a table cell that shows the directory path, in a column headed
+// dirHeader. Every path a table shows goes through it.
+func dirCell(path string) string { return homeShort(path) }
+
+// dirHeader heads a table's directory column, which writeTable shortens to fit
+// and fades.
+const dirHeader = "DIR"
 
 // tableFit says how writeTable fits a table to the line.
 type tableFit struct {
@@ -98,8 +102,16 @@ type tableFit struct {
 // writeTable writes rows, the first being the header, as style.Table does,
 // after style.Fit fits them to Out's terminal and output.dirs.
 func (app *App) writeTable(w io.Writer, rows [][]string, fit tableFit) error {
+	var dirCols []int
+	if len(rows) > 0 {
+		for i, h := range rows[0] {
+			if h == dirHeader {
+				dirCols = append(dirCols, i)
+			}
+		}
+	}
 	style.Fit(rows, style.Layout{
-		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), FitLast: fit.fitLast, LastCap: fit.lastCap,
+		Width: app.width(), Margin: fit.margin, Dirs: app.dirs(), DirCols: dirCols, FitLast: fit.fitLast, LastCap: fit.lastCap,
 	}, app.colors.Faint)
 	return style.Table(w, rows)
 }

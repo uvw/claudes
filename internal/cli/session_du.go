@@ -103,7 +103,7 @@ session.`,
 					size += l.Size
 				}
 				table = append(table, []string{style.Size(size), "-", "-", "-", "-", "-",
-					app.colors.Faint(fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers)))})
+					fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers))})
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = style.Size(report.Total)

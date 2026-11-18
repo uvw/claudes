@@ -171,10 +171,10 @@ func TestIndentIsWhereTheLastCellStarts(t *testing.T) {
 		t.Fatal(err)
 	}
 	line := strings.Split(b.String(), "\n")[1]
-	if got, want := Indent(rows), Width(line)-len("tests"); got != want {
-		t.Errorf("Indent is %d, the last cell starts at %d in %q", got, want, line)
+	if got, want := indent(rows), Width(line)-len("tests"); got != want {
+		t.Errorf("indent is %d, the last cell starts at %d in %q", got, want, line)
 	}
-	if Indent(nil) != 0 {
+	if indent(nil) != 0 {
 		t.Error("an empty table has an indent")
 	}
 }

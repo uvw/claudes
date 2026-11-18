@@ -20,6 +20,7 @@ import (
 
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/style"
 )
 
 // Config is everything config.yaml can set. A zero field means the built-in
@@ -49,7 +50,7 @@ type Output struct {
 }
 
 // DirsValues lists what output.dirs takes. The first is the default.
-var DirsValues = []string{"middle", "fish", "full"}
+var DirsValues = []string{style.DirsMiddle, style.DirsFish, style.DirsFull}
 
 // MCP holds the MCP server profiles that claudes mcp shows.
 type MCP struct {
