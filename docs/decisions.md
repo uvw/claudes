@@ -646,8 +646,8 @@ Weighed: an SQLite full-text index, which answers in milliseconds but needs a
 dependency, a rebuild after every change, and a way to notice what changed; an
 index of claudes' own, with the same upkeep; and parsing every user and
 assistant record, which takes three times as long. An index stays possible if
-transcripts outgrow the scan. Plain words match as substrings, and fuzzy
-matching is left out. `-e` takes Go's RE2 syntax, without lookaround or
+transcripts outgrow the scan. Plain words match at the start of a word, and
+fuzzy matching is left out. `-e` takes Go's RE2 syntax, without lookaround or
 backreferences, so it needs no new dependency.
 
 ## 33. Windows replaces a file with POSIX rename semantics first
