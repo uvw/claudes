@@ -11,9 +11,10 @@ command; `claudes COMMAND --help` describes each one's flags.
 - **Interactive session (`tty`):** Claude Code running in a terminal. claudes
   leaves these alone unless you ask, since stopping one ends that terminal's
   session.
-- **Mid-turn:** a session that is `busy`, `waiting` on a question, running a
-  `shell` task, or leading an agent team with teammates at work. Stopping it
-  drops that work, so claudes resumes it with a prompt instead (`--ping`).
+- **Mid-turn:** a session that is `busy`, `waiting` on a question, or running a
+  `shell` task. Stopping it drops that work, so `--ping` resumes it with a
+  prompt instead. `--ping` also prompts a session that leads an agent team with
+  teammates at work, so it can start them again.
 - **Pin:** agent view's Ctrl+T. Bulk commands skip pinned sessions.
 - **Park:** claudes' record of a session it stopped and means to bring back, in
   `parked.json`. `claudes resume` reads it.
@@ -69,27 +70,30 @@ writing. A session with no process runs no subagents or shells, whatever its
 
 ### Common flags
 
-| Flag                | Commands                                         | Effect                                                            |
-| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
-| `-n`, `--dry-run`   | `restart`, `pause`, `resume`, `gc`, `session gc` | Show the plan and change nothing                                  |
-| `-c`, `--confirm`   | `restart`, `pause`, `resume`, `gc`, `session gc` | Ask y/N before changing anything                                  |
-| `-s`, `--skip NAME` | `restart`, `pause`, `resume`                     | Leave out a session, matched like a target                        |
-| `-w`, `--wait`      | `restart`, `pause`                               | Wait for busy sessions to go idle first                           |
-| `--timeout AGE`     | `restart`, `pause`                               | With `--wait`, give up after this long; 30m by default            |
-| `-p`, `--ping`      | `restart`, `resume`                              | Prompt sessions that were mid-turn so they carry on               |
-| `--ping-text TEXT`  | `restart`, `resume`                              | The prompt to send; implies `--ping`                              |
-| `--interactive`     | `restart`, `pause`                               | Also stop interactive sessions, and print their resume commands   |
-| `--interactive-bg`  | `restart`, `resume`                              | Resume interactive sessions in the background, not print commands |
-| `-u`, `--outdated`  | `restart`                                        | Only sessions on an older Claude Code                             |
-| `--pinned`          | `restart`, `pause`, `gc`                         | Without targets, take pinned sessions too                         |
-| `--forget`          | `resume`                                         | Drop the named sessions from the park list                        |
-| `--older-than AGE`  | `gc`                                             | Without targets, only sessions older than AGE; 7d                 |
-| `--force`           | commands that change sessions                    | Act although a compatibility check failed                         |
-| `-o`, `--output`    | every command that lists or acts                 | Print `text`, `json`, or `yaml`                                   |
-| `-v`, `--verbose`   | every command                                    | Log each `claude` call and step to stderr                         |
+| Flag                | Commands                                                           | Effect                                                            |
+| ------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `-n`, `--dry-run`   | `restart`, `pause`, `resume`, `gc`, `session gc`                   | Show the plan and change nothing                                  |
+| `-c`, `--confirm`   | `restart`, `pause`, `resume`, `gc`, `session gc`                   | Ask y/N before changing anything                                  |
+| `-s`, `--skip NAME` | `restart`, `pause`, `resume`                                       | Leave out a session, matched like a target                        |
+| `-w`, `--wait`      | `restart`, `pause`                                                 | Wait for busy sessions to go idle first                           |
+| `--timeout AGE`     | `restart`, `pause`                                                 | With `--wait`, give up after this long; 30m by default            |
+| `-p`, `--ping`      | `restart`, `resume`                                                | Prompt sessions that were mid-turn so they carry on               |
+| `--ping-text TEXT`  | `restart`, `resume`                                                | The prompt to send; implies `--ping`                              |
+| `--interactive`     | `restart`, `pause`                                                 | Also stop interactive sessions, and print their resume commands   |
+| `--interactive-bg`  | `restart`, `resume`                                                | Resume interactive sessions in the background, not print commands |
+| `-u`, `--outdated`  | `restart`                                                          | Only sessions on an older Claude Code                             |
+| `--pinned`          | `restart`, `pause`, `gc`                                           | Without targets, take pinned sessions too                         |
+| `--forget`          | `resume`                                                           | Drop the named sessions from the park list                        |
+| `--older-than AGE`  | `gc`                                                               | Without targets, only sessions finished over AGE ago; 7d          |
+| `--force`           | `restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, `unpin` | Act although a compatibility check failed                         |
+| `-o`, `--output`    | the commands in [Output](reference.md#output)                      | Print `text`, `json`, or `yaml`                                   |
+| `-v`, `--verbose`   | every command                                                      | Log each `claude` call and step to stderr                         |
 
-`--older-than` and `--since` take days, such as `7d`, as well as `12h` or `30m`.
-`--timeout` and `wait.timeout` take `30m` or `1h30m`, not days.
+`session gc` takes `--older-than` too, but there it has no default and picks
+sessions idle that long. `session mv` and `session resume --bg` take a `--force`
+of their own, which `--help` describes. `--older-than` and `--since` take days,
+such as `7d`, as well as `12h` or `30m`. `--timeout` and `wait.timeout` take
+`30m` or `1h30m`, not days.
 
 ## Naming sessions
 
@@ -188,14 +192,15 @@ said in it; see [Searching past sessions](#searching-past-sessions).
 `session ls` shows the space each session takes on disk: its transcript, its
 subagent transcripts and tool results, older copies `session mv` left, and
 Claude Code's backups of the files it edited, under `~/.claude/file-history`.
-`--sort size` lists the biggest first, and `session show` breaks one session's
-size down. `session show` also reads the whole transcript to count the prompts,
-slash commands, tool calls, and file edits, and says where the name came from:
-`/rename`, agent view, or Claude Code's own title. `session du` (or `df`) adds
-it all up by project directory, biggest first, and counts leftovers: subagent
-and file-history directories whose transcript is gone. `--top 10` (`-t 10`) also
-lists the 10 sessions that take the most space, with the share their sidecar
-directory of tool results and subagent transcripts takes.
+Sizes count the bytes in each file, never follow a link, and read the same on
+every platform. `--sort size` lists the biggest first, and `session show` breaks
+one session's size down. `session show` also reads the whole transcript to count
+the prompts, slash commands, tool calls, and file edits, and says where the name
+came from: `/rename`, agent view, or Claude Code's own title. `session du` (or
+`df`) adds it all up by project directory, biggest first, and counts leftovers:
+subagent and file-history directories whose transcript is gone. `--top 10`
+(`-t 10`) also lists the 10 sessions that take the most space, with the share
+their sidecar directory of tool results and subagent transcripts takes.
 
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,
@@ -246,12 +251,12 @@ removes paths under `~/.claude` named by the session's id.
    prints the `session gc` command that removes them, which names each session
    when `-i` or `-l` narrows the sort.
 2. **Review:** sessions with one prompt, or only slash commands, that changed no
-   file and made at most 20 tool calls, and that were not named with `/rename`.
-   Whether to keep one takes reading its prompt: a commit message or a quick
-   lookup can go, while findings or a decision should stay. `-o json` gives each
-   one's first and last prompt, and the [agent skill](install.md#agent-skill)
-   tells an agent how to judge them. Remove the ones you pick with
-   `session gc ID...`.
+   file and made at most 20 tool calls, and that were neither named with
+   `/rename` nor started by an agent team. Whether to keep one takes reading its
+   prompt: a commit message or a quick lookup can go, while findings or a
+   decision should stay. `-o json` gives each one's first and last prompt, and
+   the [agent skill](install.md#agent-skill) tells an agent how to judge them.
+   Remove the ones you pick with `session gc ID...`.
 3. **Keep:** everything else, counted by reason, such as more than one prompt,
    changed files, or running.
 
@@ -307,10 +312,10 @@ the new one, so claudes records each move in `moves.json`, with the options of
 any job it removed. `session where`, `cd`, and `session resume` then use the new
 directory right away.
 
-`mv` copies rather than moving because a copy cannot lose the original if
-anything goes wrong, and because Claude Code's own record of a moved session, a
-`relocated` entry in the transcript, is not documented. claudes reads those
-entries, so a session Claude Code moved resumes from its new directory.
+`mv` copies rather than moves, so a failure cannot lose the original
+([decision 20](decisions.md#20-past-sessions-come-from-their-transcripts)).
+claudes also reads the `relocated` entry Claude Code writes in a transcript it
+moved itself, so such a session resumes from its new directory.
 
 ### Searching past sessions
 
@@ -336,12 +341,14 @@ It skips slash commands, what the tools returned, which `--tools` adds, and the
 text Claude Code adds itself, such as reminders and compaction summaries. That
 text repeats across sessions and would match everywhere.
 
-A session ranks by its best record: one prompt, reply, or tool call. A record
-that holds the words next to each other, in order, ranks first, then one that
-holds every word, then one that holds some. So a prompt about a `lock race`
-outranks a session that says `lock` in one prompt and `race` in another. Within
-that, the place counts: both words in a reply still beat them scattered over
-prompts. More matches and recent activity rank a session a little higher.
+A session ranks by its best record: its name, or one prompt, reply, or tool
+call. A record scores its place's weight times how close the words came in it.
+Each place in the list above weighs twice as much as the next. Holding the words
+next to each other, in order, triples the weight, holding every word doubles it,
+and holding some scales it by the share held. So a prompt about a `lock race`
+outranks a session that says `lock` in one prompt and `race` in another, and a
+prompt that holds both words outranks a reply that holds the phrase. More
+matches and recent activity rank a session a little higher.
 
 Each line shows the best match in context, from the best record, and `-o json`
 gives each session's best records. It shows 20 sessions; `--top N` (`-t`)
@@ -401,10 +408,10 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
 - Bulk `restart` and `pause` leave a lead with teammates at work alone, since
   its teammates would stop with it and cannot be resumed (see Safety).
 - `claudes gc --teams` removes the team directories and task lists Claude Code
-  leaves behind: those of sessions that no longer run, are not parked or pinned,
-  and have not changed for longer than `--older-than`, 7 days by default. They
-  go to the system trash, and `--purge` deletes them for good. `--dry-run` shows
-  them first.
+  leaves behind: those of sessions that no longer run, are not parked or pinned
+  (unless `--pinned`), and have not changed for longer than `--older-than`, 7
+  days by default. They go to the system trash, and `--purge` deletes them for
+  good. `--dry-run` shows them first.
 
 ## MCP servers
 
@@ -467,8 +474,7 @@ a `PROFILE` column with each server's state under that profile, next to the
 current one. The `PROFILES` column of `mcp ls` names the profiles that keep each
 server on.
 
-`mcp ls` and `mcp profiles` only read. Turning servers on and off, and starting
-a session with a profile, come in a later release.
+`mcp ls` and `mcp profiles` only read.
 
 ## Following a session
 

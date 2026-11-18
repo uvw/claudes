@@ -18,13 +18,8 @@ Paste this into a new Claude Code session at the root of this repository:
 
 ```text
 Continue work on claudes. Read AGENTS.md, docs/contributing.md,
-docs/decisions.md, and docs/handoffs.md first.
-
-State: 0.1.0 is released. Every command in the README is built and tested.
-Every command under "Checks" in docs/contributing.md passes on Windows and
-Linux, CI passes on Linux, macOS, and Windows, and every command has run
-against throwaway sessions on Claude Code 2.1.325. Changes go through pull
-requests.
+docs/decisions.md, and docs/handoffs.md first, and docs/changelog.md for what
+the latest release holds. Changes go through pull requests.
 
 Next, in order:
 1. Pick up the items in docs/handoffs.md that this machine can do.

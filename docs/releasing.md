@@ -9,9 +9,10 @@ step.
    on `main`. CI's "Pull request title" job enforces the format, and CI runs
    again when the title changes. Dependabot's titles, such as
    `fix(deps): Bump charm.land/lipgloss/v2 from 2.0.6 to 2.1.0`, pass with their
-   capital "Bump". A `fix(deps)` update lands in the changelog's "Bug fixes" as
-   **deps:** and makes a patch release, since it changes the binary. A
-   `ci(deps)` update makes none.
+   capital "Bump", since Dependabot has no setting to lower it, but only from a
+   pull request Dependabot opened. A `fix(deps)` update lands in the changelog's
+   "Bug fixes" as **deps:** and makes a patch release, since it changes the
+   binary. A `ci(deps)` update makes none.
 2. On every push to `main`, `.github/workflows/release-please.yaml` updates an
    open pull request titled `chore(main): release X.Y.Z`. It holds the next
    version and the `docs/changelog.md` entry, worked out from those commits:
@@ -40,6 +41,7 @@ step.
    6. **Publish:** uploads the assets to the draft, checks the tag again, and
       publishes it.
 
+Publishing comes last, so a release is never out without its provenance.
 Releases are immutable once published, so a broken release is fixed by releasing
 the next version, never by editing it.
 

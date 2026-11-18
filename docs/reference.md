@@ -23,15 +23,11 @@ A few cases differ:
 2. When `where` matches one session, text prints only its directory, so
    `cd "$(claudes where NAME)"` works. Add `-o text` when `output.format` sets
    another format; `claudes init` does that itself. With several, it prints a
-   table of id, directory, and name, as every table does.
+   table of id, directory, and name.
 3. `logs -o json` prints the transcript records themselves, one per line.
 
-Every text table, and every plan a command prints before it acts, starts with
-the id and ends with the directory and the name, followed by a note when there
-is one, or by `DOING` in `ls --wide`. Names longer than 40 characters are cut,
-with `…`; JSON, YAML, and `session show` keep them whole. The `mcp` tables list
-servers and profiles rather than sessions, so they start with the name, and end
-with the profiles.
+Text tables and plans cut a name longer than 40 characters, with `…`; JSON,
+YAML, and `session show` keep it whole.
 
 ### Directories in tables
 
@@ -56,21 +52,11 @@ characters and `MATCH` stays whole.
 fits `~/code/acme/monorepo/services/billing/internal/ledger/testdata/v2` into 30
 columns:
 
-1. `middle`, the default, gives `~/code/…/ledger/testdata/v2`, and
-   `~/code/…/internal/ledger/testdata/v2` in 40 columns. It puts `…` in place of
-   the directories in the middle and keeps whole names: the last directory, then
-   `~` or `/` and the first directory after it, then as many directories before
-   the last as fit, then a second directory after `~` or `/`. When the first
-   directory does not fit beside the last, it goes before the last is cut.
-2. `fish` gives `~/c/a/m/s/b/i/l/testdata/v2`. It shortens each directory but
-   the last to its first character, or its first two when it starts with a dot,
-   such as `.c` for `.claude`. It goes from the left and stops once the path
-   fits, so the directories nearest the last stay whole when there is room.
+1. `middle`, the default, gives `~/code/…/ledger/testdata/v2`. It puts `…` in
+   place of directories in the middle, and keeps the last one whole.
+2. `fish` gives `~/c/a/m/s/b/i/l/testdata/v2`. It shortens directories to their
+   first character, from the left, until the path fits.
 3. `full` never shortens.
-
-With `middle` or `fish`, a last directory too long to fit on its own is cut in
-its middle too, such as `~/…/a-directory-name-f…-in-forty-columns` in 40
-columns. `fish` falls back to `middle` when even its shortest form does not fit.
 
 ### Fields
 
@@ -178,11 +164,11 @@ masked.
 | `why`                     | Its `session gc` kind, `review`, or why it is kept |
 | `lastPrompt`, `activity`  | As for a past session                              |
 
-An older copy or a leftover in `remove` has only `id`, `sessionId`, `name`,
-`cwd`, `size`, and `why`. Its `id` is empty, since `session gc ID` removes the
-whole session: remove it with `session gc --copies` or `--leftovers`. The
-`session gc` plan shows these, and the saved outputs `--sidecars` trims, with no
-id too.
+An older copy or a leftover in `remove` fills only `sessionId`, `name`, `cwd`,
+`size`, and `why`, and leaves the other fields empty. Its `id` is empty, since
+`session gc ID` removes the whole session: remove it with `session gc --copies`
+or `--leftovers`. The `session gc` plan shows these, and the saved outputs
+`--sidecars` trims, with no id too.
 
 #### Teams
 
@@ -295,9 +281,11 @@ counts as unset.
 
 The exit code says what happened, and the output names each session:
 
-1. **Exit 3, some sessions failed.** Each failure says why, and a session
-   stopped for a restart or ping stays parked. Run `claudes resume --dry-run` to
-   see them, then `claudes resume` to bring them back.
+1. **Exit 3, some sessions failed.** Each failure says why. A session that
+   `pause`, `ping`, or `restart --ping` stopped stays parked: run
+   `claudes resume --dry-run` to see them, then `claudes resume` to bring them
+   back. A plain restart respawns a session without parking it, so its failure
+   prints the `claudes resume ID` that brings it back.
 2. **Exit 4, refused.** Nothing changed. The message names the session and why,
    such as an interactive one for `ping`, or a stopped one for `stop`. A
    compatibility refusal means Claude Code's output changed: run
@@ -325,7 +313,7 @@ ping:
 wait:
   timeout: 45m # how long --wait waits; 30m by default
 output:
-  format: json # the default -o of ls, where, team ls, doctor, mcp ls, mcp profiles, and the session commands
+  format: json # the default -o of the commands that list or check (see Output)
   dirs: fish # how text tables shorten a long directory: middle, fish, or full
 mcp:
   profiles: # each profile, and the MCP servers that stay on in it
@@ -342,7 +330,7 @@ takes `middle`, the default, `fish`, or `full`
 the file in `$VISUAL` or `$EDITOR`, and `claudes config path` prints where it
 is. claudes refuses a file with an unknown key or a value it cannot use. Until
 it is fixed, only `config`, `doctor`, `init`, `completion`, `skill`,
-`--version`, and help run.
+`--version`, help, and what passes through to `claude agents` run.
 
 ## Compatibility
 
@@ -406,8 +394,9 @@ as usual. `--version` prints the version.
   an absolute path. When background sessions run but its `jobs` directory is
   missing, commands that change sessions stop rather than read pins from the
   wrong place.
-- claudes itself writes under `~/.claude` only to pin and unpin, as agent view
-  does, for `session mv`, which adds a copy, for `skill --install`, and for
-  `gc --teams`, which moves leftover team and task directories to the system
-  trash. Unpinning also deletes the job's `order` file, as agent view does.
-  Everything else it changes goes through the `claude` command.
+- claudes itself writes under `~/.claude` only for these: pinning and unpinning,
+  as agent view does; `session mv`, which adds a copy, and its `--rm`, which
+  moves the original to the system trash; `session gc`, which moves past
+  sessions there; `skill --install`; and `gc --teams`, which moves leftover team
+  and task directories there. Unpinning also deletes the job's `order` file, as
+  agent view does. Everything else it changes goes through the `claude` command.

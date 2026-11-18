@@ -130,7 +130,7 @@ binary by its full path rather than assuming it is gone.
 | remove X from the list               | find X, then `claudes gc ID`                              |
 | open agent view                      | Ask the user to run `claudes` in their own terminal       |
 | is claudes still compatible          | `claudes doctor`                                          |
-| where does claudes keep its files    | `claudes doctor env`                                      |
+| where does claudes keep its files    | `claudes doctor env`; `moves.json` sits by the park file  |
 | find a past session about X          | `claudes session search X -o json`; see "Past sessions"   |
 | what takes up disk space             | `claudes session du --top 10`                             |
 | clean up old or empty sessions       | `claudes session gc --dry-run`; see "Past sessions"       |
@@ -198,11 +198,21 @@ are not in a session.
 
 ## Before you change anything
 
-`ls`, `where`, `logs`, `team ls`, `doctor`, `config get`, the `session` commands
-`ls`, `search`, `show`, and `where`, and any command with `--dry-run` only look.
-Run them freely. Everything else changes the user's sessions.
+These commands are read-only. Run them freely:
 
-1. **One session the user asked for, found as above:** run it.
+- `ls`, `where`, `team ls`, and `logs` without `-f`
+- the `session` commands `ls`, `search`, `show`, `where`, `du`, and `triage`
+- `mcp ls` and `mcp profiles`
+- `doctor`, `doctor env`, `config get`, `config path`, `upgrade --check`,
+  `skill` without `--install` or `--dir`, `--version`, and `--help`
+- `restart`, `pause`, `resume`, `gc`, and `session gc` with `--dry-run`
+
+Every other command changes the user's sessions or their computer, such as
+`upgrade`, `skill --install`, `config set`, and `gc --teams`. Run one only as
+the rules below say.
+
+1. **One session the user asked for, found as above:** run it. Change claudes
+   itself or its settings only when the user asked for that change.
 2. **No target, or several sessions:** show the user the plan, and go ahead only
    once they agree. `restart`, `pause`, `resume`, and `gc` print it with
    `--dry-run`. `stop`, `ping`, `pin`, and `unpin` have no dry run, so list the
@@ -307,7 +317,7 @@ user asks for it after seeing that.
 ## Past sessions
 
 `claudes session ls`, `search`, `show`, `where`, and `du` read the transcripts
-of every session, past or running, and change nothing. Run them freely.
+of every session, past or running, and change nothing.
 
 To find a session by what was done in it, run
 `claudes session search WORD... -o json`. Every word must match, in any case, at
@@ -346,22 +356,24 @@ For a stopped background session, `session mv` also removes its job with
 tell the user, and run the `claudes gc` command it prints only when they say so.
 
 `claudes session gc` removes past sessions. Run it with `--dry-run` first and
-show the user the plan; run it for real only when they say so. `--trivial` adds
-sessions that only ran slash commands, or got one prompt and made no tool call.
-`--sidecars` keeps the sessions and trims their saved command outputs, and with
-`--older-than 30d` the subagent transcripts of sessions idle that long; say so
-when you show the plan, since those sessions cannot continue an old subagent. It
-moves what it removes to the system trash. Pass `--purge`, which deletes for
-good, only when the user asked for that. `claudes gc --teams` moves the team
-directories and task lists it removes to the trash too, and takes `--purge` the
-same way.
+show the user the plan; run it for real only when they say so. A kind flag
+replaces the defaults: `--trivial` takes only trivial sessions, those that only
+ran slash commands or got one prompt and made no tool call. Add
+`--empty --copies --leftovers` to take the default kinds too. `--sidecars` keeps
+the sessions and trims their saved command outputs, and with `--older-than 30d`
+the subagent transcripts of sessions idle that long; say so when you show the
+plan, since those sessions cannot continue an old subagent. It moves what it
+removes to the system trash. Pass `--purge`, which deletes for good, only when
+the user asked for that. `claudes gc --teams` moves the team directories and
+task lists it removes to the trash too, and takes `--purge` the same way.
 
 ## Triage
 
 `claudes session triage` sorts past sessions into remove, review, and keep, and
 changes nothing. claudes decides remove and keep by itself. The review group is
-for you: sessions with one prompt, or only slash commands, that changed no file.
-Whether one is worth keeping takes reading what it was asked.
+for you: sessions with one prompt, or only slash commands, that changed no file,
+made at most 20 tool calls, and were neither named with `/rename` nor started by
+an agent team. Whether one is worth keeping takes reading what it was asked.
 
 1. Run `claudes session triage -o json`. Add `-i DIR` or `-l 7d` when the user
    names a directory or a while.
