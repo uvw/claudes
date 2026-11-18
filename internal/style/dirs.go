@@ -31,10 +31,10 @@ func ShortDir(path string, limit int, how string) string {
 }
 
 // Middle shortens path to at most limit columns by putting … in place of the
-// directories in its middle. It keeps whole names: the last directory and the
-// root, such as ~ or /, then as many directories before the last as fit, then
-// up to two after the root. Only a last directory too long to fit on its own
-// is cut, in its middle.
+// directories in its middle. It keeps whole names: the last directory, then
+// the root, such as ~ or /, and the first directory after it, then as many
+// directories before the last as fit, then a second directory after the root.
+// Only a last directory too long to fit on its own is cut, in its middle.
 func Middle(path string, limit int) string {
 	if Width(path) <= limit {
 		return path
@@ -67,15 +67,22 @@ func Middle(path string, limit int) string {
 		}
 		return prefix + cutMiddle(parts[n-1], limit-Width(prefix))
 	}
-	head, tail := 0, 1
+	tail, root := 1, 0
+	if isRoot(parts[0], path) {
+		root = 1
+	}
 	fits := func(h, t int) bool { return h+t < n && width(h, t) <= limit }
-	if isRoot(parts[0], path) && fits(1, tail) {
-		head = 1
+	head := 0
+	for h := root + 1; h > 0; h-- {
+		if fits(h, tail) {
+			head = h
+			break
+		}
 	}
 	for fits(head, tail+1) {
 		tail++
 	}
-	for most := head + leadingDirs; head < most && fits(head+1, tail); {
+	for most := root + leadingDirs; head < most && fits(head+1, tail); {
 		head++
 	}
 	kept := append(slices.Clip(parts[:head]), "…")

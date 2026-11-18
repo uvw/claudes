@@ -55,10 +55,12 @@ characters and `MATCH` stays whole.
 fits `~/code/acme/monorepo/services/billing/internal/ledger/testdata/v2` into 30
 columns:
 
-1. `middle`, the default, gives `~/code/…/ledger/testdata/v2`. It puts `…` in
-   place of the directories in the middle and keeps whole names: the last
-   directory and `~` or `/`, then as many directories before the last as fit,
-   then up to two after `~` or `/`.
+1. `middle`, the default, gives `~/code/…/ledger/testdata/v2`, and
+   `~/code/…/internal/ledger/testdata/v2` in 40 columns. It puts `…` in place of
+   the directories in the middle and keeps whole names: the last directory, then
+   `~` or `/` and the first directory after it, then as many directories before
+   the last as fit, then a second directory after `~` or `/`. When the first
+   directory does not fit beside the last, it goes before the last is cut.
 2. `fish` gives `~/c/a/m/s/b/i/l/testdata/v2`. It shortens each directory but
    the last to its first character, or its first two when it starts with a dot,
    such as `.c` for `.claude`. It goes from the left and stops once the path

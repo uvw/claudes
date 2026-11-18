@@ -20,11 +20,11 @@ func TestShortDir(t *testing.T) {
 		how   string
 		want  string
 	}{
-		{deep, 40, DirsMiddle, "~/…/billing/internal/ledger/testdata/v2"},
+		{deep, 40, DirsMiddle, "~/code/…/internal/ledger/testdata/v2"},
 		{deep, 30, DirsMiddle, "~/code/…/ledger/testdata/v2"},
 		{deep, 20, DirsMiddle, "~/code/…/testdata/v2"},
 		{deepAbs, 40, DirsMiddle, "/srv/…/.cache/go-build/7f/objects/main"},
-		{deepAbs, 20, DirsMiddle, "/…/7f/objects/main"},
+		{deepAbs, 20, DirsMiddle, "/srv/…/objects/main"},
 		{longLast, 40, DirsMiddle, "~/…/a-directory-name-f…-in-forty-columns"},
 		{"~/a-directory-name-far-too-long-to-fit-in-forty-columns", 30, DirsMiddle, "~/a-directory-na…forty-columns"},
 		{"a-directory-name-far-too-long-to-fit", 20, DirsMiddle, "a-director…ng-to-fit"},
@@ -34,7 +34,7 @@ func TestShortDir(t *testing.T) {
 		{deepAbs, 30, DirsFish, "/s/b/w/.c/g/7f/objects/main"},
 		{deepAbs, 20, DirsFish, "/s/b/w/.c/g/7/o/main"},
 		{longLast, 40, DirsFish, "~/…/a-directory-name-f…-in-forty-columns"},
-		{"~/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t", 20, DirsFish, "~/…/m/n/o/p/q/r/s/t"},
+		{"~/a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t", 20, DirsFish, "~/a/…/n/o/p/q/r/s/t"},
 
 		{deep, 20, DirsFull, deep},
 		{"~/src/api", 5, DirsMiddle, "…/api"},

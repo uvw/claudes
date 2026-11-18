@@ -142,8 +142,8 @@ heredoc, and never run it through Prettier.
     it from the repository. Update it in the same change as any command, flag,
     or safety rule it describes.
 13. **Every path a table shows goes through `dirCell`, and every table through
-    `app.writeTable`.** `writeTable` shortens and fades those cells to fit, and
-    `TestTablesPutPathsThroughDirCell` fails on a table that skips either.
+    `app.writeTable`.** A path that skips them wraps every row, and
+    `TestTablesPutPathsThroughDirCell` fails.
 
 ## Maintaining this file
 
