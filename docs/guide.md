@@ -283,9 +283,13 @@ entries, so a session Claude Code moved resumes from its new directory.
 ### Searching past sessions
 
 `session search QUERY...` (or `grep`) finds sessions by what was said in them,
-best first. Each word matches part of a word, in any case, and a session must
-match every word; quote words to match them as a phrase. It reads every
-transcript in full, and looks in four places, which rank in this order:
+best first. A session must match every word. Each word matches in any case at
+the start of a word, so `lock` matches `locks`, `locking`, `fileLock`, and
+`/src/lock.go`, but not `block`. A word starts after a character that is not a
+letter or a digit, such as a space, a slash, or an underscore, and at an
+upper-case letter after a lower-case one. A word that starts with punctuation,
+such as `.go`, matches anywhere. Quote words to match them as a phrase. It reads
+every transcript in full, and looks in four places, which rank in this order:
 
 1. The session's name.
 2. The prompts you typed.
@@ -295,13 +299,19 @@ transcript in full, and looks in four places, which rank in this order:
 
 It skips slash commands, what the tools returned, which `--tools` adds, and the
 text Claude Code adds itself, such as reminders and compaction summaries. That
-text repeats across sessions and would match everywhere. More matches and recent
-activity rank a session a little higher. It takes a hundred matches in one place
-to equal a single match in the place above it.
+text repeats across sessions and would match everywhere.
 
-Each line shows the best match in context, and `-o json` gives each session's
-matches. It shows 20 sessions; `--limit N` changes that, and `--limit 0` shows
-them all. Resume one with `session resume ID`. These flags narrow the search:
+A session ranks by its best record: one prompt, reply, or tool call. A record
+that holds the words next to each other, in order, ranks first, then one that
+holds every word, then one that holds some. So a prompt about a `lock race`
+outranks a session that says `lock` in one prompt and `race` in another. Within
+that, the place counts: both words in a reply still beat them scattered over
+prompts. More matches and recent activity rank a session a little higher.
+
+Each line shows the best match in context, from the best record, and `-o json`
+gives each session's best records. It shows 20 sessions; `--limit N` changes
+that, and `--limit 0` shows them all. Resume one with `session resume ID`. These
+flags narrow the search:
 
 1. `--who you` or `--who claude` matches QUERY only in your prompts or only in
    Claude's replies.
@@ -310,8 +320,8 @@ them all. Resume one with `session resume ID`. These flags narrow the search:
    path contains PATH. Neither needs QUERY.
 3. `-e PATTERN` (`--regexp`) matches a regular expression, alone or as well as
    QUERY, in [Go's RE2 syntax](https://pkg.go.dev/regexp/syntax): Perl's,
-   without lookaround or backreferences. It is case-sensitive unless it starts
-   with `(?i)`.
+   without lookaround or backreferences. It matches anywhere, not only at the
+   start of a word, and is case-sensitive unless it starts with `(?i)`.
 4. `--in PATH` (`-i`), `--since AGE` (`-l`), and `--branch NAME` narrow the
    sessions searched, as in `session ls`.
 

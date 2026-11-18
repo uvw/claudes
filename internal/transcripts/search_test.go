@@ -130,8 +130,8 @@ func TestSearchNeedsEveryWordInTheSession(t *testing.T) {
 
 func TestSearchFindsTextJSONEscapes(t *testing.T) {
 	s := searchSession(t, "s1", "", time.Hour,
-		prompt(`say \"hi\" to C:\\work, then mention the Café on line\nTWO`))
-	for _, word := range []string{`say "hi"`, `c:\work`, "café", "CAFÉ", "line two", "LINE"} {
+		prompt(`say \"hi\" to C:\\work, then mention the Café on line\nTWO\tthree\u2028four\u0007five`))
+	for _, word := range []string{`say "hi"`, `c:\work`, "café", "CAFÉ", "line two", "LINE", "two", "three", "four", "five"} {
 		if got := ids(t, []Session{s}, Query{Words: []string{word}}); len(got) != 1 {
 			t.Errorf("%q: no match", word)
 		}
@@ -249,6 +249,81 @@ func TestSearchSkipsWhatItCannotRead(t *testing.T) {
 	}
 	if _, err := Search([]Session{s}, Query{Words: []string{"  "}}); err == nil {
 		t.Fatal("searched for nothing")
+	}
+}
+
+func TestSearchMatchesWordsAtTheirStart(t *testing.T) {
+	for text, want := range map[string]bool{
+		"take the lock":       true,
+		"two locks":           true,
+		"Locking it":          true,
+		"LOCK":                true,
+		"the fileLock field":  true,
+		"see /src/lock.go":    true,
+		"my_lock and (lock)":  true,
+		"a block of code":     false,
+		"the blocker":         false,
+		"unlock it":           false,
+		"clock2lock":          false,
+		"lockfile and blocks": true,
+	} {
+		s := searchSession(t, "s1", "", time.Hour, prompt(text))
+		if got := len(ids(t, []Session{s}, Query{Words: []string{"lock"}})) == 1; got != want {
+			t.Errorf("lock in %q: matched %v, want %v", text, got, want)
+		}
+	}
+	block := searchSession(t, "block", "", time.Hour, prompt("a block of code"))
+	if got := ids(t, []Session{block}, Query{Pattern: "lock"}); len(got) != 1 {
+		t.Error("-e lock did not match inside block")
+	}
+	phrase := searchSession(t, "phrase", "", time.Hour, prompt("the deadlock race"), prompt(`a lock\nrace`))
+	results, err := Search([]Session{phrase}, Query{Words: []string{"lock race"}, Now: searchNow})
+	if err != nil || len(results) != 1 || results[0].Matches[0].Snippet != "a lock race" {
+		t.Fatalf("a phrase at a word start: %+v, %v", results, err)
+	}
+	for _, word := range []string{".go", "-v"} {
+		s := searchSession(t, "s1", "", time.Hour, toolCall("Bash", `{"command":"go test -v ./ls.go"}`))
+		if got := ids(t, []Session{s}, Query{Words: []string{word}}); len(got) != 1 {
+			t.Errorf("%q, which starts with punctuation, did not match inside a word", word)
+		}
+	}
+}
+
+func TestSearchRanksWordsInOneRecordAboveScatteredOnes(t *testing.T) {
+	list := []Session{
+		searchSession(t, "scattered", "", time.Hour,
+			prompt("take the lock"), prompt("take the lock again"), prompt("who wins the race"), prompt("the race is on")),
+		searchSession(t, "apart", "", time.Hour, prompt("the lock can lose a race")),
+		searchSession(t, "phrase", "", 48*time.Hour, prompt("there is a lock race in pins.json")),
+	}
+	if got := ids(t, list, Query{Words: []string{"lock", "race"}}); !slices.Equal(got, []string{"phrase", "apart", "scattered"}) {
+		t.Fatalf("got %v", got)
+	}
+	// Closeness counts after the place: both words in a reply still beat
+	// them scattered over prompts.
+	list = []Session{
+		searchSession(t, "prompts", "", time.Hour, prompt("take the lock"), prompt("who wins the race")),
+		searchSession(t, "reply", "", time.Hour, reply("a lock race")),
+	}
+	if got := ids(t, list, Query{Words: []string{"lock", "race"}}); !slices.Equal(got, []string{"reply", "prompts"}) {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestSearchSnippetComesFromTheClosestRecord(t *testing.T) {
+	s := searchSession(t, "s1", "", time.Hour,
+		prompt("take the lock first"),
+		reply("the race went fine"),
+		prompt("now look at the lock and the race together"),
+		prompt("and the lock race in pins.json"),
+	)
+	results, err := Search([]Session{s}, Query{Words: []string{"lock", "race"}, Now: searchNow})
+	if err != nil || len(results) != 1 {
+		t.Fatalf("%+v, %v", results, err)
+	}
+	ms := results[0].Matches
+	if ms[0] != (Match{Where: "you", Snippet: "and the lock race in pins.json"}) || ms[1].Snippet != "now look at the lock and the race together" {
+		t.Fatalf("matches %+v", ms)
 	}
 }
 

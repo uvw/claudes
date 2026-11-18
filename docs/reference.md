@@ -112,12 +112,12 @@ leftover has `path`, `sessionId`, `kind`, `size`, and `modified`.
 | `name`, `cwd`     | Its name, or empty, and the directory it ran in |
 | `score`           | How well it matches; higher is better           |
 | `lastActive`      | When its transcript last changed                |
-| `matches`         | Where the query matched, the best place first   |
+| `matches`         | The records that matched best, the best first   |
 
 Each match has `where`, which is `name`, `you` for your prompts, `claude` for
 Claude's replies, `tool` for its tool calls, or `output` for what the tools
-returned, and `snippet`, the match in context on one line. Each place gives up
-to three matches.
+returned, and `snippet`, the match in context on one line. Each place gives its
+three best records at most.
 
 #### Triage
 

@@ -23,8 +23,9 @@ import (
 // Query is what session search looks for. A session matches when each word,
 // the pattern, Ran, and Touched all match somewhere in it.
 type Query struct {
-	// Words match as case-insensitive substrings. White space in a word
-	// matches any run of it, such as a line break.
+	// Words match in any case at the start of a word, so lock matches locks
+	// and fileLock but not block. White space in a word matches any run of
+	// it, such as a line break.
 	Words []string
 	// Pattern is a regular expression in Go's RE2 syntax, or "".
 	Pattern string
@@ -53,7 +54,7 @@ type Match struct {
 type Result struct {
 	Session
 	Score float64
-	// Matches are the first few in each place, the best place first.
+	// Matches are the best few records in each place, the best first.
 	Matches []Match
 }
 
@@ -70,10 +71,21 @@ const (
 var (
 	placeNames = [places]string{"name", "you", "claude", "tool", "output"}
 	// placeWeights rank a match in a session's name above one in the user's
-	// prompts, and so on. Within a place, the score grows with half the log
-	// of the count, so it takes a hundred matches in one place to equal a
-	// single match in the place above.
+	// prompts, and so on.
 	placeWeights = [places]float64{16, 8, 4, 2, 1}
+)
+
+// A session scores its best record's place weight times how close the query
+// came in that record, plus spreadShare of what every term matched across
+// the session. Closeness counts for more than the spread, so one prompt that
+// holds every word outranks a session whose words are scattered over many.
+const (
+	// closePhrase is a record that holds the words next to each other, in
+	// order, and closeAll one that holds every term. A record that holds some
+	// scores the share it holds, below 1.
+	closePhrase = 3
+	closeAll    = 2
+	spreadShare = 0.25
 )
 
 const (
@@ -101,11 +113,49 @@ type term struct {
 	// it, or nil when any line can.
 	needle *needle
 	scope  scope
+	// wordStart is whether a match must start a word.
+	wordStart bool
+}
+
+// find is where t first matches text, or nil.
+func (t term) find(text string) []int {
+	for off := 0; off <= len(text); {
+		loc := t.re.FindStringIndex(text[off:])
+		if loc == nil {
+			return nil
+		}
+		start, end := off+loc[0], off+loc[1]
+		if !t.wordStart || startsWord(text, start) {
+			return []int{start, end}
+		}
+		_, size := utf8.DecodeRuneInString(text[start:])
+		off = start + max(size, 1)
+	}
+	return nil
+}
+
+// startsWord reports whether a word starts at text[i]: at the start of text,
+// after a character that is not a letter or a digit, such as a space, a
+// slash, or an underscore, or at an upper-case letter after a lower-case one,
+// as in camelCase.
+func startsWord(text string, i int) bool {
+	if i == 0 {
+		return true
+	}
+	prev, _ := utf8.DecodeLastRuneInString(text[:i])
+	if !unicode.IsLetter(prev) && !unicode.IsDigit(prev) {
+		return true
+	}
+	next, _ := utf8.DecodeRuneInString(text[i:])
+	return unicode.IsLower(prev) && unicode.IsUpper(next)
 }
 
 // matcher is a compiled query.
 type matcher struct {
 	terms []term
+	// phrase matches all the words next to each other, in order, or is nil
+	// when there is only one.
+	phrase *term
 	// places are where the words and the pattern match.
 	places [places]bool
 	// needles are what a line must hold one of to be parsed, or nil when
@@ -125,20 +175,16 @@ func compile(q Query) (*matcher, error) {
 	default:
 		return nil, fmt.Errorf("who is you or claude, not %q", q.Who)
 	}
-	literal := func(s string, sc scope, cut string) {
-		parts := strings.Fields(s)
-		if len(parts) == 0 {
-			return
-		}
-		quoted := make([]string, len(parts))
-		for i, p := range parts {
-			quoted[i] = regexp.QuoteMeta(p)
-		}
-		re := regexp.MustCompile(`(?i)` + strings.Join(quoted, `\s+`))
-		m.terms = append(m.terms, term{re: re, needle: newNeedle(parts, cut), scope: sc})
-	}
+	var words []string
 	for _, w := range q.Words {
-		literal(w, anywhere, "")
+		if t, ok := literal(strings.Fields(w), anywhere, "", true); ok {
+			m.terms = append(m.terms, t)
+			words = append(words, strings.Fields(w)...)
+		}
+	}
+	if len(words) > 1 {
+		m.phrase = new(term)
+		*m.phrase, _ = literal(words, anywhere, "", true)
 	}
 	if q.Pattern != "" {
 		re, err := regexp.Compile(q.Pattern)
@@ -151,13 +197,13 @@ func compile(q Query) (*matcher, error) {
 		}
 		m.terms = append(m.terms, term{re: re, needle: newNeedle(required(parsed), ""), scope: anywhere})
 	}
-	if q.Ran != "" {
-		literal(q.Ran, ranCommand, "")
+	if t, ok := literal(strings.Fields(q.Ran), ranCommand, "", false); ok {
+		m.terms = append(m.terms, t)
 	}
-	if q.Touched != "" {
-		// A Windows path's separators are escaped in the transcript, so the
-		// needle stops at them.
-		literal(slashed(q.Touched), touchedPath, "/")
+	// A Windows path's separators are escaped in the transcript, so the
+	// needle stops at them.
+	if t, ok := literal(strings.Fields(slashed(q.Touched)), touchedPath, "/", false); ok {
+		m.terms = append(m.terms, t)
 	}
 	if len(m.terms) == 0 {
 		return nil, errors.New("nothing to search for")
@@ -172,12 +218,41 @@ func compile(q Query) (*matcher, error) {
 	return m, nil
 }
 
+// literal matches parts in any case, in order, with any run of white space
+// between them. With wordStart, a match must start a word, unless the first
+// part starts with something else, such as the dot of .go.
+func literal(parts []string, sc scope, cut string, wordStart bool) (term, bool) {
+	if len(parts) == 0 {
+		return term{}, false
+	}
+	quoted := make([]string, len(parts))
+	for i, p := range parts {
+		quoted[i] = regexp.QuoteMeta(p)
+	}
+	first, _ := utf8.DecodeRuneInString(parts[0])
+	t := term{
+		re:        regexp.MustCompile(`(?i)` + strings.Join(quoted, `\s+`)),
+		needle:    newNeedle(parts, cut),
+		scope:     sc,
+		wordStart: wordStart && (unicode.IsLetter(first) || unicode.IsDigit(first)),
+	}
+	// Every part starts a word: the first one when the term must, and the
+	// rest after white space. So does a needle that starts a part.
+	if t.needle != nil {
+		t.needle.wordStart = t.wordStart && t.needle.prefix
+	}
+	return t, true
+}
+
 // needle is text to find in a transcript line, ignoring ASCII case.
 type needle struct {
 	lower []byte
 	// at is the byte of lower that is searched for first: the one least
 	// likely to appear in a transcript, so there are few false starts.
 	at int
+	// prefix is whether lower starts the literal it came from, and wordStart
+	// whether it must start a word.
+	prefix, wordStart bool
 }
 
 // newNeedle is the longest run of the strings that is spelled the same in a
@@ -187,18 +262,38 @@ type needle struct {
 // long s, which the needle misses.
 func newNeedle(literals []string, cut string) *needle {
 	split := func(r rune) bool { return r >= utf8.RuneSelf || !plain(byte(r)) || strings.ContainsRune(cut, r) }
-	best := ""
+	best, prefix := "", false
 	for _, s := range literals {
 		for _, run := range strings.FieldsFunc(s, split) {
 			if len(run) > len(best) {
-				best = run
+				best, prefix = run, strings.HasPrefix(s, run)
 			}
 		}
 	}
 	if best == "" {
 		return nil
 	}
-	return makeNeedle(best)
+	n := makeNeedle(best)
+	n.prefix = prefix
+	return n
+}
+
+// mayStartWord reports whether the text that data[at] begins in a transcript
+// line can start a word once decoded. It may say yes when the word does not
+// start there, never the reverse.
+func mayStartWord(data []byte, at int) bool {
+	if at == 0 {
+		return true
+	}
+	prev := data[at-1]
+	alnum := func(c byte) bool { return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9' }
+	switch {
+	case !alnum(prev), 'a' <= prev && prev <= 'z' && 'A' <= data[at] && data[at] <= 'Z':
+		return true
+	}
+	// An escape, such as \n or a \u with four hex digits, ends in a letter
+	// or a digit, and decodes to a character that need not be one.
+	return at >= 2 && data[at-2] == '\\' || at >= 6 && data[at-6] == '\\' && data[at-5] == 'u'
 }
 
 func makeNeedle(s string) *needle {
@@ -308,36 +403,106 @@ func slashed(path string) string { return strings.ReplaceAll(path, `\`, "/") }
 
 // found is what one session's transcript matched.
 type found struct {
-	// counts are each term's matches in each place.
-	counts   [][places]int
-	snippets [places][]Match
+	// counts are each term's matching records in each place.
+	counts [][places]int
+	// best are the closest records in each place.
+	best [places][]hit
+	read int
 }
 
-// look matches text, found in place, against the terms of scope sc. label,
-// such as a tool's name, starts the snippet.
-func (m *matcher) look(f *found, place int, sc scope, label, text string) {
-	if text == "" || sc == anywhere && !m.places[place] {
+// hit is a record that matched.
+type hit struct {
+	place     int
+	closeness float64
+	// seq orders records as read, so the earlier of two as close is kept.
+	seq   int
+	match Match
+}
+
+func (h hit) score() float64 { return placeWeights[h.place] * h.closeness }
+
+// field is one text of a record, which the terms of its scope match.
+type field struct {
+	sc   scope
+	text string
+}
+
+// look matches one record, found in place, whose texts are fields. label,
+// such as a tool's name, starts its snippet.
+func (m *matcher) look(f *found, place int, label string, fields ...field) {
+	searched := func(fl field) bool { return fl.text != "" && (fl.sc != anywhere || m.places[place]) }
+	matched := 0
+	var at []int
+	atField := 0
+	for i, t := range m.terms {
+		for j, fl := range fields {
+			if fl.sc != t.scope || !searched(fl) {
+				continue
+			}
+			if loc := t.find(fl.text); loc != nil {
+				f.counts[i][place]++
+				matched++
+				// The snippet shows the first match in the first field.
+				if at == nil || j < atField || j == atField && loc[0] < at[0] {
+					at, atField = loc, j
+				}
+				break
+			}
+		}
+	}
+	if matched == 0 {
 		return
 	}
-	saved := false
-	for i, t := range m.terms {
-		if t.scope != sc {
-			continue
-		}
-		loc := t.re.FindStringIndex(text)
-		if loc == nil {
-			continue
-		}
-		f.counts[i][place]++
-		if !saved && len(f.snippets[place]) < keepSnippets {
-			s := snippet(text, loc[0], loc[1])
-			if label != "" {
-				s = label + ": " + s
+	closeness := float64(matched) / float64(len(m.terms))
+	if matched == len(m.terms) {
+		closeness = closeAll
+		for j, fl := range fields {
+			if m.phrase == nil || fl.sc != anywhere || !searched(fl) {
+				continue
 			}
-			f.snippets[place] = append(f.snippets[place], Match{Where: placeNames[place], Snippet: s})
-			saved = true
+			if loc := m.phrase.find(fl.text); loc != nil {
+				closeness, at, atField = closePhrase, loc, j
+				break
+			}
 		}
 	}
+	f.read++
+	h := hit{place: place, closeness: closeness, seq: f.read}
+	kept := f.best[place]
+	if len(kept) == keepSnippets {
+		worst := 0
+		for i, k := range kept {
+			if k.closeness < kept[worst].closeness || k.closeness == kept[worst].closeness && k.seq > kept[worst].seq {
+				worst = i
+			}
+		}
+		if closeness <= kept[worst].closeness {
+			return
+		}
+		kept = slices.Delete(kept, worst, worst+1)
+	}
+	s := snippet(fields[atField].text, at[0], at[1])
+	if label != "" {
+		s = label + ": " + s
+	}
+	h.match = Match{Where: placeNames[place], Snippet: s}
+	f.best[place] = append(kept, h)
+}
+
+// matches are the records kept, the best first.
+func (f *found) matches() []Match {
+	var hits []hit
+	for _, kept := range f.best {
+		hits = append(hits, kept...)
+	}
+	slices.SortStableFunc(hits, func(a, b hit) int {
+		return cmp.Or(cmp.Compare(b.score(), a.score()), cmp.Compare(a.place, b.place), cmp.Compare(a.seq, b.seq))
+	})
+	out := make([]Match, len(hits))
+	for i, h := range hits {
+		out[i] = h.match
+	}
+	return out
 }
 
 // The needles that tell a record's type without parsing it. A JSON string
@@ -369,11 +534,11 @@ func (m *matcher) record(line []byte, f *found) {
 		bs := blocks(r.Message)
 		switch kind, typed, _ := classifyUser(bs); kind {
 		case userPrompt:
-			m.look(f, inYou, anywhere, "", typed)
+			m.look(f, inYou, "", field{anywhere, typed})
 		case userToolResult:
 			for _, b := range bs {
 				if b.Type == "tool_result" {
-					m.look(f, inOutput, anywhere, "", resultText(b.Content))
+					m.look(f, inOutput, "", field{anywhere, resultText(b.Content)})
 				}
 			}
 		}
@@ -381,7 +546,7 @@ func (m *matcher) record(line []byte, f *found) {
 		for _, b := range blocks(r.Message) {
 			switch b.Type {
 			case "text":
-				m.look(f, inClaude, anywhere, "", b.Text)
+				m.look(f, inClaude, "", field{anywhere, b.Text})
 			case "tool_use":
 				m.toolCall(f, b)
 			}
@@ -412,13 +577,14 @@ func (m *matcher) toolCall(f *found, b block) {
 			args = append(args, v)
 		}
 	}
-	m.look(f, inTool, anywhere, b.Name, strings.Join(args, " "))
+	call := []field{{anywhere, strings.Join(args, " ")}}
 	if b.Name == "Bash" {
-		m.look(f, inTool, ranCommand, b.Name, in.Command)
+		call = append(call, field{ranCommand, in.Command})
 	}
 	if editTools[b.Name] {
-		m.look(f, inTool, touchedPath, b.Name, slashed(cmp.Or(in.FilePath, in.NotebookPath)))
+		call = append(call, field{touchedPath, slashed(cmp.Or(in.FilePath, in.NotebookPath))})
 	}
+	m.look(f, inTool, b.Name, call...)
 }
 
 // resultText is a tool result's text: a string, or the text of its blocks.
@@ -440,20 +606,29 @@ func resultText(content json.RawMessage) string {
 }
 
 // score is a session's score, or false when a term matched nothing in it.
+// The spread grows with half the log of each count, so it takes a hundred
+// records in one place to equal one in the place above.
 func (m *matcher) score(f *found, active, now time.Time) (float64, bool) {
-	total := 0.0
+	spread := 0.0
 	for _, counts := range f.counts {
 		matched := false
 		for place, n := range counts {
 			if n > 0 {
 				matched = true
-				total += placeWeights[place] * (1 + math.Log10(float64(n))/2)
+				spread += placeWeights[place] * (1 + math.Log10(float64(n))/2)
 			}
 		}
 		if !matched {
 			return 0, false
 		}
 	}
+	best := 0.0
+	for _, kept := range f.best {
+		for _, h := range kept {
+			best = max(best, h.score())
+		}
+	}
+	total := best + spreadShare*spread/float64(len(f.counts))
 	age := max(now.Sub(active), 0)
 	total *= 1 + recencyBoost*math.Exp2(-float64(age)/float64(recencyHalfLife))
 	return math.Round(total*100) / 100, true
@@ -517,6 +692,10 @@ func (sc *scanner) chunk(data []byte, m *matcher, f *found) {
 				break
 			}
 			at := off + i
+			if nd.wordStart && !mayStartWord(data, at) {
+				off = at + 1
+				continue
+			}
 			start, end := bytes.LastIndexByte(data[:at], '\n')+1, len(data)
 			if j := bytes.IndexByte(data[at:], '\n'); j >= 0 {
 				end = at + j
@@ -555,19 +734,13 @@ func Search(list []Session, q Query) ([]Result, error) {
 			for i := range next {
 				s := list[i]
 				f := &found{counts: make([][places]int, len(m.terms))}
-				m.look(f, inName, anywhere, "", s.Name)
+				m.look(f, inName, "", field{anywhere, s.Name})
 				if sc.file(s.Path, m, f) != nil {
 					continue
 				}
-				score, ok := m.score(f, s.LastActive, q.Now)
-				if !ok {
-					continue
+				if score, ok := m.score(f, s.LastActive, q.Now); ok {
+					results[i] = &Result{Session: s, Score: score, Matches: f.matches()}
 				}
-				r := &Result{Session: s, Score: score, Matches: []Match{}}
-				for _, ms := range f.snippets {
-					r.Matches = append(r.Matches, ms...)
-				}
-				results[i] = r
 			}
 		})
 	}

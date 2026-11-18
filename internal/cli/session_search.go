@@ -39,22 +39,27 @@ func (app *App) sessionSearchCommand() *cobra.Command {
 		Aliases: []string{"grep"},
 		Short:   "Find past sessions by what was said in them",
 		Long: `Find the sessions whose transcripts match every word of QUERY, best first. A
-word matches part of a word, in any case, and quoted words match as a phrase.
-It looks in the session's name, the prompts you typed, Claude's replies, and
-Claude's tool calls: the commands it ran, and the paths and patterns it used.
-It skips slash commands, what the tools returned, and the text Claude Code adds,
-such as reminders and compaction summaries.
+word matches in any case at the start of a word, so lock matches locks and
+fileLock but not block, and quoted words match as a phrase. It looks in the
+session's name, the prompts you typed, Claude's replies, and Claude's tool
+calls: the commands it ran, and the paths and patterns it used. It skips slash
+commands, what the tools returned, and the text Claude Code adds, such as
+reminders and compaction summaries.
 
-A match in the name ranks above one in your prompts, a prompt above a reply, and
-a reply above a tool call. More matches and recent activity rank a session a
-little higher.
+A session ranks by its best match: one prompt, reply, or tool call that holds
+every word, or better, the words next to each other, ranks well above words
+scattered over several. A match in the name ranks above one in your prompts, a
+prompt above a reply, and a reply above a tool call. More matches and recent
+activity rank a session a little higher.
 
 -e takes a regular expression in Go's RE2 syntax: Perl's, without lookaround or
-backreferences. It is case-sensitive unless it starts with (?i). --ran matches
-only the commands of the Bash tool, and --touched only the paths of the files
-Claude edited or wrote. -e, --ran, and --touched each work without QUERY.
+backreferences. It matches anywhere, and is case-sensitive unless it starts
+with (?i). --ran matches part of the commands of the Bash tool, and --touched
+part of the paths of the files Claude edited or wrote. -e, --ran, and --touched
+each work without QUERY.
 
-Each line shows the best match. -o json gives each session's matches. Resume
+Each line shows the best match, from the closest record. -o json gives each
+session's matches. Resume
 one with claudes session resume ID.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hits, more, err := app.search(args, f)
