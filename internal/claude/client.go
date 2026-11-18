@@ -104,6 +104,7 @@ func (r execRunner) Run(ctx context.Context, dir string, args ...string) (string
 var sessionVars = []string{
 	"AI_AGENT",
 	"CLAUDECODE",
+	"CLAUDE_CODE_CHILD_NOTES_DIR",
 	"CLAUDE_CODE_CHILD_SESSION",
 	"CLAUDE_CODE_ENTRYPOINT",
 	"CLAUDE_CODE_EXECPATH",
@@ -111,6 +112,7 @@ var sessionVars = []string{
 	"CLAUDE_CODE_MESSAGING_TOKEN",
 	"CLAUDE_CODE_SESSION_ATTENDED",
 	"CLAUDE_CODE_SESSION_ID",
+	"CLAUDE_EFFORT",
 	"CLAUDE_JOB_DIR",
 	"CLAUDE_PID",
 }
