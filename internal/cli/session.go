@@ -14,6 +14,6 @@ for session mv, which copies one, and session gc, which removes them.`,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
 	cmd.AddCommand(app.sessionLsCommand(), app.sessionDuCommand(), app.sessionSearchCommand(), app.sessionShowCommand(), app.sessionTriageCommand(), app.sessionWhereCommand(),
-		alone(app.sessionResumeCommand()), alone(app.sessionMvCommand()), alone(reports(app.sessionGcCommand())))
+		alone(app.sessionResumeCommand()), alone(app.sessionMvCommand()), alone(app.reports(app.sessionGcCommand())))
 	return cmd
 }

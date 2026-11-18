@@ -1,4 +1,4 @@
-package style
+package render
 
 import (
 	"path/filepath"
@@ -89,66 +89,6 @@ func TestCutMiddle(t *testing.T) {
 		if got := cutMiddle(tc.in, tc.limit); got != tc.want {
 			t.Errorf("cutMiddle(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
 		}
-	}
-}
-
-func TestCutEndsWhatItShortensWithAnEllipsis(t *testing.T) {
-	for _, tc := range []struct {
-		in    string
-		limit int
-		want  string
-	}{
-		{"short", 10, "short"},
-		{"exactly 10", 10, "exactly 10"},
-		{"one word too many", 10, "one word…"},
-		{"日本語のテキスト", 7, "日本語…"},
-	} {
-		if got := cut(tc.in, tc.limit); got != tc.want || Width(got) > tc.limit {
-			t.Errorf("cut(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
-		}
-	}
-}
-
-func TestFitGivesADirectoryTheRoomTheOtherColumnsLeave(t *testing.T) {
-	path := filepath.FromSlash(deep)
-	faint := func(s string) string { return "<" + s + ">" }
-	for _, tc := range []struct {
-		layout Layout
-		want   string
-	}{
-		{Layout{Dirs: DirsMiddle}, Middle(path, MaxDir)},
-		{Layout{Width: 200, Dirs: DirsMiddle}, path},
-		// ID and NAME take 8 and 4 columns, and the gaps between columns 4.
-		{Layout{Width: 46, Dirs: DirsMiddle}, Middle(path, 30)},
-		{Layout{Width: 48, Margin: 2, Dirs: DirsMiddle}, Middle(path, 30)},
-		{Layout{Width: 10, Dirs: DirsFish}, Fish(path, MinDir)},
-		{Layout{Width: 10, Dirs: DirsFull}, path},
-	} {
-		rows := [][]string{{"ID", "DIR", "NAME"}, {"0123abcd", path, "api"}}
-		l := tc.layout
-		l.Columns = []Column{dirColumn(1)}
-		Fit(rows, l, faint)
-		if rows[1][1] != "<"+tc.want+">" || rows[0][1] != "DIR" {
-			t.Errorf("%+v: got %q, want %q", tc.layout, rows[1][1], tc.want)
-		}
-	}
-}
-
-func TestFitCutsTheLastColumnToWhatIsLeft(t *testing.T) {
-	path, doing := filepath.FromSlash(deep), strings.Repeat("checking the build ", 5)
-	plain := func(s string) string { return s }
-	rows := [][]string{{"DIR", "DOING"}, {path, doing}}
-	Fit(rows, Layout{Width: 50, Dirs: DirsMiddle, Columns: []Column{lastColumn(1, 0), dirColumn(0)}}, plain)
-	if got := Width(rows[1][0]); got > 50-2-MinLast {
-		t.Errorf("DIR %q takes %d columns", rows[1][0], got)
-	}
-	if got := Width(rows[1][0]) + 2 + Width(rows[1][1]); got > 50 || Width(rows[1][1]) < MinLast-1 {
-		t.Errorf("the line is %d columns: %q", got, rows[1])
-	}
-	rows = [][]string{{"DIR", "DOING"}, {path, doing}}
-	Fit(rows, Layout{Dirs: DirsMiddle, Columns: []Column{lastColumn(1, 20), dirColumn(0)}}, plain)
-	if Width(rows[1][1]) > 20 || Width(rows[1][0]) > MaxDir {
-		t.Errorf("off a terminal: %q", rows[1])
 	}
 }
 

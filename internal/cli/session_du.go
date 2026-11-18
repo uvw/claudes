@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -44,7 +44,7 @@ func (app *App) sessionDuCommand() *cobra.Command {
 	var in string
 	since := app.daysFlag(0)
 	var top countFlag
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:     "du [TARGET...]",
 		Aliases: []string{"df"},
@@ -82,8 +82,8 @@ session.`,
 			}
 			report := duTally(list, leftovers)
 			report.Top = duTop(list, top.n)
-			if out.format != "text" {
-				return out.encode(app.Out, report)
+			if out != render.Text {
+				return out.Encode(app.Out, report)
 			}
 			if len(report.Dirs) == 0 && len(leftovers) == 0 {
 				fmt.Fprintln(app.Out, "No sessions.")
@@ -93,7 +93,7 @@ session.`,
 			var sum transcripts.Disk
 			sessions := 0
 			for _, f := range report.Dirs {
-				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), dirCell(f.Dir)))
+				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), render.DirCell(f.Dir)))
 				sum.Add(f.Disk)
 				sessions += f.Sessions
 			}
@@ -102,11 +102,11 @@ session.`,
 				for _, l := range leftovers {
 					size += l.Size
 				}
-				table = append(table, []string{style.Size(size), "-", "-", "-", "-", "-",
+				table = append(table, []string{render.Size(size), "-", "-", "-", "-", "-",
 					fmt.Sprintf("%d leftover dir(s) with no transcript", len(leftovers))})
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
-			table[len(table)-1][0] = style.Size(report.Total)
+			table[len(table)-1][0] = render.Size(report.Total)
 			if err := app.writeTable(app.Out, table, tableFit{}); err != nil || len(report.Top) == 0 {
 				return err
 			}
@@ -117,8 +117,8 @@ session.`,
 				if s.Disk.Total > 0 {
 					share = strconv.FormatInt(s.Disk.Sidecar*100/s.Disk.Total, 10) + "%"
 				}
-				table = append(table, []string{s.ID, style.Size(s.Disk.Total), style.Size(s.Disk.Sidecar), share,
-					dirCell(s.Cwd), nameCell(s.Label())})
+				table = append(table, []string{s.ID, render.Size(s.Disk.Total), render.Size(s.Disk.Sidecar), share,
+					render.DirCell(s.Cwd), render.NameCell(s.Label())})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -127,7 +127,7 @@ session.`,
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d, 12h, or today")
 	cmd.Flags().Lookup("since").DefValue = ""
 	cmd.Flags().VarP(&top, "top", "t", "also list the N sessions that take the most space")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 
@@ -146,8 +146,8 @@ func duTop(list []pastSession, n int) []duSession {
 }
 
 func duRow(d transcripts.Disk, sessions, dir string) []string {
-	return []string{style.Size(d.Total), style.Size(d.Transcript), style.Size(d.Sidecar),
-		style.Size(d.Copies), style.Size(d.FileHistory), sessions, dir}
+	return []string{render.Size(d.Total), render.Size(d.Transcript), render.Size(d.Sidecar),
+		render.Size(d.Copies), render.Size(d.FileHistory), sessions, dir}
 }
 
 // duTally groups list, which is newest first, by project directory, biggest

@@ -14,6 +14,7 @@ import (
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -176,7 +177,7 @@ func (app *App) jobToMove(ctx context.Context, p pastSession, dir string) (movin
 	case !ok:
 		job.keep = "claudes cannot read the options Claude Code saved for it"
 	case !isFinished(s):
-		job.keep = fmt.Sprintf("it is not stopped (%s)", dash(s.State))
+		job.keep = fmt.Sprintf("it is not stopped (%s)", render.Dash(s.State))
 	case err != nil:
 		job.keep = fmt.Sprintf("claudes cannot tell whether it is paused: %v", err)
 	case slices.ContainsFunc(parked, func(e park.Entry) bool { return e.SessionID == s.SessionID }):

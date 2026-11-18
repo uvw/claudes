@@ -17,7 +17,7 @@ adds what an agent needs on top of them.
 | The signals that end a run                | `internal/interrupt`                                        |
 | Error types and exit codes                | `internal/exit`                                             |
 | Calendar words such as today and week     | `internal/calendar`, `internal/cli/app_flags.go`            |
-| What the commands share                   | `internal/cli/app_*.go`, `cells.go`                         |
+| What the commands share                   | `internal/cli/app_*.go`                                     |
 | Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
 | Which sessions a bulk command picks       | `internal/cli/app_selection.go`                             |
 | Stopping, parking, and relaunching        | `internal/cli/app_relaunch.go`                              |
@@ -43,8 +43,9 @@ adds what an agent needs on top of them.
 | Where claudes keeps its own files         | `internal/paths`, one file per platform                     |
 | Checking directories: within, same, gone  | `internal/paths/dirs.go`                                    |
 | Atomic writes and lock directories        | `internal/files`                                            |
-| Colors and the text tables' layout        | `internal/style`                                            |
-| Fitting tables to the terminal            | `internal/style`, `internal/cli/app_output.go`              |
+| Colors, tables, cells, and `-o` formats   | `internal/render`                                           |
+| Fitting tables to the terminal            | `internal/render/fit.go`, `internal/cli/app_output.go`      |
+| The report `-o json` and `-o yaml` print  | `internal/render/report.go`, `internal/cli/app_report.go`   |
 | CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`                   |
 | The release notes' prompt, tests, and pin | `.github/release-notes/`                                    |
 | The checks' tools and their pins          | `tools/`, `.github/workflows/hack/tool-pins.sh`             |
@@ -148,9 +149,10 @@ heredoc, and never run it through Prettier.
    new session-scoped variable there.
 9. **Change the park file only through `park.File.Update`.** It holds the park
    file's lock, so two claudes runs cannot lose each other's entries.
-10. **Every path a table shows goes through `dirCell`, every branch through
-    `branchCell`, and every table through `app.writeTable`.** A path or branch
-    that skips them wraps every row, and `TestTablesPutPathsThroughDirCell` or
+10. **Every path a table shows goes through `render.DirCell`, every branch
+    through `render.BranchCell`, and every table through `app.writeTable`.** A
+    path or branch that skips them wraps every row, and
+    `TestTablesPutPathsThroughDirCell` or
     `TestTablesPutBranchesThroughBranchCell` fails.
 11. **A transcript record type claudes does not know keeps the session out of
     `session gc`'s empty and trivial kinds.** When Claude Code adds a type that

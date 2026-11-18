@@ -15,6 +15,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/teams"
 )
@@ -36,7 +37,7 @@ func requireFinished(sessions []claude.Session) error {
 		case s.Running():
 			return exit.Refusal(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
 		case !isFinished(s):
-			return exit.Refusal(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), dash(s.State)))
+			return exit.Refusal(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), render.Dash(s.State)))
 		}
 	}
 	return nil
@@ -91,23 +92,23 @@ the system trash; --purge deletes them for good.`,
 				app.say("Nothing to clean up.")
 				return nil
 			}
-			rows := make([]planRow, 0, len(picked))
+			rows := make([]render.PlanRow, 0, len(picked))
 			for _, s := range picked {
-				rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: s.State, cwd: s.Cwd, note: "last active " + ago(app.Now(), app.lastActive(s))})
+				rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: s.State, Cwd: s.Cwd, Note: "last active " + render.Ago(app.Now(), app.lastActive(s))})
 			}
 			app.printPlanOf("Removing", "session(s)", "STATE", rows)
 			if proceed, err := app.gate(plan, "Remove these sessions from the list?"); !proceed {
 				return err
 			}
 			hand := context.WithoutCancel(ctx)
-			var failures []failure
+			var failures []render.Failure
 			for i, s := range picked {
 				if ctx.Err() != nil {
 					notReached(app, picked[i:])
 					break
 				}
 				if err := app.Agents.Remove(hand, s.JobID); err != nil {
-					failures = append(failures, failure{s.Label(), err.Error(), s})
+					failures = append(failures, render.Failure{Label: s.Label(), Reason: err.Error(), Of: s})
 					app.progressFailed(s)
 					continue
 				}
@@ -164,6 +165,9 @@ type leftover struct{ teams.Folder }
 
 func (l leftover) ID() string { return strings.TrimPrefix(l.Name, "session-") }
 
+// Dir is the leftover directory itself.
+func (l leftover) Dir() string { return l.Path }
+
 func (l leftover) Label() string {
 	if filepath.Base(filepath.Dir(l.Path)) == "teams" {
 		return "team"
@@ -217,10 +221,10 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 		app.say("No team directories or task lists to clean up.")
 		return nil
 	}
-	rows := make([]planRow, 0, len(folders))
+	rows := make([]render.PlanRow, 0, len(folders))
 	for _, f := range folders {
 		l := leftover{f}
-		rows = append(rows, planRow{id: l.ID(), name: l.Label(), cwd: f.Path, note: "last changed " + ago(app.Now(), f.Modified)})
+		rows = append(rows, render.PlanRow{ID: l.ID(), Name: l.Label(), Cwd: f.Path, Note: "last changed " + render.Ago(app.Now(), f.Modified)})
 	}
 	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
 	if proceed, err := app.gate(o.plan, "Remove these team dirs and task lists?"); !proceed {
@@ -230,7 +234,7 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 	if o.purge {
 		verb = "deleted"
 	}
-	var failures []failure
+	var failures []render.Failure
 	for i, f := range folders {
 		if ctx.Err() != nil {
 			notReached(app, leftovers(folders[i:]))
@@ -238,7 +242,7 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 		}
 		l := leftover{f}
 		if err := app.Teams.Remove(f, app.remover(o.purge)); err != nil {
-			failures = append(failures, failure{l.Label() + " " + l.ID(), err.Error(), l})
+			failures = append(failures, render.Failure{Label: l.Label() + " " + l.ID(), Reason: err.Error(), Of: l})
 			app.progressFailed(l)
 			continue
 		}

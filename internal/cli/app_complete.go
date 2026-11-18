@@ -8,6 +8,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/render"
 )
 
 // sessionKind picks the sessions a command can act on, so completion offers
@@ -118,7 +119,7 @@ func (app *App) completeResumeSkip(cmd *cobra.Command, _ []string, _ string) ([]
 }
 
 func describeForCompletion(s claude.Session) string {
-	return fmt.Sprintf("%s %s %s", s.ID(), kind(s), dash(s.State))
+	return fmt.Sprintf("%s %s %s", s.ID(), kind(s), render.Dash(s.State))
 }
 
 func completeKeys(_ *cobra.Command, args []string, _ string) ([]cobra.Completion, cobra.ShellCompDirective) {
@@ -148,7 +149,7 @@ func (app *App) completePast(single bool) cobra.CompletionFunc {
 				state = "running"
 			}
 			out = append(out, cobra.CompletionWithDesc(p.Label(),
-				fmt.Sprintf("%s %s %s", p.ShortID, state, homeShort(p.Cwd))))
+				fmt.Sprintf("%s %s %s", p.ShortID, state, render.HomeShort(p.Cwd))))
 		}
 		return out, cobra.ShellCompDirectiveNoFileComp
 	}

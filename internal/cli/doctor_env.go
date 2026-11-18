@@ -12,6 +12,7 @@ import (
 
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/version"
 )
 
@@ -31,7 +32,7 @@ type envSection struct {
 }
 
 func (app *App) doctorEnvCommand() *cobra.Command {
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "Print versions, claudes' files, and the variables that move them",
@@ -41,7 +42,7 @@ a bug report.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			sections := app.environment(cmd.Context())
-			if out.format != "text" {
+			if out != render.Text {
 				report := map[string]map[string]string{}
 				for _, s := range sections {
 					report[s.name] = map[string]string{}
@@ -49,7 +50,7 @@ a bug report.`,
 						report[s.name][kv[0]] = kv[1]
 					}
 				}
-				return out.encode(app.Out, report)
+				return out.Encode(app.Out, report)
 			}
 			tw := tabwriter.NewWriter(app.Out, 0, 0, 2, ' ', 0)
 			for i, s := range sections {
@@ -58,13 +59,13 @@ a bug report.`,
 				}
 				fmt.Fprintf(tw, "%s\n", s.name)
 				for _, kv := range s.pairs {
-					fmt.Fprintf(tw, "  %s\t%s\n", kv[0], dash(kv[1]))
+					fmt.Fprintf(tw, "  %s\t%s\n", kv[0], render.Dash(kv[1]))
 				}
 			}
 			return tw.Flush()
 		},
 	}
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 

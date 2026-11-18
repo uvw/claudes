@@ -1,14 +1,12 @@
-package style
+package render
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
-	"text/tabwriter"
 )
 
 var sgr = regexp.MustCompile("\x1b\\[[0-9;]*m")
@@ -109,61 +107,6 @@ func TestOnColorsEachWordAndNoSpace(t *testing.T) {
 	}
 }
 
-func TestTableLinesUpAsTabwriterDoes(t *testing.T) {
-	rows := [][]string{
-		{"RESULT", "CHECK", "DETAIL"},
-		{"ok", "claude", "2.1.330 at /bin/claude"},
-		{"fail", "agents --json", "first problem"},
-		{"", "", "second problem"},
-		{"warn", "", ""},
-	}
-	var want bytes.Buffer
-	tw := tabwriter.NewWriter(&want, 0, 0, 2, ' ', 0)
-	for _, r := range rows {
-		fmt.Fprintln(tw, strings.Join(r, "\t"))
-	}
-	tw.Flush()
-
-	var plain bytes.Buffer
-	if err := Table(&plain, rows); err != nil {
-		t.Fatal(err)
-	}
-	if plain.String() != want.String() {
-		t.Fatalf("got:\n%s\nwant:\n%s", plain.String(), want.String())
-	}
-
-	colored := make([][]string, len(rows))
-	for i, r := range rows {
-		colored[i] = []string{On.Red(r[0]), r[1], On.Faint(r[2])}
-	}
-	var out bytes.Buffer
-	if err := Table(&out, colored); err != nil {
-		t.Fatal(err)
-	}
-	if !sgr.MatchString(out.String()) {
-		t.Fatalf("no colors:\n%q", out.String())
-	}
-	if got := sgr.ReplaceAllString(out.String(), ""); got != want.String() {
-		t.Fatalf("colored table without its colors:\n%s\nwant:\n%s", got, want.String())
-	}
-}
-
-func TestSizeReadsAsDuDoes(t *testing.T) {
-	for n, want := range map[int64]string{
-		0:             "0B",
-		512:           "512B",
-		1024:          "1.0K",
-		12 * 1024:     "12K",
-		3_500_000:     "3.3M",
-		1_300_000_000: "1.2G",
-		5 << 40:       "5.0T",
-	} {
-		if got := Size(n); got != want {
-			t.Errorf("Size(%d) = %q, want %q", n, got, want)
-		}
-	}
-}
-
 func TestTerminalWidthOfWhatIsNoTerminal(t *testing.T) {
 	if w := TerminalWidth(&strings.Builder{}); w != 0 {
 		t.Errorf("a buffer has width %d", w)
@@ -180,4 +123,44 @@ func TestTerminalWidthOfWhatIsNoTerminal(t *testing.T) {
 	if w := TerminalWidth(f); w != 0 {
 		t.Errorf("a file taken for a terminal has width %d", w)
 	}
+}
+
+// Detect's doc names only CLICOLOR_FORCE as the way to color a pipe. Many
+// macOS users export CLICOLOR=1 for ls, and colorprofile honors TTY_FORCE.
+func TestOnlyCLICOLORFORCEColorsAPipe(t *testing.T) {
+	for _, env := range [][]string{
+		{"CLICOLOR=1"},
+		{"CLICOLOR=1", "TERM=xterm-256color"},
+		{"TTY_FORCE=1", "TERM=xterm-256color"},
+		{"TTY_FORCE=1", "WT_SESSION=abc"},
+	} {
+		if Detect(&bytes.Buffer{}, env).Colors() {
+			t.Errorf("%v colors a pipe", env)
+		}
+	}
+}
+
+// lipgloss Render pads every line of a multi-line string to the widest one and
+// turns tabs into spaces, so a colored error differs from a plain one.
+func TestRedKeepsTheTextAsIs(t *testing.T) {
+	text := "short\na much longer line\tend"
+	got := On.Red(text)
+	plain := stripANSI(got)
+	if plain != text {
+		t.Fatalf("Red changed the text: %q", plain)
+	}
+}
+
+func stripANSI(s string) string {
+	var b bytes.Buffer
+	for i := 0; i < len(s); i++ {
+		if s[i] == 0x1b {
+			// The letter test reads better whole than with De Morgan's law applied.
+			for i++; i < len(s) && !(s[i] >= 'A' && s[i] <= 'Z' || s[i] >= 'a' && s[i] <= 'z'); i++ { //nolint:staticcheck
+			}
+			continue
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
 }

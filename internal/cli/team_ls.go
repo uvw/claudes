@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/teams"
 )
@@ -33,7 +34,7 @@ func (r teamRow) Aliases() []string { return claude.NonEmpty(r.Lead, r.LeadID, r
 
 func (app *App) teamLsCommand() *cobra.Command {
 	var all bool
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "ls [LEAD...]",
 		Short: "List agent teams at work: leads, teammates, and task progress",
@@ -52,8 +53,8 @@ runs, which claudes gc --teams removes.`,
 					return err
 				}
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, rows)
+			if out != render.Text {
+				return out.Encode(app.Out, rows)
 			}
 			if len(rows) == 0 {
 				fmt.Fprintln(app.Out, "No teams.")
@@ -66,17 +67,17 @@ runs, which claudes gc --teams removes.`,
 				if len(r.Teammates) > 0 {
 					mates = c.Magenta(shell.PrintableJoin(r.Teammates))
 				}
-				lead := nameCell(r.Label())
+				lead := render.NameCell(r.Label())
 				if !r.Running {
 					lead = c.Faint(lead + " (not running)")
 				}
-				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), dirCell(r.Cwd), lead})
+				table = append(table, []string{r.LeadID, mates, taskSummary(r.Tasks), render.DirCell(r.Cwd), lead})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "include teams with no teammates and teams whose lead no longer runs")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 

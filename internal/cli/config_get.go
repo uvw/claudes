@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func (app *App) configGetCommand() *cobra.Command {
@@ -32,7 +33,7 @@ func (app *App) configGetCommand() *cobra.Command {
 			fmt.Fprintln(tw, "KEY\tVALUE\tWHAT IT DOES")
 			for _, k := range config.Keys {
 				value, _ := config.Get(cfg, k.Name)
-				fmt.Fprintf(tw, "%s\t%s\t%s\n", k.Name, dash(value), k.About)
+				fmt.Fprintf(tw, "%s\t%s\t%s\n", k.Name, render.Dash(value), k.About)
 			}
 			return tw.Flush()
 		},

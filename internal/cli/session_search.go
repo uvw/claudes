@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -33,7 +34,7 @@ type searchFlags struct {
 
 func (app *App) sessionSearchCommand() *cobra.Command {
 	f := searchFlags{who: choiceFlag{of: []string{"you", "claude"}}, top: countFlag{n: 20}, since: app.daysFlag(0)}
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:     "search QUERY...",
 		Aliases: []string{"grep"},
@@ -73,8 +74,8 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 			if err != nil {
 				return err
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, hits)
+			if out != render.Text {
+				return out.Encode(app.Out, hits)
 			}
 			if len(hits) == 0 {
 				fmt.Fprintln(app.Out, "No sessions match.")
@@ -83,8 +84,8 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 			table := [][]string{{"ID", "ACTIVE", "WHERE", "DIR", "NAME", "MATCH"}}
 			for _, h := range hits {
 				best := h.Matches[0]
-				table = append(table, []string{h.ID, age(app.Now(), h.LastActive), best.Where,
-					dirCell(h.Cwd), nameCell(cmp.Or(h.Name, h.ID)), shell.Printable(best.Snippet)})
+				table = append(table, []string{h.ID, render.Age(app.Now(), h.LastActive), best.Where,
+					render.DirCell(h.Cwd), render.NameCell(cmp.Or(h.Name, h.ID)), shell.Printable(best.Snippet)})
 			}
 			if err := app.writeTable(app.Out, table, tableFit{fitLast: true}); err != nil {
 				return err
@@ -109,7 +110,7 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 	cmd.Flags().Lookup("since").DefValue = ""
 	cmd.Flags().VarP(&f.top, "top", "t", "show the N best sessions; 0 shows all")
 	cmd.Flags().BoolVar(&f.noRedact, "no-redact", false, "print secrets instead of masking them")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 

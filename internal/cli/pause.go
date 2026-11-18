@@ -10,6 +10,7 @@ import (
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func (app *App) pauseCommand() *cobra.Command {
@@ -44,14 +45,14 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 		app.printLeftOut(sel, "paused")
 		return nil
 	}
-	rows := make([]planRow, 0, len(sel.chosen))
+	rows := make([]render.PlanRow, 0, len(sel.chosen))
 	for _, s := range sel.chosen {
 		note := ""
 		if app.isHost(s) {
 			note = "this session: paused last"
 		}
 		note = joinNotes(note, app.teamNote(s))
-		rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: dash(s.Activity()), cwd: s.Cwd, note: note})
+		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Pausing", rows)
 	if proceed, err := app.gate(f.planFlags, "Pause these sessions?"); !proceed {
@@ -73,22 +74,22 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 
 	others, host := app.splitHost(sel.chosen)
 	hand := context.WithoutCancel(ctx)
-	var failures []failure
+	var failures []render.Failure
 	for i, s := range others {
 		if ctx.Err() != nil {
 			notReached(app, others[i:])
 			break
 		}
 		if !paths.IsDir(s.Cwd) {
-			failures = append(failures, failure{s.Label(), fmt.Sprintf("directory %s is gone, so it was not stopped: it could not be resumed", s.Cwd), s})
+			failures = append(failures, render.Failure{Label: s.Label(), Reason: fmt.Sprintf("directory %s is gone, so it was not stopped: it could not be resumed", s.Cwd), Of: s})
 			if err := app.unpark(s.SessionID); err != nil {
-				failures = append(failures, failure{label: "park file", reason: err.Error()})
+				failures = append(failures, render.Failure{Label: "park file", Reason: err.Error()})
 			}
 			app.progressFailed(s)
 			continue
 		}
 		if err := app.stopSession(hand, s); err != nil {
-			failures = append(failures, failure{s.Label(), app.stopFailed(hand, s, err).Error(), s})
+			failures = append(failures, render.Failure{Label: s.Label(), Reason: app.stopFailed(hand, s, err).Error(), Of: s})
 			app.progressFailed(s)
 			continue
 		}

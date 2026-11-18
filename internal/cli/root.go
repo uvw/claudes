@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/version"
 )
 
@@ -40,7 +40,7 @@ func (app *App) Run(args []string) int {
 	if app.Environ != nil {
 		env = app.Environ()
 	}
-	app.colors, app.errColors = style.Detect(app.Out, env), style.Detect(app.Err, env)
+	app.colors, app.errColors = render.Detect(app.Out, env), render.Detect(app.Err, env)
 	root := app.rootCommand()
 	if passThrough(root, args) {
 		if len(args) > 0 && args[0] == "--" {
@@ -174,17 +174,17 @@ same as Ctrl+T in agent view.`,
 	root.PersistentFlags().BoolP("verbose", "v", false, "log each claude call and step to stderr")
 	root.AddCommand(
 		app.lsCommand(),
-		alone(reports(app.pinCommand(true))),
-		alone(reports(app.pinCommand(false))),
-		alone(reports(app.restartCommand())),
-		alone(reports(app.pauseCommand())),
-		alone(reports(app.resumeCommand())),
-		alone(reports(app.pingCommand())),
-		alone(reports(app.stopCommand())),
+		alone(app.reports(app.pinCommand(true))),
+		alone(app.reports(app.pinCommand(false))),
+		alone(app.reports(app.restartCommand())),
+		alone(app.reports(app.pauseCommand())),
+		alone(app.reports(app.resumeCommand())),
+		alone(app.reports(app.pingCommand())),
+		alone(app.reports(app.stopCommand())),
 		app.logsCommand(),
 		app.attachCommand(),
 		app.whereCommand(),
-		alone(reports(app.gcCommand())),
+		alone(app.reports(app.gcCommand())),
 		app.skillCommand(),
 		app.configCommand(),
 		app.doctorCommand(),

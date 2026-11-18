@@ -8,6 +8,7 @@ import (
 
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -57,7 +58,7 @@ func (app *App) pinCommand(pin bool) *cobra.Command {
 					app.say("already %s: %s (%s)", verb, s.Label(), s.JobID)
 				}
 				app.record(func(rep *report) {
-					e := entryOf(s)
+					e := render.EntryOf(s)
 					e.Result = result
 					rep.Results = append(rep.Results, e)
 				})

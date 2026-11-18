@@ -7,13 +7,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 )
 
 func (app *App) sessionWhereCommand() *cobra.Command {
 	var one bool
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "where TARGET...",
 		Short: "Print the directories of past and running sessions",
@@ -47,8 +48,8 @@ session's id, directory, and name.
 				}
 				return exit.Unmatched(fmt.Errorf("%d sessions match: %s. Name one", len(picked), strings.Join(names, ", ")))
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, picked)
+			if out != render.Text {
+				return out.Encode(app.Out, picked)
 			}
 			found := make([]dirRow, len(picked))
 			for i, p := range picked {
@@ -58,6 +59,6 @@ session's id, directory, and name.
 		},
 	}
 	cmd.Flags().BoolVar(&one, "one", false, "fail unless exactly one session matches")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }

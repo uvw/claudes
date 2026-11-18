@@ -8,6 +8,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/version"
@@ -215,7 +216,7 @@ func requireRunning(sessions []claude.Session) error {
 	for _, s := range sessions {
 		if !s.Running() {
 			return exit.Refusal(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
-				s.Label(), dash(s.State)))
+				s.Label(), render.Dash(s.State)))
 		}
 	}
 	return nil

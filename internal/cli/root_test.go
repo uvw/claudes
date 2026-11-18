@@ -116,9 +116,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
-var notYetMoved = []string{
-	"cells.go", "cells_test.go",
-}
+var notYetMoved = []string{}
 
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
@@ -236,7 +234,6 @@ var plumbingFuncs = map[string]string{
 	"commandName": "finds the command among the arguments, for passThrough and Run",
 	"fixesConfig": "names the commands that run with a broken config.yaml",
 	"alone":       "marks a command that takes the run lock",
-	"reports":     "marks a command that prints a report for -o json and -o yaml",
 }
 
 // plumbingTypes are the types other than App whose methods the app files may
@@ -244,7 +241,6 @@ var plumbingFuncs = map[string]string{
 var plumbingTypes = map[string]string{
 	"lifecycleFlags": "the flags of restart, pause, and resume",
 	"planFlags":      "--dry-run and --confirm",
-	"outputFlag":     "-o, which every command that prints data takes",
 	"days":           "a flag value that also takes days or a calendar word, such as 7d or today",
 	"countFlag":      "a flag value that takes a whole number",
 	"choiceFlag":     "a flag value that takes one of a few words",
@@ -254,17 +250,14 @@ var plumbingTypes = map[string]string{
 // notYetHelpers are the functions this package declares that belong in an app
 // file as *App methods, or in a package of their own concern.
 var notYetHelpers = []string{
-	"activity", "age", "ago", "branchCell", "checkFail", "checkOK", "checkWarn",
-	"clearStyle", "completeKeys", "count", "countCell", "dash",
-	"describeForCompletion", "dirCell", "doing", "duRow", "duTally", "duTop",
-	"entryOf", "firstLine", "firstPrompt", "gcCommandFor", "homeShort",
-	"isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
-	"leftovers", "nameCell", "nameWithSource", "named", "noProfile", "noteOf",
-	"orList", "pickPast", "readTally", "refOf", "removeCommand",
-	"requireFinished", "requireRunning", "runningIn", "sameName",
-	"sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet", "stamp",
-	"taskSummary", "tokenCount", "triageOf", "triageSize", "trivial",
-	"trueFirst", "withOptions", "zeroIfKnown",
+	"activity", "checkFail", "checkOK", "checkWarn", "completeKeys", "count",
+	"describeForCompletion", "doing", "duRow", "duTally", "duTop", "firstPrompt",
+	"gcCommandFor", "isFinished", "joinNotes", "keepWhy", "kind", "leftovers",
+	"nameWithSource", "named", "noProfile", "orList", "pickPast", "readTally",
+	"refOf", "removeCommand", "requireFinished", "requireRunning", "runningIn",
+	"sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
+	"stamp", "taskSummary", "triageOf", "triageSize", "trivial", "trueFirst",
+	"withOptions", "zeroIfKnown",
 }
 
 func TestCLIDeclaresNoHelpers(t *testing.T) {

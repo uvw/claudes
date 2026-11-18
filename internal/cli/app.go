@@ -19,7 +19,7 @@ import (
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/trash"
@@ -125,7 +125,7 @@ type App struct {
 	// Environ is the environment that decides colors; nil leaves them off.
 	Environ func() []string
 	// colors and errColors style text for Out and Err.
-	colors, errColors style.Palette
+	colors, errColors render.Palette
 }
 
 func newApp() *App {
@@ -156,7 +156,7 @@ func newApp() *App {
 	app.Provenance = func(ctx context.Context, archive string, fromGitHub bool) (string, error) {
 		return upgrade.Provenance(ctx, app.Which, archive, fromGitHub)
 	}
-	app.Width = func() int { return style.TerminalWidth(app.Out) }
+	app.Width = func() int { return render.TerminalWidth(app.Out) }
 	client := claude.NewClient()
 	client.Log = app.log()
 	app.Agents = client

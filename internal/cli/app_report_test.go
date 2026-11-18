@@ -2,6 +2,8 @@ package cli
 
 import (
 	"encoding/json"
+	"go/ast"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -10,18 +12,21 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/teams"
 )
 
-func readReport(t *testing.T, h *harness) report {
+func readReport(t *testing.T, h *harness) render.Report {
 	t.Helper()
-	var r report
+	var r render.Report
 	if err := json.Unmarshal(h.out.Bytes(), &r); err != nil {
 		t.Fatalf("stdout is not one JSON report: %v\n%s", err, h.out)
 	}
 	return r
 }
 
-func results(entries []reportEntry) []string {
+func results(entries []render.Entry) []string {
 	out := []string{}
 	for _, e := range entries {
 		out = append(out, e.Name+" "+e.Result)
@@ -210,5 +215,33 @@ func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
 	h.exits(t, exit.NoMatch, "where", "nobody")
 	if !strings.HasPrefix(h.err.String(), "\x1b[31mclaudes: ") {
 		t.Fatalf("the error is not red:\n%q", h.err)
+	}
+}
+
+// TestEverySubjectCarriesItsDirectory checks that every type a report lists
+// gives its cwd. A type in this package with a Dir method must be listed here.
+func TestEverySubjectCarriesItsDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "work")
+	subjects := map[string]render.Subject{
+		"claude.Session": claude.Session{SessionID: "11111111-aaaa", Cwd: dir},
+		"park.Entry":     park.Entry{SessionID: "22222222-bbbb", Name: "api", Cwd: dir},
+		"resumable":      resumable{Entry: park.Entry{SessionID: "33333333-cccc", Name: "api", Cwd: dir}},
+		"leftover":       leftover{teams.Folder{Path: dir, Name: "session-44444444"}},
+		"gcItem":         gcItem{sessionID: "55555555-dddd", name: "api", why: kindTrivial, dir: dir},
+	}
+	for name, s := range subjects {
+		if e := render.EntryOf(s); e.Cwd != dir || e.ID == "" || e.Name == "" {
+			t.Errorf("%s: entry %+v, want cwd %s, an id, and a name", name, e, dir)
+		}
+	}
+
+	for name, f := range parsed(t) {
+		for _, decl := range f.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Name.Name == "Dir" {
+				if _, ok := subjects[recvType(fn)]; !ok {
+					t.Errorf("%s: %s has a Dir method: add it to this test's subjects", name, recvType(fn))
+				}
+			}
+		}
 	}
 }

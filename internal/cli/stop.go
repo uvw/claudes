@@ -7,6 +7,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -36,7 +37,7 @@ seconds, and on Windows they are killed at once. claude --resume brings it back.
 			app.warnTeams(picked)
 			others, host := app.splitHost(picked)
 			hand := context.WithoutCancel(ctx)
-			var failures []failure
+			var failures []render.Failure
 			var manual []claude.Session
 			for i, s := range others {
 				if ctx.Err() != nil {
@@ -50,7 +51,7 @@ seconds, and on Windows they are killed at once. claude --resume brings it back.
 					stop = app.parkAndStop
 				}
 				if err := stop(hand, s); err != nil {
-					failures = append(failures, failure{s.Label(), err.Error(), s})
+					failures = append(failures, render.Failure{Label: s.Label(), Reason: err.Error(), Of: s})
 					app.progressFailed(s)
 					continue
 				}

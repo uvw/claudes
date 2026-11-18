@@ -1,42 +1,9 @@
-package style
+package render
 
 import (
-	"io"
 	"slices"
 	"strings"
 )
-
-// Table writes rows in columns two spaces apart, as text/tabwriter does, but
-// measures each cell without its colors, so colored cells line up. The last
-// cell of a row is not padded.
-func Table(w io.Writer, rows [][]string) error {
-	widths := columnWidths(rows)
-	var b strings.Builder
-	for _, row := range rows {
-		for i, cell := range row {
-			b.WriteString(cell)
-			if i < len(row)-1 {
-				b.WriteString(strings.Repeat(" ", widths[i]-Width(cell)+2))
-			}
-		}
-		b.WriteByte('\n')
-	}
-	_, err := io.WriteString(w, b.String())
-	return err
-}
-
-func columnWidths(rows [][]string) []int {
-	var widths []int
-	for _, row := range rows {
-		for i, cell := range row[:max(0, len(row)-1)] {
-			if i == len(widths) {
-				widths = append(widths, 0)
-			}
-			widths[i] = max(widths[i], Width(cell))
-		}
-	}
-	return widths
-}
 
 // MaxDir is the most columns a directory takes in a table that does not go to
 // a terminal, and MinDir the fewest it is cut to on one that does.
@@ -78,6 +45,33 @@ type Layout struct {
 	Dirs string
 	// Columns are the columns Fit may cut, in the order it cuts them.
 	Columns []Column
+}
+
+// Columns are the columns Fit cuts in a table headed header, in the order it
+// cuts them: the last column with fitLast, to lastCap off a terminal when
+// lastCap is not 0, then each directory, then each name, then each branch.
+func Columns(header []string, fitLast bool, lastCap int) []Column {
+	var cols []Column
+	last := len(header) - 1
+	if fitLast {
+		cols = append(cols, Column{Index: last, Cut: CutEnd, Min: MinLast, Max: lastCap})
+	}
+	for _, c := range []struct {
+		header string
+		col    Column
+	}{
+		{DirHeader, Column{Cut: CutDir, Min: MinDir, Max: MaxDir}},
+		{NameHeader, Column{Cut: CutEnd, Min: MinName}},
+		{BranchHeader, Column{Cut: CutBranch, Min: MinBranch}},
+	} {
+		for i, h := range header {
+			if h == c.header && (i != last || !fitLast) {
+				c.col.Index = i
+				cols = append(cols, c.col)
+			}
+		}
+	}
+	return cols
 }
 
 // Fit fits rows, the first being the header, to the line before Table writes
@@ -152,17 +146,6 @@ func shorten(s string, limit int, how Cut, dirs string) string {
 	return cut(s, limit)
 }
 
-// columnWidth is how wide column i of rows is, its header included.
-func columnWidth(rows [][]string, i int) int {
-	w := 0
-	for _, row := range rows {
-		if i < len(row) {
-			w = max(w, Width(row[i]))
-		}
-	}
-	return w
-}
-
 // DirRoom is how many columns a directory gets on a terminal width columns
 // wide, when the rest of its line takes used, or MaxDir when width is 0.
 func DirRoom(width, used int) int {
@@ -170,20 +153,6 @@ func DirRoom(width, used int) int {
 		return MaxDir
 	}
 	return max(width-used, MinDir)
-}
-
-// cellWidths is how wide each column of rows is, the last included.
-func cellWidths(rows [][]string) []int {
-	var widths []int
-	for _, row := range rows {
-		for i, cell := range row {
-			if i == len(widths) {
-				widths = append(widths, 0)
-			}
-			widths[i] = max(widths[i], Width(cell))
-		}
-	}
-	return widths
 }
 
 // cut shortens s to at most limit columns, ending it with … when it shortens.
