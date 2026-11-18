@@ -24,14 +24,15 @@ type searchHit struct {
 }
 
 type searchFlags struct {
-	pattern, who, ran, touched, branch, in string
-	tools, noRedact                        bool
-	since                                  days
-	top                                    int
+	pattern, ran, touched, branch, in string
+	who                               choiceFlag
+	tools, noRedact                   bool
+	since                             days
+	top                               countFlag
 }
 
 func (app *App) sessionSearchCommand() *cobra.Command {
-	var f searchFlags
+	f := searchFlags{who: choiceFlag{of: []string{"you", "claude"}}, top: countFlag{n: 20}}
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "search QUERY...",
@@ -94,8 +95,8 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 		},
 	}
 	cmd.Flags().StringVarP(&f.pattern, "regexp", "e", "", "a regular expression to match, in Go's RE2 syntax")
-	cmd.Flags().StringVar(&f.who, "who", "", "match QUERY only in your prompts (you) or Claude's replies (claude)")
-	cmd.RegisterFlagCompletionFunc("who", cobra.FixedCompletions([]cobra.Completion{"you", "claude"}, cobra.ShellCompDirectiveNoFileComp))
+	cmd.Flags().Var(&f.who, "who", "match QUERY only in your prompts (you) or Claude's replies (claude)")
+	cmd.RegisterFlagCompletionFunc("who", cobra.FixedCompletions(f.who.of, cobra.ShellCompDirectiveNoFileComp))
 	cmd.Flags().BoolVar(&f.tools, "tools", false, "also search what the tools returned")
 	cmd.MarkFlagsMutuallyExclusive("who", "tools")
 	cmd.Flags().StringVar(&f.ran, "ran", "", "only sessions where Claude ran a shell command containing this")
@@ -104,7 +105,7 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 	cmd.Flags().StringVarP(&f.in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().VarP(&f.since, "since", "l", "only sessions active within this long, such as 7d or 12h")
 	cmd.Flags().Lookup("since").DefValue = ""
-	cmd.Flags().IntVarP(&f.top, "top", "t", 20, "show the N best sessions; 0 shows all")
+	cmd.Flags().VarP(&f.top, "top", "t", "show the N best sessions; 0 shows all")
 	cmd.Flags().BoolVar(&f.noRedact, "no-redact", false, "print secrets instead of masking them")
 	out.add(cmd, app.Config.Output.Format)
 	return cmd
@@ -116,10 +117,6 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 	switch {
 	case len(words) == 0 && f.pattern == "" && f.ran == "" && f.touched == "":
 		return nil, 0, errors.New("name something to search for: QUERY, -e PATTERN, --ran, or --touched")
-	case f.who != "" && f.who != "you" && f.who != "claude":
-		return nil, 0, fmt.Errorf("--who takes you or claude, not %q", f.who)
-	case f.top < 0:
-		return nil, 0, fmt.Errorf("--top takes 0 or more, not %d", f.top)
 	}
 	list, err := app.Transcripts.List()
 	if err != nil {
@@ -139,7 +136,7 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 		}
 	}
 	results, err := transcripts.Search(sessions, transcripts.Query{
-		Words: words, Pattern: f.pattern, Who: f.who, Tools: f.tools, Ran: f.ran, Touched: f.touched, Now: app.Now(),
+		Words: words, Pattern: f.pattern, Who: f.who.value, Tools: f.tools, Ran: f.ran, Touched: f.touched, Now: app.Now(),
 		Raw: f.noRedact,
 	})
 	if err != nil {
@@ -149,8 +146,8 @@ func (app *App) search(words []string, f searchFlags) ([]searchHit, int, error) 
 		return nil, 0, err
 	}
 	more := 0
-	if f.top > 0 && len(results) > f.top {
-		results, more = results[:f.top], len(results)-f.top
+	if f.top.n > 0 && len(results) > f.top.n {
+		results, more = results[:f.top.n], len(results)-f.top.n
 	}
 	hits := make([]searchHit, len(results))
 	for i, r := range results {
