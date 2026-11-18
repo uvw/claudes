@@ -265,8 +265,7 @@ func TestOptionsBelongToTheirSession(t *testing.T) {
 	s := newStore(t)
 	writeJobFile(t, s, "aaaaaaaa", "state.json", `{"sessionId":"aaaaaaaa-1","respawnFlags":["--model","m","--permission-mode","plan"]}`)
 	writeJobFile(t, s, "bbbbbbbb", "state.json", `{"sessionId":"bbbbbbbb-1","respawnFlags":[]}`)
-	// Claude Code writes respawnFlags for every job, so a state.json without
-	// it is a format claudes does not know, not a job with no options.
+	// Without respawnFlags, state.json is a format claudes does not know.
 	writeJobFile(t, s, "dddddddd", "state.json", `{"sessionId":"dddddddd-1"}`)
 	if got, ok := s.Options("aaaaaaaa", "aaaaaaaa-1"); !ok || !slices.Equal(got, []string{"--model", "m", "--permission-mode", "plan"}) {
 		t.Fatalf("options %q, %v", got, ok)

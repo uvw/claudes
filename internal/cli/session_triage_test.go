@@ -93,7 +93,7 @@ func TestGcCommandForNamesTheKindsOnlyWhenTheDefaultWouldNotDo(t *testing.T) {
 }
 
 // session gc ID removes the whole session, so an older copy or a leftover,
-// whose session id is the original's, offers no id to pass it.
+// which shares the original's session id, shows no id.
 func TestOlderCopiesAndLeftoversHaveNoID(t *testing.T) {
 	h := newHarness(t)
 	work, other := h.folder("work"), h.folder("other")
