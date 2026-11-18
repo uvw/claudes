@@ -1,11 +1,12 @@
 Third-party software in claudes
 
-claudes includes the following modules. Each is listed with its license.
+claudes includes the following modules. Each is listed with its license and
+its repository.
 Regenerate this file with: go run hack/notices.go
 
 ===============================================================================
 charm.land/lipgloss/v2
-MIT, https://github.com/charmbracelet/lipgloss/blob/v2.0.6/LICENSE
+MIT, https://github.com/charmbracelet/lipgloss
 
 MIT License
 
@@ -31,7 +32,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/colorprofile
-MIT, https://github.com/charmbracelet/colorprofile/blob/v0.4.3/LICENSE
+MIT, https://github.com/charmbracelet/colorprofile
 
 MIT License
 
@@ -57,7 +58,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/ultraviolet
-MIT, https://github.com/charmbracelet/ultraviolet/blob/006e29f97886/LICENSE
+MIT, https://github.com/charmbracelet/ultraviolet
 
 MIT License
 
@@ -83,7 +84,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/x/ansi
-MIT, https://github.com/charmbracelet/x/blob/ansi/v0.11.8/ansi/LICENSE
+MIT, https://github.com/charmbracelet/x
 
 MIT License
 
@@ -109,7 +110,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/x/term
-MIT, https://github.com/charmbracelet/x/blob/term/v0.2.2/term/LICENSE
+MIT, https://github.com/charmbracelet/x
 
 MIT License
 
@@ -135,7 +136,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/x/termios
-MIT, https://github.com/charmbracelet/x/blob/termios/v0.1.1/termios/LICENSE
+MIT, https://github.com/charmbracelet/x
 
 MIT License
 
@@ -161,7 +162,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/charmbracelet/x/windows
-MIT, https://github.com/charmbracelet/x/blob/windows/v0.2.2/windows/LICENSE
+MIT, https://github.com/charmbracelet/x
 
 MIT License
 
@@ -187,7 +188,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/clipperhouse/displaywidth
-MIT, https://github.com/clipperhouse/displaywidth/blob/v0.11.0/LICENSE
+MIT, https://github.com/clipperhouse/displaywidth
 
 MIT License
 
@@ -213,7 +214,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/clipperhouse/uax29/v2/graphemes
-MIT, https://github.com/clipperhouse/uax29/blob/v2.7.0/LICENSE
+MIT, https://github.com/clipperhouse/uax29
 
 MIT License
 
@@ -239,7 +240,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/inconshreveable/mousetrap
-Apache-2.0, https://github.com/inconshreveable/mousetrap/blob/v1.1.0/LICENSE
+Apache-2.0, https://github.com/inconshreveable/mousetrap
 
 Apache License
                            Version 2.0, January 2004
@@ -445,7 +446,7 @@ Apache License
 
 ===============================================================================
 github.com/lucasb-eyer/go-colorful
-MIT, https://github.com/lucasb-eyer/go-colorful/blob/v1.4.1/LICENSE
+MIT, https://github.com/lucasb-eyer/go-colorful
 
 Copyright (c) 2013 Lucas Beyer
 
@@ -457,7 +458,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ===============================================================================
 github.com/mattn/go-runewidth
-MIT, https://github.com/mattn/go-runewidth/blob/v0.0.24/LICENSE
+MIT, https://github.com/mattn/go-runewidth
 
 The MIT License (MIT)
 
@@ -483,7 +484,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/muesli/cancelreader
-MIT, https://github.com/muesli/cancelreader/blob/v0.2.2/LICENSE
+MIT, https://github.com/muesli/cancelreader
 
 MIT License
 
@@ -509,7 +510,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/rivo/uniseg
-MIT, https://github.com/rivo/uniseg/blob/v0.4.7/LICENSE.txt
+MIT, https://github.com/rivo/uniseg
 
 MIT License
 
@@ -535,7 +536,7 @@ SOFTWARE.
 
 ===============================================================================
 github.com/spf13/cobra
-Apache-2.0, https://github.com/spf13/cobra/blob/v1.10.2/LICENSE.txt
+Apache-2.0, https://github.com/spf13/cobra
 
 Apache License
                            Version 2.0, January 2004
@@ -714,7 +715,7 @@ Apache License
 
 ===============================================================================
 github.com/spf13/pflag
-BSD-3-Clause, https://github.com/spf13/pflag/blob/v1.1.0/LICENSE
+BSD-3-Clause, https://github.com/spf13/pflag
 
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -747,7 +748,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ===============================================================================
 github.com/xo/terminfo
-MIT, https://github.com/xo/terminfo/blob/abceb7e1c41e/LICENSE
+MIT, https://github.com/xo/terminfo
 
 The MIT License (MIT)
 
@@ -773,7 +774,7 @@ SOFTWARE.
 
 ===============================================================================
 go.yaml.in/yaml/v4
-Apache-2.0, https://github.com/yaml/go-yaml/blob/v4.0.0/LICENSE
+Apache-2.0, https://github.com/yaml/go-yaml
 
 Apache License
                            Version 2.0, January 2004
@@ -1003,7 +1004,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ===============================================================================
 golang.org/x/sync/errgroup
-BSD-3-Clause, https://cs.opensource.google/go/x/sync/+/v0.22.0:LICENSE
+BSD-3-Clause, https://cs.opensource.google/go/x/sync
 
 Copyright 2009 The Go Authors.
 
@@ -1035,7 +1036,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ===============================================================================
 golang.org/x/sys/unix
-BSD-3-Clause, https://cs.opensource.google/go/x/sys/+/v0.50.0:LICENSE
+BSD-3-Clause, https://cs.opensource.google/go/x/sys
 
 Copyright 2009 The Go Authors.
 
@@ -1067,7 +1068,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ===============================================================================
 golang.org/x/sys/windows
-BSD-3-Clause, https://cs.opensource.google/go/x/sys/+/v0.50.0:LICENSE
+BSD-3-Clause, https://cs.opensource.google/go/x/sys
 
 Copyright 2009 The Go Authors.
 
