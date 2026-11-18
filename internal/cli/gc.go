@@ -43,10 +43,9 @@ func requireFinished(sessions []claude.Session) error {
 }
 
 func (app *App) gcCommand() *cobra.Command {
-	var olderThan days
+	olderThan := app.daysFlag(7 * 24 * time.Hour)
 	var plan planFlags
 	var withTeams, withPinned, purge bool
-	olderThan.d = 7 * 24 * time.Hour
 	cmd := &cobra.Command{
 		Use:   "gc [TARGET...]",
 		Short: "Remove finished background sessions from the list",
@@ -117,7 +116,7 @@ the system trash; --purge deletes them for good.`,
 			return app.reportFailures(failures)
 		},
 	}
-	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d or 12h")
+	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d, 12h, or today")
 	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team directories and task lists instead of sessions")
 	cmd.Flags().BoolVar(&withPinned, "pinned", false, "without targets, remove pinned sessions too")
 	cmd.Flags().BoolVar(&purge, "purge", false, "with --teams, delete for good instead of moving to the trash")

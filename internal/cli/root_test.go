@@ -245,7 +245,7 @@ var plumbingTypes = map[string]string{
 	"lifecycleFlags": "the flags of restart, pause, and resume",
 	"planFlags":      "--dry-run and --confirm",
 	"outputFlag":     "-o, which every command that prints data takes",
-	"days":           "a flag value that also takes days, such as 7d",
+	"days":           "a flag value that also takes days or a calendar word, such as 7d or today",
 	"countFlag":      "a flag value that takes a whole number",
 	"choiceFlag":     "a flag value that takes one of a few words",
 	"errWriter":      "writes the log to App.Err, which tests swap",

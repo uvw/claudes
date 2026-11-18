@@ -3,6 +3,7 @@ package cli
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -62,5 +63,69 @@ func TestEachShortFlagMeansOneThingEverywhere(t *testing.T) {
 		if _, ok := letters[letter][want]; !ok {
 			t.Errorf("-%s is not short for --%s: %v", letter, want, letters[letter])
 		}
+	}
+}
+
+func TestDaysTakesCalendarWordsOnTheAppClock(t *testing.T) {
+	h := newHarness(t)
+	v := h.app.daysFlag(0)
+	at := func(m time.Month, d, hour, minute int) time.Time {
+		return time.Date(2026, m, d, hour, minute, 0, 0, time.UTC)
+	}
+	for _, c := range []struct {
+		name string
+		now  time.Time
+		want map[string]time.Duration
+	}{
+		{"a Wednesday afternoon", at(time.November, 18, 15, 30), map[string]time.Duration{
+			"today": 15*time.Hour + 30*time.Minute, "yesterday": 39*time.Hour + 30*time.Minute,
+			"week": 63*time.Hour + 30*time.Minute, "month": 17*24*time.Hour + 15*time.Hour + 30*time.Minute,
+		}},
+		{"a Monday, where week is today", at(time.November, 16, 9, 0), map[string]time.Duration{
+			"today": 9 * time.Hour, "yesterday": 33 * time.Hour, "week": 9 * time.Hour, "month": 15*24*time.Hour + 9*time.Hour,
+		}},
+		{"the 1st, where month is today", at(time.December, 1, 8, 0), map[string]time.Duration{
+			"today": 8 * time.Hour, "yesterday": 32 * time.Hour, "week": 32 * time.Hour, "month": 8 * time.Hour,
+		}},
+		{"midnight, which still sets the flag", at(time.November, 16, 0, 0), map[string]time.Duration{
+			"today": time.Nanosecond, "week": time.Nanosecond, "yesterday": 24 * time.Hour,
+		}},
+	} {
+		h.now = c.now
+		for word, want := range c.want {
+			for _, typed := range []string{word, strings.ToUpper(word)} {
+				if err := v.Set(typed); err != nil || v.d != want || v.String() != word {
+					t.Errorf("%s: %s is %v and prints %q, %v; want %v", c.name, typed, v.d, v.String(), err, want)
+				}
+			}
+		}
+	}
+	if err := v.Set("7d"); err != nil || v.d != 7*24*time.Hour || v.String() != "7d" {
+		t.Errorf("7d after a word: %v %q %v", v.d, v.String(), err)
+	}
+	if err := v.Set("tomorrow"); err == nil || !strings.Contains(err.Error(), "today, yesterday, week, or month") {
+		t.Errorf("tomorrow: %v", err)
+	}
+}
+
+func TestEveryDurationFlagHasTheAppClock(t *testing.T) {
+	var found []string
+	var walk func(*cobra.Command)
+	walk = func(cmd *cobra.Command) {
+		cmd.Flags().VisitAll(func(f *pflag.Flag) {
+			if v, ok := f.Value.(*days); ok {
+				found = append(found, cmd.CommandPath()+" --"+f.Name)
+				if v.now == nil {
+					t.Errorf("%s --%s has no clock: build it with App.daysFlag", cmd.CommandPath(), f.Name)
+				}
+			}
+		})
+		for _, c := range cmd.Commands() {
+			walk(c)
+		}
+	}
+	walk(newHarness(t).app.rootCommand())
+	if len(found) < 6 {
+		t.Errorf("found only %v", found)
 	}
 }

@@ -73,7 +73,7 @@ type gcFlags struct {
 }
 
 func (app *App) sessionGcCommand() *cobra.Command {
-	var f gcFlags
+	f := gcFlags{olderThan: app.daysFlag(0)}
 	cmd := &cobra.Command{
 		Use:   "gc [TARGET...]",
 		Short: "Remove past sessions that are empty, gone, old, or left over",
@@ -119,7 +119,7 @@ Targets remove exactly those sessions, whatever kind they are.`,
 	cmd.Flags().BoolVar(&f.copies, "copies", false, "older copies session mv left")
 	cmd.Flags().BoolVar(&f.sidecars, "sidecars", false, "saved command outputs, and with --older-than subagent transcripts, keeping the sessions")
 	cmd.Flags().BoolVar(&f.leftovers, "leftovers", false, "subagent and file-history directories whose transcript is gone")
-	cmd.Flags().Var(&f.olderThan, "older-than", "sessions last active longer ago than this, such as 90d")
+	cmd.Flags().Var(&f.olderThan, "older-than", "sessions last active longer ago than this, such as 90d or month")
 	cmd.Flags().Lookup("older-than").DefValue = ""
 	cmd.Flags().BoolVar(&f.purge, "purge", false, "delete for good instead of moving to the trash")
 	f.planFlags.add(cmd)

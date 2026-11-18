@@ -218,6 +218,24 @@ func TestSessionGcKindsTargetsPurgeAndDryRun(t *testing.T) {
 	}
 }
 
+// The harness's clock reads Friday, 13 November, 17:00, so month began 12 days
+// and 17 hours ago.
+func TestSessionGcOlderThanACalendarWord(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	october := h.transcript(t, "october", work, 13*24*time.Hour)
+	november := h.transcript(t, "november", work, 12*24*time.Hour)
+	h.agents.snapshots = [][]claude.Session{{}}
+	path := func(id string) string {
+		return filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(work), id+".jsonl")
+	}
+
+	h.ok(t, "session", "gc", "--older-than", "Month", "--purge")
+	if exists(path(october)) || !exists(path(november)) {
+		t.Fatalf("--older-than month: october removed %v, november kept %v\n%s", !exists(path(october)), exists(path(november)), h.out)
+	}
+}
+
 func TestSessionGcSkipsASessionThatStartedRunningSinceThePlan(t *testing.T) {
 	h := newHarness(t)
 	s := stopped(h.bg("waking", ""))

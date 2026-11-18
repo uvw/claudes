@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/uvw/claudes/internal/calendar"
 )
 
 // lifecycleFlags are the flags of restart, pause, and resume.
@@ -92,17 +94,42 @@ func (app *App) addForce(cmd *cobra.Command, usage string) {
 	cmd.Flags().BoolVar(&app.force, "force", false, usage)
 }
 
-// days is a duration flag that also accepts a number of days, such as 7d.
-type days struct{ d time.Duration }
+// days is a duration flag that also accepts a number of days, such as 7d, or a
+// calendar word, such as today, which stores the span from that word's start
+// to now. now reads App.Now when the flag is parsed, so the span and the times
+// it is measured against come from the same clock. Build one with
+// App.daysFlag, which sets now.
+type days struct {
+	d    time.Duration
+	word string
+	now  func() time.Time
+}
+
+// daysFlag is a days flag that defaults to d.
+func (app *App) daysFlag(d time.Duration) days {
+	return days{d: d, now: func() time.Time { return app.Now() }}
+}
 
 func (v *days) String() string {
-	if v.d > 0 && v.d%(24*time.Hour) == 0 {
+	switch {
+	case v.word != "":
+		return v.word
+	case v.d > 0 && v.d%(24*time.Hour) == 0:
 		return strconv.Itoa(int(v.d/(24*time.Hour))) + "d"
 	}
 	return v.d.String()
 }
 
 func (v *days) Set(s string) error {
+	v.word = ""
+	if word := strings.ToLower(s); slices.Contains(calendar.Words, word) {
+		now := v.now()
+		start, _ := calendar.Start(word, now)
+		// 0 means the flag is unset, so a word given at the very midnight it
+		// starts at still takes a span.
+		v.d, v.word = max(now.Sub(start), time.Nanosecond), word
+		return nil
+	}
 	if n, ok := strings.CutSuffix(s, "d"); ok {
 		count, err := strconv.Atoi(n)
 		if err != nil || count < 0 {
@@ -113,7 +140,7 @@ func (v *days) Set(s string) error {
 	}
 	d, err := time.ParseDuration(s)
 	if err != nil || d < 0 {
-		return errors.New("use a duration such as 7d or 12h")
+		return errors.New("use a duration such as 7d or 12h, or today, yesterday, week, or month")
 	}
 	v.d = d
 	return nil

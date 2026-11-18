@@ -114,7 +114,7 @@ keeps growing over the session's life, so it is not the size of the context.
 | `copies`                | The older copies `session mv` left                          |
 | `size`                  | The transcript's size in bytes                              |
 | `empty`                 | Whether it never got a prompt                               |
-| `running`               | Whether it runs now                                         |
+| `running`               | Whether it runs now; `--running` and `--stopped` pick by it |
 | `disk`                  | The bytes it takes on disk, broken down                     |
 | `activity`              | What it did; null in `session ls`                           |
 
