@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -63,7 +64,7 @@ func (app *App) forget(targets []string, dryRun bool) error {
 		}
 		for _, e := range picked {
 			app.say("Would drop from the park list: %s", e.Label())
-			app.record(func(r *report) { r.Plan = append(r.Plan, entryOf(e)) })
+			app.record(func(r *report) { r.Plan = append(r.Plan, render.EntryOf(e)) })
 		}
 		app.dryRunDone()
 		return nil
@@ -84,7 +85,7 @@ func (app *App) forget(targets []string, dryRun bool) error {
 	for _, e := range dropped {
 		app.say("Dropped from the park list: %s", e.Label())
 		app.record(func(r *report) {
-			x := entryOf(e)
+			x := render.EntryOf(e)
 			x.Result = "forgotten"
 			r.Results = append(r.Results, x)
 		})
@@ -159,7 +160,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		return ""
 	}
 	if len(todo) > 0 {
-		rows := make([]planRow, 0, len(todo))
+		rows := make([]render.PlanRow, 0, len(todo))
 		for _, r := range todo {
 			label, note := "idle", ""
 			if r.WasBusy && r.parked {
@@ -174,7 +175,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			case promptFor(r) != "":
 				note = "will be pinged"
 			}
-			rows = append(rows, planRow{id: r.ShortID(), name: r.Label(), label: label, cwd: r.Cwd, note: note})
+			rows = append(rows, render.PlanRow{ID: r.ShortID(), Name: r.Label(), Label: label, Cwd: r.Cwd, Note: note})
 		}
 		app.printPlan("Resuming", rows)
 	}
@@ -186,7 +187,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		}
 	}
 	if len(skippedHere) > 0 {
-		app.say("Skipped, still parked: %s", labels(skippedHere))
+		app.say("Skipped, still parked: %s", render.Labels(skippedHere))
 	}
 	if len(todo) > 0 || f.dryRun {
 		if proceed, err := app.gate(f.planFlags, "Resume these sessions?"); !proceed {
@@ -202,7 +203,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		done[r.SessionID] = true
 	}
 	hand := context.WithoutCancel(ctx)
-	var failures []failure
+	var failures []render.Failure
 	var manual []resumable
 	for i, r := range todo {
 		if ctx.Err() != nil {
@@ -221,7 +222,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			// came up; one that did is skipped as running.
 			app.warn("claudes: %s: %v.", r.Label(), err)
 		case err != nil:
-			failures = append(failures, failure{r.Label(), err.Error(), r})
+			failures = append(failures, render.Failure{Label: r.Label(), Reason: err.Error(), Of: r})
 			app.progressFailed(r)
 			continue
 		default:
@@ -241,7 +242,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 		return kept
 	})
 	if err != nil {
-		failures = append(failures, failure{label: "park file", reason: err.Error()})
+		failures = append(failures, render.Failure{Label: "park file", Reason: err.Error()})
 	}
 	if len(kept) > 0 {
 		app.say("\n%d session(s) still parked in %s.", len(kept), app.Park.Path)

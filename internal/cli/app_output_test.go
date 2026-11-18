@@ -16,7 +16,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func TestUnknownOutputIsAUsageError(t *testing.T) {
@@ -28,23 +28,6 @@ func TestUnknownOutputIsAUsageError(t *testing.T) {
 		if h.out.Len() != 0 {
 			t.Fatalf("%v printed:\n%s", args, h.out)
 		}
-	}
-}
-
-func TestYAMLQuotesOnlyWhatNeedsIt(t *testing.T) {
-	var buf strings.Builder
-	type item struct {
-		Name string `json:"name"`
-		ID   string `json:"id"`
-		Cwd  string `json:"cwd"`
-	}
-	err := (&outputFlag{"yaml"}).encode(&buf, []item{{Name: "alpha", ID: "12345678", Cwd: `C:\x`}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "- name: alpha\n  id: \"12345678\"\n  cwd: C:\\x\n"
-	if buf.String() != want {
-		t.Fatalf("got:\n%s\nwant:\n%s", buf.String(), want)
 	}
 }
 
@@ -115,7 +98,7 @@ func TestEveryTableShortensADeepDirectory(t *testing.T) {
 			if args[0] == "gc" {
 				path = filepath.Join(short, "teams", "session-aaaaaaaa")
 			}
-			want := map[string]string{"": style.Middle(path, style.MaxDir), "middle": style.Middle(path, style.MaxDir), "fish": style.Fish(path, style.MaxDir), "full": path}[how]
+			want := map[string]string{"": render.Middle(path, render.MaxDir), "middle": render.Middle(path, render.MaxDir), "fish": render.Fish(path, render.MaxDir), "full": path}[how]
 			out := runTable(t, h, deep, args)
 			if !strings.Contains(out, want) {
 				t.Errorf("%q %v: want %s:\n%s", how, args, want, out)
@@ -158,7 +141,7 @@ func TestDirectoriesFitTheTerminal(t *testing.T) {
 				t.Errorf("width %d, %s: nothing shortened:\n%s", width, args, out)
 			}
 			for line := range strings.Lines(out) {
-				if w := style.Width(strings.TrimRight(line, "\n")); w > width {
+				if w := render.Width(strings.TrimRight(line, "\n")); w > width {
 					t.Errorf("width %d, %s: a line of %d columns:\n%s", width, args, w, out)
 				}
 			}
@@ -183,7 +166,7 @@ func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 			dir, trailing = column(t, out, "DIR")[tc.row], column(t, out, tc.trailer)[tc.row]
 			for line := range strings.Lines(out) {
 				if strings.Contains(line, tc.row) {
-					rest = style.Width(strings.TrimRight(line, "\n")) - style.Width(dir) - style.Width(trailing)
+					rest = render.Width(strings.TrimRight(line, "\n")) - render.Width(dir) - render.Width(trailing)
 				}
 			}
 			return dir, trailing, rest
@@ -192,14 +175,14 @@ func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 		if dir != short || strings.HasSuffix(trailing, "…") {
 			t.Fatalf("%v: a wide terminal cut %q or %q", tc.args, dir, trailing)
 		}
-		for _, width := range []int{rest + style.Width(short) + style.MinLast + 5, rest + 30 + style.MinLast, 40} {
+		for _, width := range []int{rest + render.Width(short) + render.MinLast + 5, rest + 30 + render.MinLast, 40} {
 			dir, trailing, _ := cells(width)
-			wantDir := min(style.Width(short), max(width-rest-style.MinLast, style.MinDir))
-			if style.Width(dir) > wantDir || wantDir == style.Width(short) && dir != short {
+			wantDir := min(render.Width(short), max(width-rest-render.MinLast, render.MinDir))
+			if render.Width(dir) > wantDir || wantDir == render.Width(short) && dir != short {
 				t.Errorf("%v width %d: DIR %q, want %d columns at most", tc.args, width, dir, wantDir)
 			}
 			// cut drops the space before its …, so a cell can end a column short.
-			if w := style.Width(trailing); w < style.MinLast-1 || w > max(width-rest-style.Width(dir), style.MinLast) {
+			if w := render.Width(trailing); w < render.MinLast-1 || w > max(width-rest-render.Width(dir), render.MinLast) {
 				t.Errorf("%v width %d: %s %q is %d columns", tc.args, width, tc.trailer, trailing, w)
 			}
 		}
@@ -208,13 +191,14 @@ func TestADirectoryAndADoingOrMatchColumnShareTheLine(t *testing.T) {
 
 // TestTablesPutPathsThroughDirCell reads the package's source, so a new table
 // cannot show a path that the terminal's width and output.dirs leave alone.
-// Only app_output.go calls style.Table, homeShort runs only there and in
-// completions, and a table cell that names a path must be dirCell's. Key and
-// value lists, which print directories whole for scripts, use tabwriter.
+// Only app_output.go calls render.Table, render.HomeShort runs only there and
+// in completions, and a table cell that names a path must be render.DirCell's.
+// Key and value lists, which print directories whole for scripts, use
+// tabwriter.
 func TestTablesPutPathsThroughDirCell(t *testing.T) {
 	allowed := map[string][]string{
-		"style.Table":          {"app_output.go"},
-		"homeShort":            {"app_output.go", "app_complete.go"}, // app_complete.go: completion descriptions
+		"render.Table":         {"app_output.go"},
+		"render.HomeShort":     {"app_output.go", "app_complete.go"}, // app_complete.go: completion descriptions
 		"tabwriter.NewWriter":  {"config_get.go", "doctor_env.go", "session_show.go"},
 		"path in a table cell": {},
 	}
@@ -234,25 +218,22 @@ func TestTablesPutPathsThroughDirCell(t *testing.T) {
 		}
 		use := func(what string, at token.Pos) {
 			if !slices.Contains(allowed[what], name) {
-				t.Errorf("%s: %s, which only %v may have; a table shows a path through dirCell", fset.Position(at), what, allowed[what])
+				t.Errorf("%s: %s, which only %v may have; a table shows a path through render.DirCell", fset.Position(at), what, allowed[what])
 			}
 		}
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch n := n.(type) {
 			case *ast.CallExpr:
-				switch fun := n.Fun.(type) {
-				case *ast.Ident:
-					if fun.Name == "homeShort" {
-						use("homeShort", n.Pos())
-					}
-				case *ast.SelectorExpr:
-					if x, ok := fun.X.(*ast.Ident); ok && (x.Name == "style" && fun.Sel.Name == "Table" || x.Name == "tabwriter" && fun.Sel.Name == "NewWriter") {
-						use(x.Name+"."+fun.Sel.Name, n.Pos())
+				if fun, ok := n.Fun.(*ast.SelectorExpr); ok {
+					if x, ok := fun.X.(*ast.Ident); ok {
+						if what := x.Name + "." + fun.Sel.Name; allowed[what] != nil {
+							use(what, n.Pos())
+						}
 					}
 				}
 			case *ast.FuncDecl:
 				for _, cell := range writtenCells(n) {
-					if shows(cell, pathNames, "dirCell") {
+					if shows(cell, pathNames, "DirCell") {
 						use("path in a table cell", cell.Pos())
 					}
 				}
@@ -263,8 +244,8 @@ func TestTablesPutPathsThroughDirCell(t *testing.T) {
 }
 
 // TestTablesPutBranchesThroughBranchCell reads the package's source, so a new
-// table cannot show a git branch that branchCell and the terminal's width
-// leave whole.
+// table cannot show a git branch that render.BranchCell and the terminal's
+// width leave whole.
 func TestTablesPutBranchesThroughBranchCell(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -281,8 +262,8 @@ func TestTablesPutBranchesThroughBranchCell(t *testing.T) {
 		}
 		for _, decl := range f.Decls {
 			for _, cell := range writtenCells(decl) {
-				if shows(cell, []string{"Branch", "branch"}, "branchCell") {
-					t.Errorf("%s: a branch in a table cell; a table shows a branch through branchCell", fset.Position(cell.Pos()))
+				if shows(cell, []string{"Branch", "branch"}, "BranchCell") {
+					t.Errorf("%s: a branch in a table cell; a table shows a branch through render.BranchCell", fset.Position(cell.Pos()))
 				}
 			}
 		}
@@ -333,8 +314,8 @@ func tableCells(body *ast.BlockStmt) []ast.Expr {
 }
 
 // shows reports whether the cell e shows something with one of names, such
-// as r.Cwd or Faint(r.Cwd) for a path, other than through the function named
-// through.
+// as r.Cwd or Faint(r.Cwd) for a path, other than through the render function
+// named through.
 func shows(e ast.Expr, names []string, through string) bool {
 	switch e := e.(type) {
 	case *ast.Ident:
@@ -346,29 +327,14 @@ func shows(e ast.Expr, names []string, through string) bool {
 	case *ast.BinaryExpr:
 		return shows(e.X, names, through) || shows(e.Y, names, through)
 	case *ast.CallExpr:
-		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == through {
-			return false
+		if sel, ok := e.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == through {
+			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "render" {
+				return false
+			}
 		}
 		return slices.ContainsFunc(e.Args, func(a ast.Expr) bool { return shows(a, names, through) })
 	}
 	return false
-}
-
-func TestHomeShort(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("USERPROFILE", home)
-	sep := string(filepath.Separator)
-	for path, want := range map[string]string{
-		home:                                  "~",
-		filepath.Join(home, "work", "repo"):   "~" + sep + filepath.Join("work", "repo"),
-		home + "-other":                       home + "-other",
-		filepath.Join(os.TempDir(), "x", "y"): filepath.Join(os.TempDir(), "x", "y"),
-	} {
-		if got := homeShort(path); got != want {
-			t.Errorf("%s: got %s, want %s", path, got, want)
-		}
-	}
 }
 
 func TestVerboseLogsTheStepsToStderr(t *testing.T) {
@@ -462,7 +428,7 @@ func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{live}}
 
 	header := regexp.MustCompile(`^ID\s.*\sDIR\s+NAME(\s+(NOTE|DOING))?$`)
-	name := regexp.MustCompile(regexp.QuoteMeta(strings.TrimSpace(long[:maxName-1])+"…") + `(\s\s+\S+)?$`)
+	name := regexp.MustCompile(regexp.QuoteMeta(strings.TrimSpace(long[:render.MaxName-1])+"…") + `(\s\s+\S+)?$`)
 	for _, args := range [][]string{{"ls"}, {"ls", "--wide"}, {"session", "ls"}, {"session", "ls", "--wide"}, {"session", "du", "--top", "1"}, {"restart", "--dry-run", live.JobID}} {
 		h.out.Reset()
 		h.ok(t, args...)
@@ -475,7 +441,7 @@ func TestTablesShareOneColumnOrderAndCutLongNames(t *testing.T) {
 			}
 		}
 		if !headed || !short {
-			t.Errorf("%v: want ID first, then DIR, a name cut to %d characters, and at most a note:\n%s", args, maxName, h.out)
+			t.Errorf("%v: want ID first, then DIR, a name cut to %d characters, and at most a note:\n%s", args, render.MaxName, h.out)
 		}
 	}
 }

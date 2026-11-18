@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -47,7 +47,7 @@ type triageReport struct {
 func (app *App) sessionTriageCommand() *cobra.Command {
 	var in string
 	since := app.daysFlag(0)
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "triage",
 		Short: "Sort past sessions into remove, review, and keep",
@@ -71,8 +71,8 @@ them. Remove the sessions you pick with claudes session gc ID...`,
 			if err != nil {
 				return err
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, report)
+			if out != render.Text {
+				return out.Encode(app.Out, report)
 			}
 			return app.printTriage(report, in != "" || since.d > 0)
 		},
@@ -80,7 +80,7 @@ them. Remove the sessions you pick with claudes session gc ID...`,
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")
 	cmd.Flags().VarP(&since, "since", "l", "only sessions active within this long, such as 7d, 12h, or today")
 	cmd.Flags().Lookup("since").DefValue = ""
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 
@@ -155,7 +155,7 @@ func keepWhy(p pastSession) string {
 	case a == nil && p.tallyErr != nil:
 		return "cannot read it"
 	case a == nil:
-		return "bigger than " + style.Size(transcripts.TallyLimit)
+		return "bigger than " + render.Size(transcripts.TallyLimit)
 	case p.NameSource == transcripts.NameCustom:
 		return "named with /rename"
 	case a.Teammate:
@@ -182,10 +182,10 @@ func triageOf(p pastSession, why string) triageItem {
 func (app *App) printTriage(r triageReport, narrowed bool) error {
 	say := func(format string, args ...any) { fmt.Fprintf(app.Out, format+"\n", args...) }
 	if len(r.Remove) > 0 {
-		say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
+		say("Remove %d session(s) and dir(s), %s:", len(r.Remove), render.Size(triageSize(r.Remove)))
 		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
-			table = append(table, []string{dash(t.ID), t.Why, style.Size(t.Size), dirCell(t.Cwd), nameCell(t.Label())})
+			table = append(table, []string{render.Dash(t.ID), t.Why, render.Size(t.Size), render.DirCell(t.Cwd), render.NameCell(t.Label())})
 		}
 		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
@@ -193,11 +193,11 @@ func (app *App) printTriage(r triageReport, narrowed bool) error {
 		say("\nTo remove them: %s\n", removeCommand(r.Remove, narrowed))
 	}
 	if len(r.Review) > 0 {
-		say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), style.Size(triageSize(r.Review)))
+		say("Review %d session(s), %s: one prompt or only commands, and no file changed:", len(r.Review), render.Size(triageSize(r.Review)))
 		table := [][]string{{"ID", "TOOLS", "SIZE", "NAME", "FIRST PROMPT"}}
 		for _, t := range r.Review {
-			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(t.Label()),
-				shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
+			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), render.Size(t.Size), render.NameCell(t.Label()),
+				shell.Printable(render.FirstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
 		}
 		if err := app.writeTable(app.Out, table, tableFit{fitLast: true}); err != nil {
 			return err

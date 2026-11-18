@@ -7,13 +7,13 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
 func (app *App) sessionShowCommand() *cobra.Command {
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:               "show TARGET",
 		Short:             "Show what a session's transcript says about it",
@@ -25,8 +25,8 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				return err
 			}
 			readTally(&p, true)
-			if out.format != "text" {
-				return out.encode(app.Out, p)
+			if out != render.Text {
+				return out.Encode(app.Out, p)
 			}
 			state := "not running"
 			if p.Running {
@@ -40,15 +40,15 @@ func (app *App) sessionShowCommand() *cobra.Command {
 				{"directory", p.Cwd},
 				{"branch", p.Branch},
 				{"started", stamp(p.Started)},
-				{"active", stamp(p.LastActive) + " (" + ago(app.Now(), p.LastActive) + ")"},
+				{"active", stamp(p.LastActive) + " (" + render.Ago(app.Now(), p.LastActive) + ")"},
 				{"version", p.Version},
 				{"activity", activity(p.Activity)},
 				{"first prompt", firstPrompt(p.Activity)},
-				{"last prompt", firstLine(p.LastPrompt, 100)},
+				{"last prompt", render.FirstLine(p.LastPrompt, 100)},
 				{"transcript", p.Path},
 				{"size", sizeDetail(p.Disk)},
 			} {
-				fmt.Fprintf(tw, "%s:\t%s\n", kv[0], dash(shell.Printable(kv[1])))
+				fmt.Fprintf(tw, "%s:\t%s\n", kv[0], render.Dash(shell.Printable(kv[1])))
 			}
 			for _, c := range p.Copies {
 				fmt.Fprintf(tw, "older copy:\t%s\n", shell.Printable(c))
@@ -56,7 +56,7 @@ func (app *App) sessionShowCommand() *cobra.Command {
 			return tw.Flush()
 		},
 	}
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 
@@ -100,7 +100,7 @@ func firstPrompt(a *transcripts.Tally) string {
 	if a == nil {
 		return ""
 	}
-	return firstLine(a.FirstPrompt, 100)
+	return render.FirstLine(a.FirstPrompt, 100)
 }
 
 func count(n int, noun string) string {
@@ -112,6 +112,6 @@ func count(n int, noun string) string {
 
 // sizeDetail is a session's size, with what makes it up.
 func sizeDetail(d transcripts.Disk) string {
-	return fmt.Sprintf("%s (transcript %s, sidecar %s, copies %s, file history %s)", style.Size(d.Total),
-		style.Size(d.Transcript), style.Size(d.Sidecar), style.Size(d.Copies), style.Size(d.FileHistory))
+	return fmt.Sprintf("%s (transcript %s, sidecar %s, copies %s, file history %s)", render.Size(d.Total),
+		render.Size(d.Transcript), render.Size(d.Sidecar), render.Size(d.Copies), render.Size(d.FileHistory))
 }

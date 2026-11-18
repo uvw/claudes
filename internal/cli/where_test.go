@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func TestWhereOneMatchPrintsTheBareFolder(t *testing.T) {
@@ -31,8 +31,8 @@ func TestWherePatternPrintsEveryMatch(t *testing.T) {
 
 	lines := strings.Split(strings.TrimSpace(h.out.String()), "\n")
 	if len(lines) != 3 || !regexp.MustCompile(`^ID +DIR +NAME$`).MatchString(lines[0]) ||
-		!strings.HasPrefix(lines[1], a.ID()) || !strings.HasSuffix(lines[1], "plan-a") || !strings.Contains(lines[1], style.Middle(homeShort(a.Cwd), style.MaxDir)) ||
-		!strings.HasPrefix(lines[2], b.ID()) || !strings.HasSuffix(lines[2], "plan-b") || !strings.Contains(lines[2], style.Middle(homeShort(b.Cwd), style.MaxDir)) {
+		!strings.HasPrefix(lines[1], a.ID()) || !strings.HasSuffix(lines[1], "plan-a") || !strings.Contains(lines[1], render.Middle(render.HomeShort(a.Cwd), render.MaxDir)) ||
+		!strings.HasPrefix(lines[2], b.ID()) || !strings.HasSuffix(lines[2], "plan-b") || !strings.Contains(lines[2], render.Middle(render.HomeShort(b.Cwd), render.MaxDir)) {
 		t.Fatalf("output:\n%s", h.out)
 	}
 }

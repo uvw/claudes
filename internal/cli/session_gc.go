@@ -14,7 +14,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
 )
@@ -64,6 +64,9 @@ func (g gcItem) ID() string {
 }
 
 func (g gcItem) Label() string { return g.name }
+
+// Dir is where the item is: its session's directory, or its own.
+func (g gcItem) Dir() string { return g.dir }
 
 type gcFlags struct {
 	olderThan                                         days
@@ -168,9 +171,9 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 	}
 
 	var total int64
-	rows := make([]planRow, 0, len(items))
+	rows := make([]render.PlanRow, 0, len(items))
 	for _, it := range items {
-		rows = append(rows, planRow{id: it.ID(), name: it.name, label: string(it.why), cwd: it.dir, size: style.Size(it.size)})
+		rows = append(rows, render.PlanRow{ID: it.ID(), Name: it.name, Label: string(it.why), Cwd: it.dir, Size: render.Size(it.size)})
 		total += it.size
 	}
 	app.printPlanOf("Removing", "session(s) and dir(s)", "WHY", rows)
@@ -178,7 +181,7 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 	if f.purge {
 		where = "Deletes them for good."
 	}
-	app.say("\nFrees %s. %s", style.Size(total), where)
+	app.say("\nFrees %s. %s", render.Size(total), where)
 	question := "Move these to the trash?"
 	if f.purge {
 		question = "Delete these for good?"
@@ -339,7 +342,7 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 	if purge {
 		verb = "deleted"
 	}
-	var failures []failure
+	var failures []render.Failure
 	var freed int64
 	for i, it := range items {
 		if ctx.Err() != nil {
@@ -355,7 +358,7 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			continue
 		}
 		if err := app.Transcripts.Remove(it.sessionID, it.paths, app.remover(purge)); err != nil {
-			failures = append(failures, failure{it.name, err.Error(), it})
+			failures = append(failures, render.Failure{Label: it.name, Reason: err.Error(), Of: it})
 			app.progressFailed(it)
 			continue
 		}
@@ -365,10 +368,10 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			}
 		}
 		freed += it.size
-		app.progress(verb, it, " ("+style.Size(it.size)+")")
+		app.progress(verb, it, " ("+render.Size(it.size)+")")
 	}
 	if freed > 0 {
-		app.say("\nFreed %s.", style.Size(freed))
+		app.say("\nFreed %s.", render.Size(freed))
 	}
 	return app.reportFailures(failures)
 }

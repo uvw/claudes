@@ -1,4 +1,4 @@
-package style
+package render
 
 import (
 	"path/filepath"
@@ -12,6 +12,9 @@ const (
 	DirsFish   = "fish"
 	DirsFull   = "full"
 )
+
+// DirsValues lists what output.dirs takes. The first is the default.
+var DirsValues = []string{DirsMiddle, DirsFish, DirsFull}
 
 // leadingDirs is how many directories after the root Middle keeps at the start
 // of a path, at most.

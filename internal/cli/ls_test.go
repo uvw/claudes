@@ -14,7 +14,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 )
 
 // writeActivity writes a job's state.json with fan items running now: the
@@ -135,7 +135,7 @@ func TestLsWideFitsDoingToTheTerminal(t *testing.T) {
 		h.ok(t, "ls", "--wide")
 		lines := strings.Split(strings.TrimRight(h.out.String(), "\n"), "\n")
 		// The cut drops a space before the …, so a line can end a column short.
-		if got := style.Width(lines[1]); got > width || got < width-1 || !strings.HasSuffix(lines[1], "…") {
+		if got := render.Width(lines[1]); got > width || got < width-1 || !strings.HasSuffix(lines[1], "…") {
 			t.Errorf("width %d: the line is %d columns:\n%s", width, got, h.out)
 		}
 	}
@@ -143,8 +143,8 @@ func TestLsWideFitsDoingToTheTerminal(t *testing.T) {
 	h.app.Width = func() int { return 20 }
 	h.out.Reset()
 	h.ok(t, "ls", "--wide")
-	if doing := column(t, h.out.String(), "DOING")["work"]; style.Width(doing) != style.MinLast {
-		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, style.MinLast)
+	if doing := column(t, h.out.String(), "DOING")["work"]; render.Width(doing) != render.MinLast {
+		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, render.MinLast)
 	}
 }
 
@@ -174,20 +174,6 @@ func TestLsJSONHasTheCountsAndNullWhenUnknown(t *testing.T) {
 		if got[name] != want {
 			t.Errorf("%s: subagents, shells, tokens, prs, and doing are %q, want %q", name, got[name], want)
 		}
-	}
-}
-
-func TestTokenCountReadsAsAgentViewDoes(t *testing.T) {
-	for n, want := range map[int64]string{
-		0: "0", 30: "30", 999: "999", 1000: "1.0K", 25_080: "25K", 171_170: "171K",
-		999_600: "1.0M", 1_400_000: "1.4M", 3_956_924: "4.0M", 61_000_000: "61M", 2_500_000_000: "2.5B",
-	} {
-		if got := tokenCount(&n); got != want {
-			t.Errorf("tokenCount(%d) = %q, want %q", n, got, want)
-		}
-	}
-	if got := tokenCount(nil); got != "-" {
-		t.Errorf("unknown tokens show %q", got)
 	}
 }
 

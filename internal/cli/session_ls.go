@@ -7,14 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func (app *App) sessionLsCommand() *cobra.Command {
 	var in string
 	sortBy := choiceFlag{value: "active", of: []string{"active", "size"}}
 	since := app.daysFlag(0)
-	var out outputFlag
+	var out render.Format
 	var wide, running, stopped bool
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
@@ -42,8 +42,8 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 			if sortBy.value == "size" {
 				slices.SortStableFunc(list, func(a, b pastSession) int { return cmp.Compare(b.Disk.Total, a.Disk.Total) })
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, list)
+			if out != render.Text {
+				return out.Encode(app.Out, list)
 			}
 			if len(list) == 0 {
 				fmt.Fprintln(app.Out, "No sessions.")
@@ -59,11 +59,11 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 				if p.Running {
 					running = app.colors.Green("yes")
 				}
-				cells := []string{p.ShortID, running, age(app.Now(), p.LastActive), style.Size(p.Disk.Total)}
+				cells := []string{p.ShortID, running, render.Age(app.Now(), p.LastActive), render.Size(p.Disk.Total)}
 				if wide {
-					cells = append(cells, branchCell(p.Branch))
+					cells = append(cells, render.BranchCell(p.Branch))
 				}
-				table = append(table, append(cells, dirCell(p.Cwd), nameCell(p.Label())))
+				table = append(table, append(cells, render.DirCell(p.Cwd), render.NameCell(p.Label())))
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -77,6 +77,6 @@ backups of the files it edited. claudes session du adds them up by directory.`,
 	cmd.Flags().BoolVar(&running, "running", false, "only sessions running now")
 	cmd.Flags().BoolVar(&stopped, "stopped", false, "only sessions not running now")
 	cmd.MarkFlagsMutuallyExclusive("running", "stopped")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }

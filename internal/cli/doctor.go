@@ -12,6 +12,7 @@ import (
 	"github.com/uvw/claudes/internal/compat"
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
@@ -30,7 +31,7 @@ const (
 
 func (app *App) doctorCommand() *cobra.Command {
 	var cliOnly, strict bool
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check that Claude Code still looks the way claudes expects",
@@ -47,8 +48,8 @@ Exits 1 when a check fails.`,
 					failed++
 				}
 			}
-			if out.format != "text" {
-				if err := out.encode(app.Out, checks); err != nil {
+			if out != render.Text {
+				if err := out.Encode(app.Out, checks); err != nil {
 					return err
 				}
 			} else {
@@ -74,7 +75,7 @@ Exits 1 when a check fails.`,
 	}
 	cmd.Flags().BoolVar(&cliOnly, "cli-only", false, "check only claude's version and command line, without listing sessions")
 	cmd.Flags().BoolVar(&strict, "strict", false, "fail on warnings too")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	cmd.AddCommand(app.doctorEnvCommand())
 	return cmd
 }

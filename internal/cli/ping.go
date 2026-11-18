@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
 
@@ -59,7 +60,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 			}
 			app.warnTeams(picked)
 			hand := context.WithoutCancel(ctx)
-			var failures []failure
+			var failures []render.Failure
 			for i, s := range picked {
 				if ctx.Err() != nil {
 					notReached(app, picked[i:])
@@ -75,7 +76,7 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 					err = fmt.Errorf("not resumed (%w). Run: %s", err, s.ManualCommand())
 				}
 				if err != nil {
-					failures = append(failures, failure{s.Label(), err.Error(), s})
+					failures = append(failures, render.Failure{Label: s.Label(), Reason: err.Error(), Of: s})
 					app.progressFailed(s)
 					continue
 				}

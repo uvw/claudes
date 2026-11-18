@@ -21,7 +21,7 @@ import (
 
 	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 )
 
 // Config is everything config.yaml can set. A zero field means the built-in
@@ -49,9 +49,6 @@ type Output struct {
 	Format string `yaml:"format"`
 	Dirs   string `yaml:"dirs"`
 }
-
-// DirsValues lists what output.dirs takes. The first is the default.
-var DirsValues = []string{style.DirsMiddle, style.DirsFish, style.DirsFull}
 
 // MCP holds the MCP server profiles that claudes mcp shows.
 type MCP struct {
@@ -192,12 +189,10 @@ func parse(path string, data []byte) (Config, error) {
 }
 
 func (c Config) validate() error {
-	switch c.Output.Format {
-	case "", "text", "json", "yaml":
-	default:
+	if c.Output.Format != "" && !slices.Contains(render.Formats, c.Output.Format) {
 		return fmt.Errorf("output.format must be text, json, or yaml, not %q", c.Output.Format)
 	}
-	if c.Output.Dirs != "" && !slices.Contains(DirsValues, c.Output.Dirs) {
+	if c.Output.Dirs != "" && !slices.Contains(render.DirsValues, c.Output.Dirs) {
 		return fmt.Errorf("output.dirs must be middle, fish, or full, not %q", c.Output.Dirs)
 	}
 	if strings.HasPrefix(c.Ping.Text, "-") {

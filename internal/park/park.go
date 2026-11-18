@@ -59,6 +59,9 @@ func (e Entry) ID() string { return cmp.Or(e.JobID, e.ShortID()) }
 // Label is the name to show.
 func (e Entry) Label() string { return shell.Printable(e.Name) }
 
+// Dir is the directory the session ran in.
+func (e Entry) Dir() string { return e.Cwd }
+
 // Aliases are the exact strings that select this entry.
 func (e Entry) Aliases() []string {
 	return claude.NonEmpty(e.Name, e.JobID, e.SessionID, e.ShortID())

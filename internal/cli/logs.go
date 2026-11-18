@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -26,7 +27,7 @@ const followTail = 10
 func (app *App) logsCommand() *cobra.Command {
 	var follow bool
 	var tail int
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "logs TARGET[/TEAMMATE]",
 		Short: "Show a session's recent output, or follow it with -f",
@@ -44,7 +45,7 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: app.completeSessions(anySession, true),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if out.format == "yaml" {
+			if out == render.YAML {
 				return fmt.Errorf("logs prints -o text or -o json")
 			}
 			sessions, err := app.Agents.Sessions(cmd.Context(), true)
@@ -64,7 +65,7 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 				return err
 			}
 			s := picked[0]
-			if !follow && tail < 0 && !ofTeammate && out.format == "text" {
+			if !follow && tail < 0 && !ofTeammate && out == render.Text {
 				return app.handOff(cmd.Context(), "logs", s.ID(), true)
 			}
 			path, err := app.Transcripts.Find(s.SessionID, s.Cwd)
@@ -80,14 +81,14 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			if tail < 0 {
 				tail = followTail
 			}
-			return app.printLog(cmd.Context(), path, tail, follow, out.format == "json")
+			return app.printLog(cmd.Context(), path, tail, follow, out == render.JSON)
 		},
 	}
 	cmd.Flags().BoolVarP(&follow, "follow", "f", false, "follow the session's transcript until Ctrl-C")
 	cmd.Flags().IntVarP(&tail, "tail", "t", -1, "start with the last N events (10 with -f)")
 	// -1 means "not given"; help shows no default for it.
 	cmd.Flags().Lookup("tail").DefValue = "0"
-	out.add(cmd, "")
+	app.addOutput(cmd, &out, "")
 	cmd.Flags().Lookup("output").Usage = "print as text or json"
 	return cmd
 }

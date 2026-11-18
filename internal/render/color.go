@@ -1,7 +1,4 @@
-// Package style shapes what claudes prints: its colors, which reach only a
-// terminal; its text tables, fitted to the terminal's width; the directories
-// those tables shorten; and sizes as du prints them.
-package style
+package render
 
 import (
 	"io"
@@ -134,4 +131,18 @@ func Width(text string) int { return lipgloss.Width(text) }
 // colored word lines up as a plain one would.
 func Pad(text string, width int, paint func(string) string) string {
 	return paint(text) + strings.Repeat(" ", max(0, width-Width(text)))
+}
+
+// TerminalWidth is how many columns the terminal w writes to has, or 0 when w
+// is not a terminal.
+func TerminalWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok || !isTerminal(w) {
+		return 0
+	}
+	width, _, err := term.GetSize(f.Fd())
+	if err != nil {
+		return 0
+	}
+	return width
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -101,7 +102,7 @@ func (app *App) stopHost(ctx context.Context, host claude.Session, heading strin
 		app.say("\n%s this session (%s) last. Output ends here. To bring it back, run claudes resume, or:", heading, host.Label())
 		app.say("  %s", host.ManualCommand())
 		app.record(func(rep *report) {
-			e := entryOf(host)
+			e := render.EntryOf(host)
 			e.Command = host.ManualCommand()
 			rep.Manual = append(rep.Manual, e)
 		})
@@ -120,7 +121,7 @@ func (app *App) stopHost(ctx context.Context, host claude.Session, heading strin
 // frees the run lock, since stopping that session ends claudes.
 func (app *App) lastWords(host claude.Session, verb string) {
 	app.record(func(rep *report) {
-		e := entryOf(host)
+		e := render.EntryOf(host)
 		e.Result, e.Note = verb, "this session, last: claudes ends when it stops"
 		rep.Results = append(rep.Results, e)
 	})
@@ -198,7 +199,7 @@ func (app *App) waitGone(ctx context.Context, s claude.Session) error {
 
 // checkBack waits for respawned sessions to show as running, and returns a
 // failure for each one that does not.
-func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []failure {
+func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []render.Failure {
 	if len(respawned) == 0 {
 		return nil
 	}
@@ -224,11 +225,11 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []fai
 	case ctx.Err() != nil:
 		reason = "respawned, but claudes was interrupted before it saw it running: check claudes ls"
 	default:
-		return []failure{{label: "restarted sessions", reason: "cannot check they came back: " + err.Error()}}
+		return []render.Failure{{Label: "restarted sessions", Reason: "cannot check they came back: " + err.Error()}}
 	}
-	out := make([]failure, 0, len(missing))
+	out := make([]render.Failure, 0, len(missing))
 	for _, s := range missing {
-		out = append(out, failure{s.Label(), reason, s})
+		out = append(out, render.Failure{Label: s.Label(), Reason: reason, Of: s})
 	}
 	return out
 }
@@ -319,12 +320,12 @@ func (app *App) current(ctx context.Context, s claude.Session) (claude.Session, 
 }
 
 // notReached names the sessions a Ctrl-C left untouched.
-func notReached[T subject](app *App, sessions []T) {
+func notReached[T render.Subject](app *App, sessions []T) {
 	if len(sessions) > 0 {
-		app.warn("\nNot reached after Ctrl-C, left as they were: %s", labels(sessions))
+		app.warn("\nNot reached after Ctrl-C, left as they were: %s", render.Labels(sessions))
 	}
 	for _, s := range sessions {
-		app.record(func(rep *report) { rep.NotReached = append(rep.NotReached, entryOf(s)) })
+		app.record(func(rep *report) { rep.NotReached = append(rep.NotReached, render.EntryOf(s)) })
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/teams"
 )
 
@@ -15,7 +15,7 @@ import (
 // task files, and reach the terminal without shell.Printable.
 func TestTeamLsStripsControlCharacters(t *testing.T) {
 	h := newHarness(t)
-	h.app.colors = style.Palette{}
+	h.app.colors = render.Palette{}
 	lead := h.bg("lead", "busy")
 	h.agents.snapshots = [][]claude.Session{{lead}}
 	h.team(t, lead, "evil\x1b]0;pwned\x07\x1b[2J")

@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/style"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/transcripts"
 )
 
 func TestSessionLsShowsABranchOnlyWithWideAndFitsIt(t *testing.T) {
 	h, deep, _ := deepHarness(t)
-	branch, name := "feat/ledger-rounding-for-every-currency", "reconcile the ledger totals for each month"[:maxName]
+	branch, name := "feat/ledger-rounding-for-every-currency", "reconcile the ledger totals for each month"[:render.MaxName]
 	h.said(t, name, deep, time.Hour, fmt.Sprintf(`{"type":"user","gitBranch":%q,"message":{"content":"go"}}`, branch))
 	cells := func(out string) (string, string) {
 		for n, b := range column(t, out, "BRANCH") {
@@ -28,7 +28,7 @@ func TestSessionLsShowsABranchOnlyWithWideAndFitsIt(t *testing.T) {
 	}
 
 	out := runTable(t, h, deep, []string{"session", "ls"})
-	if strings.Contains(out, branchHeader) || strings.Contains(out, "ledger-rounding") {
+	if strings.Contains(out, render.BranchHeader) || strings.Contains(out, "ledger-rounding") {
 		t.Errorf("without --wide: a BRANCH column:\n%s", out)
 	}
 	for _, format := range []string{"json", "yaml"} {
@@ -37,19 +37,19 @@ func TestSessionLsShowsABranchOnlyWithWideAndFitsIt(t *testing.T) {
 		}
 	}
 	out = runTable(t, h, deep, []string{"session", "ls", "--wide"})
-	if b, n := cells(out); b != style.Branch(branch, maxBranch) || n != name {
-		t.Errorf("off a terminal: BRANCH %q and NAME %q, want %q and the whole name:\n%s", b, n, style.Branch(branch, maxBranch), out)
+	if b, n := cells(out); b != render.Branch(branch, render.MaxBranch) || n != name {
+		t.Errorf("off a terminal: BRANCH %q and NAME %q, want %q and the whole name:\n%s", b, n, render.Branch(branch, render.MaxBranch), out)
 	}
 	for _, width := range []int{90, 100, 120} {
 		h.app.Width = func() int { return width }
 		out := runTable(t, h, deep, []string{"session", "ls", "--wide"})
 		for line := range strings.Lines(out) {
-			if w := style.Width(strings.TrimRight(line, "\n")); w > width {
+			if w := render.Width(strings.TrimRight(line, "\n")); w > width {
 				t.Errorf("width %d: a line of %d columns:\n%s", width, w, out)
 			}
 		}
 		// cut drops the space before its …, so a name can end a column short.
-		if b, n := cells(out); style.Width(b) < minBranch || style.Width(n) < minName-1 || style.Width(n) >= maxName {
+		if b, n := cells(out); render.Width(b) < render.MinBranch || render.Width(n) < render.MinName-1 || render.Width(n) >= render.MaxName {
 			t.Errorf("width %d: BRANCH %q, NAME %q:\n%s", width, b, n, out)
 		}
 	}

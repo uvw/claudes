@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/uvw/claudes/internal/render"
 )
 
 func write(t *testing.T, data string) string {
@@ -95,7 +96,7 @@ func TestSetOutputDirs(t *testing.T) {
 	if err := Set(path, "output.dirs", "short"); err == nil || !strings.Contains(err.Error(), "middle, fish, or full") {
 		t.Fatalf("err %v, want the allowed values", err)
 	}
-	for _, v := range DirsValues {
+	for _, v := range render.DirsValues {
 		if err := Set(path, "output.dirs", v); err != nil {
 			t.Fatal(err)
 		}

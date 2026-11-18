@@ -11,8 +11,8 @@ import (
 
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
-	"github.com/uvw/claudes/internal/style"
 )
 
 // mcpList is what mcp ls prints with -o json or yaml.
@@ -33,7 +33,7 @@ type mcpServer struct {
 
 func (app *App) mcpLsCommand() *cobra.Command {
 	var in, profile string
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "ls [TARGET]",
 		Short: "List the MCP servers a session or directory has",
@@ -88,8 +88,8 @@ keeps on only the servers it lists. It changes nothing.`,
 				}
 				list.Servers = append(list.Servers, row)
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, list)
+			if out != render.Text {
+				return out.Encode(app.Out, list)
 			}
 			return app.printMCP(list)
 		},
@@ -99,7 +99,7 @@ keeps on only the servers it lists. It changes nothing.`,
 	cmd.RegisterFlagCompletionFunc("profile", func(*cobra.Command, []string, string) ([]cobra.Completion, cobra.ShellCompDirective) {
 		return slices.Sorted(maps.Keys(app.Config.MCP.Profiles)), cobra.ShellCompDirectiveNoFileComp
 	})
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }
 
@@ -111,7 +111,7 @@ func (app *App) printMCP(list mcpList) error {
 	case list.Profile != "":
 		after = ", and under profile " + list.Profile + ":"
 	}
-	fmt.Fprintln(app.Out, before+app.dirIn(list.Dir, style.Width(before+after))+after)
+	fmt.Fprintln(app.Out, before+app.dirIn(list.Dir, render.Width(before+after))+after)
 	if len(list.Servers) == 0 {
 		return nil
 	}
@@ -125,7 +125,7 @@ func (app *App) printMCP(list mcpList) error {
 		if list.Profile != "" {
 			row = append(row, app.mcpState(s.ProfileState))
 		}
-		table = append(table, append(row, dash(s.Kind), dash(strings.Join(s.Profiles, ", "))))
+		table = append(table, append(row, render.Dash(s.Kind), render.Dash(strings.Join(s.Profiles, ", "))))
 	}
 	return app.writeTable(app.Out, table, tableFit{})
 }

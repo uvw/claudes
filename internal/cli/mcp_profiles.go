@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/paths"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -21,7 +22,7 @@ type mcpProfile struct {
 }
 
 func (app *App) mcpProfilesCommand() *cobra.Command {
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "profiles",
 		Short: "List the MCP profiles in config.yaml and the servers each keeps on",
@@ -48,8 +49,8 @@ plugin's. Change the profiles with claudes config edit.`,
 				}
 				list = append(list, p)
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, list)
+			if out != render.Text {
+				return out.Encode(app.Out, list)
 			}
 			if len(list) == 0 {
 				fmt.Fprintln(app.Out, "No MCP profiles. Add them under mcp.profiles with claudes config edit.")
@@ -61,11 +62,11 @@ plugin's. Change the profiles with claudes config edit.`,
 				for i, s := range p.Servers {
 					servers[i] = shell.Printable(s)
 				}
-				table = append(table, []string{p.Name, dash(strings.Join(servers, ", "))})
+				table = append(table, []string{p.Name, render.Dash(strings.Join(servers, ", "))})
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }

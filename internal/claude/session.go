@@ -95,6 +95,9 @@ func (s Session) Label() string {
 	return s.ID()
 }
 
+// Dir is the directory the session runs in.
+func (s Session) Dir() string { return s.Cwd }
+
 // Aliases are the exact strings that select this session.
 func (s Session) Aliases() []string {
 	return NonEmpty(s.Name, s.JobID, s.SessionID, s.ShortID())

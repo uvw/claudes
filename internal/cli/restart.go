@@ -8,6 +8,7 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/exit"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -67,7 +68,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		}
 		return text
 	}
-	rows := make([]planRow, 0, len(sel.chosen))
+	rows := make([]render.PlanRow, 0, len(sel.chosen))
 	for _, s := range sel.chosen {
 		note := ""
 		switch {
@@ -76,10 +77,10 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		case promptFor(s) != "":
 			note = "will be pinged"
 		case app.midTurn(s) && !s.Interactive():
-			note = dash(s.Activity()) + ": its turn ends, and --ping would carry it on"
+			note = render.Dash(s.Activity()) + ": its turn ends, and --ping would carry it on"
 		}
 		note = joinNotes(note, app.teamNote(s))
-		rows = append(rows, planRow{id: s.ID(), name: s.Label(), label: dash(s.Activity()), cwd: s.Cwd, note: note})
+		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Restarting", rows)
 	if proceed, err := app.gate(f.planFlags, "Restart these sessions?"); !proceed {
@@ -93,7 +94,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 	// The first Ctrl-C ends the loop between sessions; the session in hand
 	// finishes under hand, which the Ctrl-C does not cancel.
 	hand := context.WithoutCancel(ctx)
-	var failures []failure
+	var failures []render.Failure
 	var manual, respawned []claude.Session
 	for i, s := range others {
 		if ctx.Err() != nil {
@@ -103,7 +104,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		s, running, err := app.current(hand, s)
 		switch {
 		case err != nil:
-			failures = append(failures, failure{s.Label(), err.Error(), s})
+			failures = append(failures, render.Failure{Label: s.Label(), Reason: err.Error(), Of: s})
 			app.progressFailed(s)
 			continue
 		case !running:
@@ -118,7 +119,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 			if how == restartRespawned {
 				reason += ". If it is down, claudes resume " + shell.Arg(s.ID()) + " brings it back"
 			}
-			failures = append(failures, failure{s.Label(), reason, s})
+			failures = append(failures, render.Failure{Label: s.Label(), Reason: reason, Of: s})
 			app.progressFailed(s)
 		case how == restartByHand:
 			manual = append(manual, s)

@@ -3,11 +3,12 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
 
 func (app *App) whereCommand() *cobra.Command {
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:   "where TARGET...",
 		Short: "Print the directories of the sessions the targets match",
@@ -30,8 +31,8 @@ zsh, quote it, or alias claudes to noglob claudes.`,
 			if err != nil {
 				return err
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, picked)
+			if out != render.Text {
+				return out.Encode(app.Out, picked)
 			}
 			found := make([]dirRow, len(picked))
 			for i, s := range picked {
@@ -40,6 +41,6 @@ zsh, quote it, or alias claudes to noglob claudes.`,
 			return app.printDirs(found)
 		},
 	}
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	return cmd
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -22,7 +23,7 @@ const maxDoing = 50
 
 func (app *App) lsCommand() *cobra.Command {
 	var all, asJSON, wide bool
-	var out outputFlag
+	var out render.Format
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
 		Aliases: []string{"list"},
@@ -33,7 +34,7 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 		ValidArgsFunction: app.completeSessions(anySession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if asJSON {
-				out.format = "json"
+				out = render.JSON
 			}
 			installed, _ := app.Agents.Version(cmd.Context())
 			rows, err := app.rows(cmd.Context(), all, installed)
@@ -45,8 +46,8 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 					return err
 				}
 			}
-			if out.format != "text" {
-				return out.encode(app.Out, rows)
+			if out != render.Text {
+				return out.Encode(app.Out, rows)
 			}
 			return app.printTable(app.Out, rows, wide)
 		},
@@ -54,7 +55,7 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "include finished background sessions")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the list as JSON, as -o json does")
 	cmd.Flags().BoolVar(&wide, "wide", false, "add the background shells, tokens, pull requests, and what each session is doing")
-	out.add(cmd, app.Config.Output.Format)
+	app.addOutput(cmd, &out, app.Config.Output.Format)
 	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	return cmd
 }
@@ -80,15 +81,15 @@ func (app *App) printTable(w io.Writer, rows []row, wide bool) error {
 		if r.Pinned {
 			mark = c.Blue("yes")
 		}
-		ver := dash(r.Version)
+		ver := render.Dash(r.Version)
 		if r.Outdated {
 			ver, outdated = c.Yellow(ver+" (old)"), true
 		}
-		cells := []string{r.ID(), mark, kind(r.Session), dash(r.State), app.status(dash(r.Status)), app.agents(r)}
+		cells := []string{r.ID(), mark, kind(r.Session), render.Dash(r.State), app.status(render.Dash(r.Status)), app.agents(r)}
 		if wide {
-			cells = append(cells, countCell(r.Shells), tokenCount(r.Tokens), countCell(r.PRs))
+			cells = append(cells, render.CountCell(r.Shells), render.Tokens(r.Tokens), render.CountCell(r.PRs))
 		}
-		cells = append(cells, age(app.Now(), r.Started()), ver, dirCell(r.Cwd), nameCell(r.Label()))
+		cells = append(cells, render.Age(app.Now(), r.Started()), ver, render.DirCell(r.Cwd), render.NameCell(r.Label()))
 		if wide {
 			cells = append(cells, doing(r))
 		}
@@ -123,34 +124,6 @@ func doing(r row) string {
 		return "-"
 	}
 	return shell.Printable(*r.Doing)
-}
-
-func countCell(n *int) string {
-	if n == nil || *n == 0 {
-		return "-"
-	}
-	return strconv.Itoa(*n)
-}
-
-// tokenCount is a token count as agent view prints it, such as 1.4M.
-func tokenCount(n *int64) string {
-	if n == nil {
-		return "-"
-	}
-	if *n < 1000 {
-		return strconv.FormatInt(*n, 10)
-	}
-	v, unit := float64(*n), ""
-	for _, unit = range []string{"K", "M", "B"} {
-		// Moves on at 999.5, which would round up to 1000.
-		if v /= 1000; v < 999.5 {
-			break
-		}
-	}
-	if v < 9.95 {
-		return fmt.Sprintf("%.1f%s", v, unit)
-	}
-	return fmt.Sprintf("%.0f%s", v, unit)
 }
 
 // status colors a session's status: busy, waiting, and shell each in their own

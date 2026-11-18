@@ -23,7 +23,7 @@ linters:
       exclude-functions:
         # Prints a table to the terminal, which has nothing to do when the write
         # fails, like the fmt.Fprint calls the preset below allows.
-        - github.com/uvw/claudes/internal/style.Table
+        - github.com/uvw/claudes/internal/render.Table
         # Fails only for a flag that does not exist, which the completion tests
         # would show.
         - (*github.com/spf13/cobra.Command).RegisterFlagCompletionFunc
