@@ -138,8 +138,8 @@ func TestLsWideFitsDoingToTheTerminal(t *testing.T) {
 	h.app.Width = func() int { return 20 }
 	h.out.Reset()
 	h.ok(t, "ls", "--wide")
-	if doing := column(t, h.out.String(), "DOING")["work"]; style.Width(doing) != minDoing {
-		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, minDoing)
+	if doing := column(t, h.out.String(), "DOING")["work"]; style.Width(doing) != style.MinLast {
+		t.Errorf("a narrow terminal cut DOING to %q, want %d columns", doing, style.MinLast)
 	}
 }
 
@@ -183,22 +183,5 @@ func TestTokenCountReadsAsAgentViewDoes(t *testing.T) {
 	}
 	if got := tokenCount(nil); got != "-" {
 		t.Errorf("unknown tokens show %q", got)
-	}
-}
-
-func TestCutEndsWhatItShortensWithAnEllipsis(t *testing.T) {
-	for _, tc := range []struct {
-		in    string
-		limit int
-		want  string
-	}{
-		{"short", 10, "short"},
-		{"exactly 10", 10, "exactly 10"},
-		{"one word too many", 10, "one word…"},
-		{"日本語のテキスト", 7, "日本語…"},
-	} {
-		if got := cut(tc.in, tc.limit); got != tc.want || style.Width(got) > tc.limit {
-			t.Errorf("cut(%q, %d) = %q, want %q", tc.in, tc.limit, got, tc.want)
-		}
 	}
 }

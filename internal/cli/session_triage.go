@@ -165,9 +165,9 @@ func (app *App) printTriage(r triageReport) error {
 		app.say("Remove %d session(s) and dir(s), %s:", len(r.Remove), style.Size(triageSize(r.Remove)))
 		table := [][]string{{"ID", "WHY", "SIZE", "DIR", "NAME"}}
 		for _, t := range r.Remove {
-			table = append(table, []string{t.ID, t.Why, style.Size(t.Size), app.colors.Faint(homeShort(t.Cwd)), nameCell(cmp.Or(t.Name, t.ID))})
+			table = append(table, []string{t.ID, t.Why, style.Size(t.Size), dirCell(t.Cwd), nameCell(cmp.Or(t.Name, t.ID))})
 		}
-		if err := style.Table(app.Out, table); err != nil {
+		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
 		}
 		app.say("\nTo remove them: %s\n", gcCommandFor(r.Remove))
@@ -179,7 +179,7 @@ func (app *App) printTriage(r triageReport) error {
 			table = append(table, []string{t.ID, strconv.Itoa(t.Activity.ToolCalls), style.Size(t.Size), nameCell(cmp.Or(t.Name, t.ID)),
 				shell.Printable(firstLine(cmp.Or(t.Activity.FirstPrompt, t.LastPrompt), 60))})
 		}
-		if err := style.Table(app.Out, table); err != nil {
+		if err := app.writeTable(app.Out, table, tableFit{}); err != nil {
 			return err
 		}
 		app.say("\nRemove the ones you pick with: claudes session gc ID...\n")

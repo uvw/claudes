@@ -120,15 +120,16 @@ keeps on only the servers it lists. It changes nothing.`,
 }
 
 func (app *App) printMCP(list mcpList) error {
-	where := homeShort(list.Dir)
-	if len(list.Servers) == 0 {
-		fmt.Fprintf(app.Out, "No MCP servers in %s.\n", where)
-		return nil
+	before, after := "MCP servers in ", ":"
+	switch {
+	case len(list.Servers) == 0:
+		before, after = "No MCP servers in ", "."
+	case list.Profile != "":
+		after = ", and under profile " + list.Profile + ":"
 	}
-	if list.Profile == "" {
-		fmt.Fprintf(app.Out, "MCP servers in %s:\n", where)
-	} else {
-		fmt.Fprintf(app.Out, "MCP servers in %s, and under profile %s:\n", where, list.Profile)
+	fmt.Fprintln(app.Out, before+app.dirIn(list.Dir, style.Width(before+after))+after)
+	if len(list.Servers) == 0 {
+		return nil
 	}
 	header := []string{"NAME", "SCOPE", "STATE"}
 	if list.Profile != "" {
@@ -142,7 +143,7 @@ func (app *App) printMCP(list mcpList) error {
 		}
 		table = append(table, append(row, dash(s.Kind), dash(strings.Join(s.Profiles, ", "))))
 	}
-	return style.Table(app.Out, table)
+	return app.writeTable(app.Out, table, tableFit{})
 }
 
 // mcpState colors a server's state. Pending is magenta, like a session that
@@ -208,7 +209,7 @@ plugin's. Change the profiles with claudes config edit.`,
 				}
 				table = append(table, []string{p.Name, dash(strings.Join(servers, ", "))})
 			}
-			return style.Table(app.Out, table)
+			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
 	out.add(cmd, app.Config.Output.Format)

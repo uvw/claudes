@@ -95,7 +95,7 @@ session.`,
 			var sum transcripts.Disk
 			sessions := 0
 			for _, f := range report.Folders {
-				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), app.colors.Faint(homeShort(f.Folder))))
+				table = append(table, duRow(f.Disk, strconv.Itoa(f.Sessions), dirCell(f.Folder)))
 				sum.Add(f.Disk)
 				sessions += f.Sessions
 			}
@@ -109,7 +109,7 @@ session.`,
 			}
 			table = append(table, duRow(sum, strconv.Itoa(sessions), "all"))
 			table[len(table)-1][0] = style.Size(report.Total)
-			if err := style.Table(app.Out, table); err != nil || len(report.Top) == 0 {
+			if err := app.writeTable(app.Out, table, tableFit{}); err != nil || len(report.Top) == 0 {
 				return err
 			}
 			fmt.Fprintf(app.Out, "\nThe %d biggest session(s):\n", len(report.Top))
@@ -120,9 +120,9 @@ session.`,
 					share = strconv.FormatInt(s.Disk.Sidecar*100/s.Disk.Total, 10) + "%"
 				}
 				table = append(table, []string{s.ID, style.Size(s.Disk.Total), style.Size(s.Disk.Sidecar), share,
-					app.colors.Faint(homeShort(s.Cwd)), nameCell(cmp.Or(s.Name, s.ID))})
+					dirCell(s.Cwd), nameCell(cmp.Or(s.Name, s.ID))})
 			}
-			return style.Table(app.Out, table)
+			return app.writeTable(app.Out, table, tableFit{})
 		},
 	}
 	cmd.Flags().StringVarP(&in, "in", "i", "", "only sessions run in this directory or below it")

@@ -41,6 +41,7 @@ func TestLoadRefusesWhatClaudesCannotUse(t *testing.T) {
 	for data, want := range map[string]string{
 		"ping:\n  txt: typo\n":      "field txt not found",
 		"output:\n  format: xml\n":  "output.format must be",
+		"output:\n  dirs: short\n":  "output.dirs must be middle, fish, or full, not \"short\"",
 		"ping:\n  text: --yolo\n":   "starts with -",
 		"wait:\n  timeout: soon\n":  "not a duration",
 		"wait:\n  timeout: -1m\n":   "cannot be negative",
@@ -86,6 +87,33 @@ func TestSetRefusesABadValueAndAnUnknownKey(t *testing.T) {
 	}
 	if v, _ := Get(mustLoad(t, path), "output.format"); v != "json" {
 		t.Fatalf("got %q", v)
+	}
+}
+
+func TestSetOutputDirs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := Set(path, "output.dirs", "short"); err == nil || !strings.Contains(err.Error(), "middle, fish, or full") {
+		t.Fatalf("err %v, want the allowed values", err)
+	}
+	for _, v := range DirsValues {
+		if err := Set(path, "output.dirs", v); err != nil {
+			t.Fatal(err)
+		}
+		if got, _ := Get(mustLoad(t, path), "output.dirs"); got != v {
+			t.Fatalf("got %q, want %q", got, v)
+		}
+	}
+	if err := Set(path, "output.format", "json"); err != nil {
+		t.Fatal(err)
+	}
+	if c := mustLoad(t, path); c.Output.Format != "json" || c.Output.Dirs != "full" {
+		t.Fatalf("output %+v, want both settings kept", c.Output)
+	}
+}
+
+func TestTheTemplateNamesEachSectionOnce(t *testing.T) {
+	if n := strings.Count(string(Template()), "# output:\n"); n != 1 {
+		t.Fatalf("output: is in the template %d times:\n%s", n, Template())
 	}
 }
 

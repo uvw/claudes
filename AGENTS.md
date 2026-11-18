@@ -36,6 +36,7 @@ adds what an agent needs on top of them.
 | Where claudes keeps its own files         | `internal/paths`, one file per platform            |
 | Atomic writes and lock directories        | `internal/safefile`                                |
 | Colors and the text tables' layout        | `internal/style`                                   |
+| Fitting directories into tables           | `internal/style`, `internal/cli/output.go`         |
 | CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`          |
 | The checks' tools and their pins          | `tools/`, `.github/workflows/hack/tool-pins.sh`    |
 | `claudes upgrade` and its downloads       | `internal/cli/upgrade.go`, `internal/selfupdate`   |
@@ -140,6 +141,9 @@ heredoc, and never run it through Prettier.
     binary.** `claudes skill` prints it, and `npx skills add uvw/claudes` reads
     it from the repository. Update it in the same change as any command, flag,
     or safety rule it describes.
+13. **Every path a table shows goes through `dirCell`, and every table through
+    `app.writeTable`.** A path that skips them wraps every row, and
+    `TestTablesPutPathsThroughDirCell` fails.
 
 ## Maintaining this file
 

@@ -57,6 +57,10 @@ and `lead+2, 3` for both. `-` means neither. `--wide` adds four columns:
   last, after `NAME`, and is cut to fit the terminal, or to 50 characters when
   the output goes elsewhere, so it never wraps.
 
+A long `DIR` is shortened to fit too, as
+[Directories in tables](reference.md#directories-in-tables) describes, and
+`output.dirs` picks how.
+
 The subagent count and the `--wide` columns come from the job's `state.json` in
 `~/.claude/jobs`, which is not a stable Claude Code interface. Interactive
 sessions have no job, so they show `-`, as does a field Claude Code stops

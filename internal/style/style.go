@@ -167,6 +167,119 @@ func Indent(rows [][]string) int {
 	return n
 }
 
+// dirMark starts a table cell that holds a directory, for Fit to find.
+// shell.Printable drops a NUL, so no other cell starts with one.
+const dirMark = "\x00dir\x00"
+
+// MaxDir is the most columns a directory takes in a table that does not go to
+// a terminal, and MinDir the fewest it is cut to on one that does.
+const MaxDir, MinDir = 40, 20
+
+// MinLast is the fewest columns a last column fitted to the terminal, such as
+// DOING, gets.
+const MinLast = 10
+
+// DirCell is a table cell that shows the directory path, which Fit shortens.
+func DirCell(path string) string { return dirMark + path }
+
+// Layout says how Fit fits a table to the line.
+type Layout struct {
+	// Width is the terminal's width, or 0 when the table does not go to one.
+	Width int
+	// Margin is how many columns go before each line.
+	Margin int
+	// Dirs is how to shorten a directory: DirsMiddle, DirsFish, or DirsFull.
+	Dirs string
+	// FitLast cuts the last column to what is left of the line after the
+	// directories, or to LastCap off a terminal when LastCap is not 0.
+	FitLast bool
+	LastCap int
+}
+
+// Fit fits rows, the first being the header, to the line before Table writes
+// them. It shortens each DirCell to the room the other columns leave on the
+// terminal's line, at least MinDir, or to MaxDir off a terminal, and paints
+// it. With FitLast, a directory first gets that room as though the last column
+// took only MinLast, and the last column then gets what is left.
+func Fit(rows [][]string, l Layout, paint func(string) string) {
+	dirs := map[int][]int{}
+	for i, row := range rows {
+		for j, cell := range row {
+			if path, ok := strings.CutPrefix(cell, dirMark); ok {
+				row[j] = path
+				dirs[j] = append(dirs[j], i)
+			}
+		}
+	}
+	widths := cellWidths(rows)
+	for col, at := range dirs {
+		limit := MaxDir
+		if l.Width > 0 {
+			used := l.Margin + 2*(len(widths)-1)
+			for i, w := range widths {
+				switch {
+				case i == col:
+				case l.FitLast && i == len(widths)-1:
+					used += MinLast
+				default:
+					used += w
+				}
+			}
+			limit = DirRoom(l.Width, used)
+		}
+		for _, i := range at {
+			rows[i][col] = paint(ShortDir(rows[i][col], limit, l.Dirs))
+		}
+	}
+	if l.FitLast && len(rows) > 1 {
+		limit := l.LastCap
+		if l.Width > 0 {
+			limit = max(l.Width-l.Margin-Indent(rows), MinLast)
+		}
+		if limit > 0 {
+			for _, row := range rows[1:] {
+				row[len(row)-1] = Cut(row[len(row)-1], limit)
+			}
+		}
+	}
+}
+
+// DirRoom is how many columns a directory gets on a terminal width columns
+// wide, when the rest of its line takes used, or MaxDir when width is 0.
+func DirRoom(width, used int) int {
+	if width <= 0 {
+		return MaxDir
+	}
+	return max(width-used, MinDir)
+}
+
+// cellWidths is how wide each column of rows is, the last included.
+func cellWidths(rows [][]string) []int {
+	var widths []int
+	for _, row := range rows {
+		for i, cell := range row {
+			if i == len(widths) {
+				widths = append(widths, 0)
+			}
+			widths[i] = max(widths[i], Width(cell))
+		}
+	}
+	return widths
+}
+
+// Cut shortens s to at most limit columns, ending it with … when it shortens.
+func Cut(s string, limit int) string {
+	s = strings.TrimSpace(s)
+	if Width(s) <= limit {
+		return s
+	}
+	r := []rune(s)
+	for len(r) > 0 && Width(string(r))+1 > limit {
+		r = r[:len(r)-1]
+	}
+	return strings.TrimRight(string(r), " ") + "…"
+}
+
 // TerminalWidth is how many columns the terminal w writes to has, or 0 when w
 // is not a terminal.
 func TerminalWidth(w io.Writer) int {

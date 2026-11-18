@@ -32,6 +32,45 @@ with `…`; JSON, YAML, and `session show` keep them whole. The `mcp` tables lis
 servers and profiles rather than sessions, so they start with the name, and end
 with the profiles.
 
+### Directories in tables
+
+A table shows a directory with `~` for the home directory, and shortens one that
+does not fit its column, so a deep path does not wrap every row. This covers
+every text table and plan, the table `where` prints when several sessions match,
+and the heading of `mcp ls`. JSON, YAML, `session show`, `doctor env`, and the
+bare directory `where` prints for one session keep the whole path, since scripts
+read them.
+
+On a terminal, a directory gets the width the other columns leave on the line,
+and at least 20 columns. A wide window shows the whole path, and a narrow one
+shortens it. Elsewhere, such as in a pipe, a directory takes at most 40 columns.
+A path that fits is never shortened.
+
+When `DOING` in `ls --wide` or `MATCH` in `session search` ends the line, the
+directory is fitted first, as though that column took 10 columns. The column
+then gets what is left, and at least 10. Off a terminal, `DOING` is cut to 50
+characters and `MATCH` stays whole.
+
+`output.dirs` in `config.yaml` picks how a directory is shortened. Each example
+fits `~/code/acme/monorepo/services/billing/internal/ledger/testdata/v2` into 30
+columns:
+
+1. `middle`, the default, gives `~/code/…/ledger/testdata/v2`, and
+   `~/code/…/internal/ledger/testdata/v2` in 40 columns. It puts `…` in place of
+   the directories in the middle and keeps whole names: the last directory, then
+   `~` or `/` and the first directory after it, then as many directories before
+   the last as fit, then a second directory after `~` or `/`. When the first
+   directory does not fit beside the last, it goes before the last is cut.
+2. `fish` gives `~/c/a/m/s/b/i/l/testdata/v2`. It shortens each directory but
+   the last to its first character, or its first two when it starts with a dot,
+   such as `.c` for `.claude`. It goes from the left and stops once the path
+   fits, so the directories nearest the last stay whole when there is room.
+3. `full` never shortens.
+
+With `middle` or `fish`, a last directory too long to fit on its own is cut in
+its middle too, such as `~/…/a-directory-name-f…-in-forty-columns` in 40
+columns. `fish` falls back to `middle` when even its shortest form does not fit.
+
 ### Fields
 
 JSON and YAML use the camelCase field names of `claude agents --json`. Every key
@@ -265,6 +304,7 @@ wait:
   timeout: 45m # how long --wait waits; 30m by default
 output:
   format: json # the default -o of ls, where, team ls, and the session commands
+  dirs: fish # how text tables shorten a long directory: middle, fish, or full
 mcp:
   profiles: # each profile, and the MCP servers that stay on in it
     safe: [browser, "plugin:docs:search"]
@@ -274,11 +314,13 @@ mcp:
 one line of JSON. `claudes config set KEY VALUE` changes one and keeps the
 file's comments, except `mcp.profiles`, which takes `claudes config edit`. A
 profile's name is letters, digits, `-`, and `_`, and each server name is a
-string; quote one that YAML would read as a number or `true`.
-`claudes config edit` opens the file in `$VISUAL` or `$EDITOR`, and
-`claudes config path` prints where it is. claudes refuses a file with an unknown
-key or a value it cannot use. Until it is fixed, only `config`, `doctor`,
-`init`, `completion`, `skill`, `--version`, and help run.
+string; quote one that YAML would read as a number or `true`. `output.dirs`
+takes `middle`, the default, `fish`, or `full`
+([Directories in tables](#directories-in-tables)). `claudes config edit` opens
+the file in `$VISUAL` or `$EDITOR`, and `claudes config path` prints where it
+is. claudes refuses a file with an unknown key or a value it cannot use. Until
+it is fixed, only `config`, `doctor`, `init`, `completion`, `skill`,
+`--version`, and help run.
 
 ## Compatibility
 

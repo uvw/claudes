@@ -41,10 +41,15 @@ type Wait struct {
 	Timeout Duration `yaml:"timeout"`
 }
 
-// Output holds the default -o format of ls and where.
+// Output holds the default -o format of ls and where, and how text tables
+// shorten a long directory.
 type Output struct {
 	Format string `yaml:"format"`
+	Dirs   string `yaml:"dirs"`
 }
+
+// DirsValues lists what output.dirs takes. The first is the default.
+var DirsValues = []string{"middle", "fish", "full"}
 
 // MCP holds the MCP server profiles that claudes mcp shows.
 type MCP struct {
@@ -115,6 +120,7 @@ var Keys = []Key{
 		return time.Duration(c.Wait.Timeout).String()
 	}, false},
 	{"output.format", "the default -o of commands that print sessions: text, json, or yaml", func(c Config) string { return c.Output.Format }, false},
+	{"output.dirs", "how text tables shorten a directory too long for its column: middle, fish, or full", func(c Config) string { return c.Output.Dirs }, false},
 	{"mcp.profiles", "MCP server profiles: each name and the servers that stay on in it", profilesValue, true},
 }
 
@@ -188,6 +194,9 @@ func (c Config) validate() error {
 	case "", "text", "json", "yaml":
 	default:
 		return fmt.Errorf("output.format must be text, json, or yaml, not %q", c.Output.Format)
+	}
+	if c.Output.Dirs != "" && !slices.Contains(DirsValues, c.Output.Dirs) {
+		return fmt.Errorf("output.dirs must be middle, fish, or full, not %q", c.Output.Dirs)
 	}
 	if strings.HasPrefix(c.Ping.Text, "-") {
 		return fmt.Errorf("ping.text starts with -, so claude would read it as an option")
@@ -299,9 +308,14 @@ func Template() []byte {
 	var b strings.Builder
 	b.WriteString("# claudes settings. Flags always win over these.\n")
 	b.WriteString("# Every key is optional; remove the # to set one.\n\n")
+	last := ""
 	for _, k := range Keys {
 		section, field, _ := strings.Cut(k.Name, ".")
-		fmt.Fprintf(&b, "# %s:\n#   %s: ...   # %s\n", section, field, k.About)
+		if section != last {
+			fmt.Fprintf(&b, "# %s:\n", section)
+			last = section
+		}
+		fmt.Fprintf(&b, "#   %s: ...   # %s\n", field, k.About)
 	}
 	return []byte(b.String())
 }
