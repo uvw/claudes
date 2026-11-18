@@ -257,9 +257,9 @@ var notYetHelpers = []string{
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
 	"dash", "describeForCompletion", "dirCell", "doing", "duRow",
 	"duTally", "duTop", "entryOf", "firstLine",
-	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
-	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
-	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
+	"firstPrompt", "gcCommandFor", "homeShort", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
+	"leftovers", "nameCell", "nameWithSource", "named", "noProfile",
+	"noteOf", "orList", "pickPast", "readTally",
 	"refOf", "removeCommand",
 	"requireFinished", "requireRunning", "runningIn", "sameName", "sessionRef.Label", "sidecarItem", "sizeDetail", "skipSet",
 	"stamp", "taskSummary", "tokenCount", "triageOf", "triageSize",
@@ -317,7 +317,7 @@ func TestCLIDeclaresNoHelpers(t *testing.T) {
 // notYetShared are the *App methods a command file declares that other files
 // call.
 var notYetShared = []string{
-	"App.gcKeep", "App.gcPick", "App.ghProvenance"}
+	"App.gcKeep", "App.gcPick"}
 
 // builder is the method that builds the command a file is named for, such as
 // sessionMvCommand for session_mv.go. Its parent's file calls it.

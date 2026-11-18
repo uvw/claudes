@@ -226,7 +226,7 @@ func (app *App) teamNote(s claude.Session) string {
 	if len(names) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("leads %d teammate(s): %s, which stop with it and cannot be resumed", len(names), printableList(names))
+	return fmt.Sprintf("leads %d teammate(s): %s, which stop with it and cannot be resumed", len(names), shell.PrintableJoin(names))
 }
 
 // warnTeams warns about named sessions whose teammates would stop with them.
@@ -236,16 +236,6 @@ func (app *App) warnTeams(sessions []claude.Session) {
 			app.warn("claudes: %s %s.", s.Label(), note)
 		}
 	}
-}
-
-// printableList joins names read from Claude Code's files, with any control
-// characters in them made visible.
-func printableList(names []string) string {
-	out := make([]string, len(names))
-	for i, n := range names {
-		out[i] = shell.Printable(n)
-	}
-	return strings.Join(out, ", ")
 }
 
 func joinNotes(notes ...string) string {

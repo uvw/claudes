@@ -1,6 +1,7 @@
 package transcripts
 
 import (
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -122,5 +123,17 @@ func TestAShutdownRequestShowsItsReason(t *testing.T) {
 	rec := `{"type":"user","message":{"content":"<teammate-message teammate_id=\"team-lead\">\n{\"type\":\"shutdown_request\",\"reason\":\"All tasks complete.\"}\nPlease stop.\n</teammate-message>"}}`
 	if e := Events([]byte(rec + "\n")); len(e) != 1 || e[0].Text != "team-lead: shutdown_request: All tasks complete." {
 		t.Fatalf("events %+v", e)
+	}
+}
+
+func TestOneEachKeepsOneEventPerRecord(t *testing.T) {
+	a, b := json.RawMessage(`{"n":1}`), json.RawMessage(`{"n":2}`)
+	events := []Event{{Who: "claude", Raw: a}, {Who: "tool", Raw: a}, {Who: "you", Raw: b}, {Who: "claude", Raw: a}}
+	got := OneEach(events)
+	if len(got) != 3 || got[0].Who != "claude" || got[1].Who != "you" || got[2].Who != "claude" {
+		t.Fatalf("got %+v", got)
+	}
+	if OneEach(nil) != nil {
+		t.Fatal("no events gave some")
 	}
 }

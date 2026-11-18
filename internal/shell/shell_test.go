@@ -1,6 +1,9 @@
 package shell
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestPOSIXResumeQuotesTheFolder(t *testing.T) {
 	if got := posixResume("/a b/it's", "--bg --resume", "sid"); got != `cd '/a b/it'\''s' && claude --bg --resume sid` {
@@ -76,5 +79,25 @@ func TestQuoteQuotesALeadingTildeOrEquals(t *testing.T) {
 		if got := Quote(in); got != want {
 			t.Errorf("Quote(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestPrintableJoin(t *testing.T) {
+	if got := PrintableJoin([]string{"api", "evil\x1b[2J", "db"}); got != "api, "+Printable("evil\x1b[2J")+", db" || strings.Contains(got, "\x1b") {
+		t.Fatalf("got %q", got)
+	}
+	if got := PrintableJoin(nil); got != "" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestInitCoversEachShell(t *testing.T) {
+	for _, name := range []string{"bash", "zsh", "fish", "pwsh", "powershell"} {
+		if script, ok := Init(name); !ok || !strings.Contains(script, "session where --one") {
+			t.Errorf("%s: %v\n%s", name, ok, script)
+		}
+	}
+	if _, ok := Init("tcsh"); ok {
+		t.Error("tcsh has an integration")
 	}
 }

@@ -52,6 +52,15 @@ func (s Store) statePath(jobID string) string {
 
 var validID = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
+// IDFromDir is the job id a job's directory names, such as ff78d735 for
+// ~/.claude/jobs/ff78d735 in CLAUDE_JOB_DIR, or "" when it names none.
+func IDFromDir(dir string) string {
+	if id := filepath.Base(filepath.Clean(dir)); dir != "" && ValidID(id) {
+		return id
+	}
+	return ""
+}
+
 // ValidID reports whether id has the form of a job id: eight hex digits.
 func ValidID(id string) bool { return validID.MatchString(id) }
 

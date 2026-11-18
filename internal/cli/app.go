@@ -150,10 +150,12 @@ func newApp() *App {
 		ReleasesURL:    upgrade.Releases,
 		Executable:     os.Executable,
 		HostID:         os.Getenv("CLAUDE_CODE_SESSION_ID"),
-		HostJob:        hostJob(os.Getenv("CLAUDE_JOB_DIR")),
+		HostJob:        jobs.IDFromDir(os.Getenv("CLAUDE_JOB_DIR")),
 		Environ:        os.Environ,
 	}
-	app.Provenance = app.ghProvenance
+	app.Provenance = func(ctx context.Context, archive string, fromGitHub bool) (string, error) {
+		return upgrade.Provenance(ctx, app.Which, archive, fromGitHub)
+	}
 	app.Width = func() int { return style.TerminalWidth(app.Out) }
 	client := claude.NewClient()
 	client.Log = app.log()
@@ -175,15 +177,6 @@ func newApp() *App {
 		app.Config, app.configErr = config.Load(app.ConfigPath)
 	}
 	return app
-}
-
-// hostJob is the job id a CLAUDE_JOB_DIR names, such as ff78d735 for
-// ~/.claude/jobs/ff78d735, or "" when it names none.
-func hostJob(dir string) string {
-	if id := filepath.Base(filepath.Clean(dir)); dir != "" && jobs.ValidID(id) {
-		return id
-	}
-	return ""
 }
 
 // remover is how a command removes a file or directory: it moves it to the

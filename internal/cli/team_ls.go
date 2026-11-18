@@ -64,7 +64,7 @@ runs, which claudes gc --teams removes.`,
 			for _, r := range rows {
 				mates := "-"
 				if len(r.Teammates) > 0 {
-					mates = c.Magenta(printableList(r.Teammates))
+					mates = c.Magenta(shell.PrintableJoin(r.Teammates))
 				}
 				lead := nameCell(r.Label())
 				if !r.Running {

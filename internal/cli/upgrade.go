@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -16,8 +14,6 @@ import (
 	"github.com/uvw/claudes/internal/upgrade"
 	"github.com/uvw/claudes/internal/version"
 )
-
-var releaseTag = regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
 
 func (app *App) upgradeCommand() *cobra.Command {
 	var check bool
@@ -47,10 +43,11 @@ names instead, such as v0.2.0, an older one too.`,
 
 func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 	if to != "" {
-		if !releaseTag.MatchString(to) {
+		tag, ok := upgrade.Tag(to)
+		if !ok {
 			return fmt.Errorf("--to takes a release such as v0.2.0, not %q", to)
 		}
-		to = "v" + strings.TrimPrefix(to, "v")
+		to = tag
 	}
 	exe, err := app.Executable()
 	if err != nil {
@@ -59,7 +56,7 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 	if real, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = real
 	}
-	if how := managedBy(exe); how != "" {
+	if how := upgrade.ManagedBy(exe); how != "" {
 		app.say("This claudes came from %s", how)
 		return nil
 	}
@@ -115,39 +112,4 @@ func (app *App) upgrade(ctx context.Context, to string, check bool) error {
 	}
 	app.say("Upgraded claudes %s to %s, in %s", version.Version, rel.Version, exe)
 	return nil
-}
-
-// managedBy is the package manager that installed exe and the command that
-// upgrades it, or "" for a claudes the install script or a download put there.
-func managedBy(exe string) string {
-	// Backslashes too, so a Windows path reads the same on every platform.
-	path := strings.ReplaceAll(strings.ToLower(exe), `\`, "/")
-	switch {
-	// Homebrew links its binaries from the Cellar, on macOS and Linux alike.
-	case strings.Contains(path, "/cellar/"):
-		return "Homebrew. Upgrade it with:\n  brew upgrade claudes"
-	case strings.Contains(path, "/microsoft/winget/"):
-		return "winget. Upgrade it with:\n  winget upgrade uvw.claudes"
-	}
-	return ""
-}
-
-// ghProvenance checks archive's build provenance with the GitHub CLI, when it
-// is installed and signed in. It returns what it found to say; an archive the
-// check rejects is an error. fromGitHub is false for a download from anywhere
-// else, which has no provenance to check.
-func (app *App) ghProvenance(ctx context.Context, archive string, fromGitHub bool) (string, error) {
-	if !fromGitHub {
-		return "Build provenance not checked: the archive did not come from GitHub", nil
-	}
-	gh, err := app.Which("gh")
-	signedIn := err == nil && exec.CommandContext(ctx, gh, "auth", "status").Run() == nil
-	if !signedIn {
-		return "Build provenance not checked: it needs the GitHub CLI (gh), signed in", nil
-	}
-	out, err := exec.CommandContext(ctx, gh, "attestation", "verify", archive, "--repo", "uvw/claudes").CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("%s has no valid build provenance from uvw/claudes: %s", filepath.Base(archive), strings.TrimSpace(string(out)))
-	}
-	return "Build provenance verified with gh", nil
 }

@@ -1,5 +1,6 @@
 // Package shell writes the commands claudes prints for a person to run, in
-// the shell each platform opens by default, and makes text safe to print.
+// the shell each platform opens by default, makes text safe to print, and
+// holds the shell integration that makes claudes cd work.
 package shell
 
 import (
@@ -115,6 +116,16 @@ func printable(s string, keepLines bool) string {
 		}
 		return r
 	}, s)
+}
+
+// PrintableJoin joins names read from Claude Code's files with commas, with
+// any control characters in them made visible.
+func PrintableJoin(names []string) string {
+	out := make([]string, len(names))
+	for i, n := range names {
+		out[i] = Printable(n)
+	}
+	return strings.Join(out, ", ")
 }
 
 // Arg is s as one argument for the shell this platform's printed commands

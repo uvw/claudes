@@ -100,7 +100,7 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 		return err
 	}
 	if raw {
-		events = oneEach(events)
+		events = transcripts.OneEach(events)
 	}
 	app.printEvents(events[max(0, len(events)-tail):], raw)
 	if !follow {
@@ -116,24 +116,11 @@ func (app *App) printLog(ctx context.Context, path string, tail int, follow, raw
 			app.warn("claudes: the transcript was rewritten; following it from the start")
 		}
 		if raw {
-			events = oneEach(events)
+			events = transcripts.OneEach(events)
 		}
 		app.printEvents(events, raw)
 	}
 	return nil
-}
-
-// oneEach keeps one event per transcript record, for -o json, which prints the
-// records themselves.
-func oneEach(events []transcripts.Event) []transcripts.Event {
-	var out []transcripts.Event
-	for _, e := range events {
-		if n := len(out); n > 0 && bytes.Equal(out[n-1].Raw, e.Raw) {
-			continue
-		}
-		out = append(out, e)
-	}
-	return out
 }
 
 func (app *App) printEvents(events []transcripts.Event, raw bool) {
