@@ -248,8 +248,9 @@ the session was in the middle of something.
 - **Everything, pinned ones too.** With no target, bulk `restart`, `pause`, and
   `gc` skip pinned sessions; `--pinned` takes them too, as in
   `claudes restart --pinned --ping --dry-run`. Bulk commands still leave out a
-  session that leads an agent team at work: name it to include it. Interactive
-  sessions need a flag, below.
+  session that leads an agent team at work. Naming sessions runs exactly those
+  and drops the bulk selection, so to include a lead, name every session you
+  want plus the lead. Interactive sessions need a flag, below.
 - **Interactive sessions.** Bulk commands leave them alone, and naming one in
   `restart` or `pause` without a flag is an error. `restart --interactive` and
   `pause --interactive` stop them and print resume commands for the user to run
@@ -267,8 +268,9 @@ the session was in the middle of something.
   `claudes logs -f`: it follows until Ctrl-C, so your shell hangs.
 - **Pausing for a reboot.** Plain `pause` skips pinned and interactive sessions,
   and they will not come back after a reboot. `pause --pinned --interactive`
-  takes them too; name team leads to include them. Tell the user which sessions
-  `resume` will not bring back, and that your own pause ends your turn.
+  takes them too, but leaves out team leads. To take the leads as well, name
+  every session to pause, leads included. Tell the user which sessions `resume`
+  will not bring back, and that your own pause ends your turn.
 - **A deleted directory.** A session whose directory is gone cannot be resumed.
   Leave it out with `--skip ID`, and tell the user.
 - **Paused interactive sessions.** `resume` prints their commands again until
