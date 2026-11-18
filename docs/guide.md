@@ -92,8 +92,12 @@ writing. A session with no process runs no subagents or shells, whatever its
 `session gc` takes `--older-than` too, but there it has no default and picks
 sessions idle that long. `session mv` and `session resume --bg` take a `--force`
 of their own, which `--help` describes. `--older-than` and `--since` take days,
-such as `7d`, as well as `12h` or `30m`. `--timeout` and `wait.timeout` take
-`30m` or `1h30m`, not days.
+such as `7d`, as well as `12h` or `30m`. They also take a calendar word, in any
+letter case, which stands for the local midnight that starts it: `today`,
+`yesterday`, `week` (the Monday of this week), or `month` (the 1st of this
+month). So `session ls -l today` lists the sessions active since midnight, and
+`session gc --older-than month` takes the sessions last active before this month
+began. `--timeout` and `wait.timeout` take `30m` or `1h30m`, not days.
 
 ## Naming sessions
 
@@ -183,12 +187,15 @@ prints its command until then; `claudes resume --forget NAME` drops it.
 `~/.claude/projects`, so it finds every session, not only those agent view
 lists. `claudes s` and `claudes sessions` are short for it. `session ls` takes
 `--in PATH` (`-i`) for sessions run in a directory and below it, and
-`--since 7d` (`-l`, for "last") for recent ones. `--wide` adds a `BRANCH` column
-with the git branch each session ran in. `session where --one` fails unless
-exactly one session matches, for scripts. `session resume` refuses a session
-that is still running, since resuming it would start a copy; `--bg` (`-b`)
-resumes in the background. `session search` finds a session by what was said in
-it; see [Searching past sessions](#searching-past-sessions).
+`--since 7d` (`-l`, for "last") for recent ones. `--running` keeps only the
+sessions running now, the rows whose `RUNNING` column says `yes`, and
+`--stopped` keeps the rest. They go with every other flag, but not with each
+other. `--wide` adds a `BRANCH` column with the git branch each session ran in.
+`session where --one` fails unless exactly one session matches, for scripts.
+`session resume` refuses a session that is still running, since resuming it
+would start a copy; `--bg` (`-b`) resumes in the background. `session search`
+finds a session by what was said in it; see
+[Searching past sessions](#searching-past-sessions).
 
 `session ls` shows the space each session takes on disk: its transcript, its
 subagent transcripts and tool results, older copies `session mv` left, and

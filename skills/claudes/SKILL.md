@@ -317,7 +317,12 @@ user asks for it after seeing that.
 ## Past sessions
 
 `claudes session ls`, `search`, `show`, `where`, and `du` read the transcripts
-of every session, past or running, and change nothing.
+of every session, past or running, and change nothing. `session ls --running`
+lists only the sessions running now, and `--stopped` only the rest. `-l` (or
+`--since`) keeps the sessions active within a span, such as `7d` or `12h`. It
+also takes a calendar word for the midnight that starts it: `today`,
+`yesterday`, `week` (this week's Monday), or `month` (the 1st). `--older-than`
+on `gc` and `session gc` takes the same forms.
 
 To find a session by what was done in it, run
 `claudes session search WORD... -o json`. Every word must match, in any case, at
@@ -375,8 +380,8 @@ for you: sessions with one prompt, or only slash commands, that changed no file,
 made at most 20 tool calls, and were neither named with `/rename` nor started by
 an agent team. Whether one is worth keeping takes reading what it was asked.
 
-1. Run `claudes session triage -o json`. Add `-i DIR` or `-l 7d` when the user
-   names a directory or a while.
+1. Run `claudes session triage -o json`. Add `-i DIR`, or `-l` with `7d` or a
+   word such as `week`, when the user names a directory or a while.
 2. Judge each `review` item from its `activity.firstPrompt` and `lastPrompt`.
    Remove it when its output lives elsewhere or is quick to get again: a commit
    message now in git, a session id that was found, an evaluation result, or a

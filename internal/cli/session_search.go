@@ -32,7 +32,7 @@ type searchFlags struct {
 }
 
 func (app *App) sessionSearchCommand() *cobra.Command {
-	f := searchFlags{who: choiceFlag{of: []string{"you", "claude"}}, top: countFlag{n: 20}}
+	f := searchFlags{who: choiceFlag{of: []string{"you", "claude"}}, top: countFlag{n: 20}, since: app.daysFlag(0)}
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "search QUERY...",
@@ -105,7 +105,7 @@ prints as GITHUB_TOKEN=[redacted]. QUERY still matches the text as written.
 	cmd.Flags().StringVar(&f.touched, "touched", "", "only sessions where Claude edited or wrote a file whose path contains this")
 	cmd.Flags().StringVar(&f.branch, "branch", "", "only sessions on this git branch")
 	cmd.Flags().StringVarP(&f.in, "in", "i", "", "only sessions run in this directory or below it")
-	cmd.Flags().VarP(&f.since, "since", "l", "only sessions active within this long, such as 7d or 12h")
+	cmd.Flags().VarP(&f.since, "since", "l", "only sessions active within this long, such as 7d, 12h, or today")
 	cmd.Flags().Lookup("since").DefValue = ""
 	cmd.Flags().VarP(&f.top, "top", "t", "show the N best sessions; 0 shows all")
 	cmd.Flags().BoolVar(&f.noRedact, "no-redact", false, "print secrets instead of masking them")

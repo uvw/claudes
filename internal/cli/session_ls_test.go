@@ -92,6 +92,57 @@ func TestSessionLsListsTranscriptsNewestFirst(t *testing.T) {
 	}
 }
 
+func TestSessionLsFiltersByRunningState(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	h.transcript(t, "old-plan", work, 72*time.Hour)
+	h.transcript(t, "fresh-fix", work, 2*time.Hour)
+	live := h.bg("live", "busy")
+	h.transcriptAs(t, live.SessionID, "", work, time.Minute)
+	h.agents.snapshots = [][]claude.Session{{live}}
+	names := func(args ...string) []string {
+		t.Helper()
+		h.out.Reset()
+		h.ok(t, append([]string{"session", "ls", "-o", "json"}, args...)...)
+		var rows []pastSession
+		if err := json.Unmarshal(h.out.Bytes(), &rows); err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, r := range rows {
+			out = append(out, r.Label())
+		}
+		return out
+	}
+
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{nil, "live fresh-fix old-plan"},
+		{[]string{"--running"}, "live"},
+		{[]string{"--stopped"}, "fresh-fix old-plan"},
+		{[]string{"--stopped", "-l", "1d"}, "fresh-fix"},
+		{[]string{"--stopped", "--since", "today", "--sort", "size"}, "fresh-fix"},
+		{[]string{"--running", "-l", "today", "-i", work}, "live"},
+		{[]string{"--running", "--in", h.folder("other")}, ""},
+	} {
+		if got := strings.Join(names(c.args...), " "); got != c.want {
+			t.Errorf("%q: %q, want %q", c.args, got, c.want)
+		}
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "ls", "--stopped", "--wide")
+	if out := h.out.String(); !strings.Contains(out, "BRANCH") || !strings.Contains(out, "old-plan") || strings.Contains(out, " yes ") {
+		t.Errorf("--stopped --wide:\n%s", out)
+	}
+
+	h.err.Reset()
+	h.fails(t, "session", "ls", "--running", "--stopped")
+	assertContains(t, h.err.String(), "[running stopped] were all set")
+}
+
 func TestSessionLsShowsSizesAndSortsBySize(t *testing.T) {
 	h := newHarness(t)
 	work := h.folder("work")

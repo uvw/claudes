@@ -16,6 +16,7 @@ adds what an agent needs on top of them.
 | The run lock                              | `internal/lock`, `internal/cli/app_lock.go`                 |
 | The signals that end a run                | `internal/interrupt`                                        |
 | Error types and exit codes                | `internal/exit`                                             |
+| Calendar words such as today and week     | `internal/calendar`, `internal/cli/app_flags.go`            |
 | What the commands share                   | `internal/cli/app_*.go`, `cells.go`                         |
 | Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go`          |
 | Which sessions a bulk command picks       | `internal/cli/app_selection.go`                             |

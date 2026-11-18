@@ -24,11 +24,12 @@ const module = "github.com/uvw/claudes"
 // Nothing imports cli. A new import, or one a package no longer makes, changes
 // this map, so each shows up in review.
 var allowed = map[string][]string{
-	"cmd/claudes":     {"internal/cli"},
-	"internal/claude": {"internal/paths", "internal/shell"},
+	"cmd/claudes":       {"internal/cli"},
+	"internal/calendar": nil,
+	"internal/claude":   {"internal/paths", "internal/shell"},
 	"internal/cli": {
-		"internal/claude", "internal/compat", "internal/config",
-		"internal/exit", "internal/files", "internal/install",
+		"internal/calendar", "internal/claude", "internal/compat",
+		"internal/config", "internal/exit", "internal/files", "internal/install",
 		"internal/interrupt", "internal/jobs", "internal/lock", "internal/mcp",
 		"internal/park", "internal/paths", "internal/procs", "internal/shell",
 		"internal/style", "internal/target", "internal/teams",
