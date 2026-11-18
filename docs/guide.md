@@ -172,7 +172,8 @@ lists. `claudes s` and `claudes sessions` are short for it. `session ls` takes
 `--since 7d` (`-l`, for "last") for recent ones. `session where --one` fails
 unless exactly one session matches, for scripts. `session resume` refuses a
 session that is still running, since resuming it would start a copy; `--bg`
-(`-b`) resumes in the background.
+(`-b`) resumes in the background. `session search` finds a session by what was
+said in it; see [Searching past sessions](#searching-past-sessions).
 
 `session ls` shows the space each session takes on disk: its transcript, its
 subagent transcripts and tool results, older copies `session mv` left, and
@@ -278,6 +279,51 @@ directory right away.
 anything goes wrong, and because Claude Code's own record of a moved session, a
 `relocated` entry in the transcript, is not documented. claudes reads those
 entries, so a session Claude Code moved resumes from its new directory.
+
+### Searching past sessions
+
+`session search QUERY...` (or `grep`) finds sessions by what was said in them,
+best first. A session must match every word. Each word matches in any case at
+the start of a word, so `lock` matches `locks`, `locking`, `fileLock`, and
+`/src/lock.go`, but not `block`. A word starts after a character that is not a
+letter or a digit, such as a space, a slash, or an underscore, and at an
+upper-case letter after a lower-case one. A word that starts with punctuation,
+such as `.go`, matches anywhere. Quote words to match them as a phrase. It reads
+every transcript in full, and looks in four places, which rank in this order:
+
+1. The session's name.
+2. The prompts you typed.
+3. Claude's replies.
+4. Claude's tool calls: the commands it ran, and the paths and patterns it used,
+   but not the text it wrote into files.
+
+It skips slash commands, what the tools returned, which `--tools` adds, and the
+text Claude Code adds itself, such as reminders and compaction summaries. That
+text repeats across sessions and would match everywhere.
+
+A session ranks by its best record: one prompt, reply, or tool call. A record
+that holds the words next to each other, in order, ranks first, then one that
+holds every word, then one that holds some. So a prompt about a `lock race`
+outranks a session that says `lock` in one prompt and `race` in another. Within
+that, the place counts: both words in a reply still beat them scattered over
+prompts. More matches and recent activity rank a session a little higher.
+
+Each line shows the best match in context, from the best record, and `-o json`
+gives each session's best records. It shows 20 sessions; `--limit N` changes
+that, and `--limit 0` shows them all. Resume one with `session resume ID`. These
+flags narrow the search:
+
+1. `--who you` or `--who claude` matches QUERY only in your prompts or only in
+   Claude's replies.
+2. `--ran TEXT` keeps sessions where the Bash tool ran a command containing
+   TEXT, and `--touched PATH` those where Claude edited or wrote a file whose
+   path contains PATH. Neither needs QUERY.
+3. `-e PATTERN` (`--regexp`) matches a regular expression, alone or as well as
+   QUERY, in [Go's RE2 syntax](https://pkg.go.dev/regexp/syntax): Perl's,
+   without lookaround or backreferences. It matches anywhere, not only at the
+   start of a word, and is case-sensitive unless it starts with `(?i)`.
+4. `--in PATH` (`-i`), `--since AGE` (`-l`), and `--branch NAME` narrow the
+   sessions searched, as in `session ls`.
 
 ## Agent teams
 

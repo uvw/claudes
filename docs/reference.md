@@ -7,14 +7,14 @@ compatibility checks, logging, and the files claudes keeps.
 
 Pick a format with `-o`:
 
-| Commands                                          | Formats          | Default                  |
-| ------------------------------------------------- | ---------------- | ------------------------ |
-| `ls`, `where`, `team ls`                          | text, json, yaml | `output.format`, or text |
-| `session ls`, `show`, `where`, `du`, and `triage` | text, json, yaml | `output.format`, or text |
-| `doctor`, `doctor env`                            | text, json, yaml | `output.format`, or text |
-| `restart`, `pause`, `resume`, `ping`, and `stop`  | text, json, yaml | text                     |
-| `gc`, `pin`, `unpin`                              | text, json, yaml | text                     |
-| `logs`                                            | text, json       | text                     |
+| Commands                                                    | Formats          | Default                  |
+| ----------------------------------------------------------- | ---------------- | ------------------------ |
+| `ls`, `where`, `team ls`                                    | text, json, yaml | `output.format`, or text |
+| `session ls`, `show`, `where`, `du`, `search`, and `triage` | text, json, yaml | `output.format`, or text |
+| `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
+| `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
+| `gc`, `pin`, `unpin`                                        | text, json, yaml | text                     |
+| `logs`                                                      | text, json       | text                     |
 
 A few cases differ:
 
@@ -101,6 +101,23 @@ started the session.
 Each entry in `dirs` has `dir`, `project`, `sessions`, and `disk`. Each session
 in `top` has `id`, `sessionId`, `name`, `cwd`, `running`, and `disk`. Each
 leftover has `path`, `sessionId`, `kind`, `size`, and `modified`.
+
+#### Search
+
+`session search` prints a list of the sessions that match, best first:
+
+| Field             | Meaning                                         |
+| ----------------- | ----------------------------------------------- |
+| `id`, `sessionId` | The short and the full session id               |
+| `name`, `cwd`     | Its name, or empty, and the directory it ran in |
+| `score`           | How well it matches; higher is better           |
+| `lastActive`      | When its transcript last changed                |
+| `matches`         | The records that matched best, the best first   |
+
+Each match has `where`, which is `name`, `you` for your prompts, `claude` for
+Claude's replies, `tool` for its tool calls, or `output` for what the tools
+returned, and `snippet`, the match in context on one line. Each place gives its
+three best records at most.
 
 #### Triage
 

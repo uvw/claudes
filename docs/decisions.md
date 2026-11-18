@@ -40,6 +40,7 @@ current.
 | [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
 | [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                       | Short flags mean one thing, and safeguards stay long                       |
 | [31](#31-every-tool-pin-is-updated-or-checked-each-week)                            | Every tool pin is updated or checked each week                             |
+| [32](#32-session-search-scans-every-transcript-with-no-index)                       | session search scans every transcript, with no index                       |
 | [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
 
 ## 1. Go, in one static binary
@@ -590,11 +591,11 @@ which is orchestration under another name.
 A flag people type often gets a one-letter form, and each letter means the same
 thing on every command: `-n` is always a dry run, `-u` only sessions on an older
 Claude Code, `-i` a directory to look in, `-l` how recent (the last 7 days),
-`-b` the background, and `-r` resume. `-t` is how many to show: the last events
-in `logs`, and the biggest sessions in `session du`. A flag that overrides a
-safeguard never gets one: `--force`, `--purge`, `--pinned`, `--interactive`,
-`--interactive-bg`, `--rm`, and `--forget`. A test walks every command and
-enforces both rules.
+`-b` the background, `-r` resume, and `-e` a regular expression, as in grep.
+`-t` is how many to show: the last events in `logs`, and the biggest sessions in
+`session du`. A flag that overrides a safeguard never gets one: `--force`,
+`--purge`, `--pinned`, `--interactive`, `--interactive-bg`, `--rm`, and
+`--forget`. A test walks every command and enforces both rules.
 
 Why: claudes is typed in a hurry, after an update or before a reboot, so the
 common flags should be short. A letter that changes meaning between commands
@@ -627,6 +628,30 @@ Weighed: `tool` lines in the root `go.mod`, which would add the tools'
 dependencies to the module claudes ships; `go run pkg@version`, which Dependabot
 cannot see; and one file listing every pin, which each workflow would have to
 read and keep in step with.
+
+## 32. session search scans every transcript, with no index
+
+`session search` reads every transcript in full each time it runs, in parallel,
+one worker per CPU. Before it parses a line, it looks for the query's words in
+the raw bytes, ignoring ASCII case, so most lines are never parsed. It also
+skips tool results and records of other types, such as attachments, by their
+`"type"` key, without parsing them. It keeps nothing between runs.
+
+Why: a scan is fast enough. On a 16-core computer with 310 transcripts taking
+2.3 GB, a warm search that matches nothing takes 0.35 to 0.5 s, about as long as
+ripgrep takes to find nothing in the same files. A common word takes 0.7 to 0.8
+s. A scan is never stale, needs no storage, and adds no dependency. An index
+would have to follow transcripts that Claude Code writes, moves, and compacts
+while sessions run, and would add a database to a tool that keeps a few small
+files.
+
+Weighed: an SQLite full-text index, which answers in milliseconds but needs a
+dependency, a rebuild after every change, and a way to notice what changed; an
+index of claudes' own, with the same upkeep; and parsing every user and
+assistant record, which takes three times as long. An index stays possible if
+transcripts outgrow the scan. Plain words match at the start of a word, and
+fuzzy matching is left out. `-e` takes Go's RE2 syntax, without lookaround or
+backreferences, so it needs no new dependency.
 
 ## 33. Windows replaces a file with POSIX rename semantics first
 

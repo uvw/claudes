@@ -46,6 +46,8 @@ type block struct {
 	Text  string          `json:"text"`
 	Name  string          `json:"name"`
 	Input json.RawMessage `json:"input"`
+	// Content is a tool result's output: a string, or a list of blocks.
+	Content json.RawMessage `json:"content"`
 }
 
 // Events turns whole transcript lines into events. Records that are not a
