@@ -7,48 +7,50 @@ adds what an agent needs on top of them.
 
 ## Where to look first
 
-| You need                                  | Open                                               |
-| ----------------------------------------- | -------------------------------------------------- |
-| What a command does and its flags         | `docs/guide.md`, then `claudes <cmd> --help`       |
-| Why something is the way it is            | `docs/decisions.md`                                |
-| What's open                               | GitHub issues, `docs/handoffs.md`                  |
-| Passthrough, wiring, and the host session | `internal/cli/root.go`                             |
-| Restart, pause, and resume                | `internal/cli/restart.go`, `pause.go`, `resume.go` |
-| Which sessions a bulk command picks       | `internal/cli/selection.go`                        |
-| Stopping, parking, and relaunching        | `internal/cli/relaunch.go`                         |
-| Ping, stop, logs, and attach              | `internal/cli/stop.go`                             |
-| ls and where                              | `internal/cli/ls.go`                               |
-| gc                                        | `internal/cli/gc.go`                               |
-| The calls to the `claude` command line    | `internal/claude/client.go`                        |
-| Agent view's pins and per-job versions    | `internal/jobs/jobs.go`                            |
-| The version a running session runs        | `internal/procs`, `cli.App.sessionVersion`         |
-| The park file                             | `internal/park/park.go`                            |
-| `config.yaml` and `claudes config`        | `internal/config`, `internal/cli/config*.go`       |
-| Compatibility checks and `claudes doctor` | `internal/compat`, `internal/cli/doctor.go`        |
-| `claudes doctor env`                      | `internal/cli/doctor_env.go`                       |
-| `claudes session`, `cd`, and `init`       | `internal/cli/session*.go`, `internal/cli/init.go` |
-| Reading and copying transcripts           | `internal/transcripts`                             |
-| How `session search` matches and ranks    | `internal/transcripts/search.go`                   |
-| Disk use and removing past sessions       | `internal/cli/session_{du,gc,triage}.go`           |
-| Moving files to the system trash          | `internal/trash`, one file per platform            |
-| Agent teams and their task lists          | `internal/teams`, `internal/cli/team*.go`          |
-| MCP servers, profiles, and `claudes mcp`  | `internal/mcp`, `internal/cli/mcp.go`              |
-| Where claudes keeps its own files         | `internal/paths`, one file per platform            |
-| Atomic writes and lock directories        | `internal/safefile`                                |
-| Colors and the text tables' layout        | `internal/style`                                   |
-| CI, security scans, and releases          | `.github/workflows/`, `docs/releasing.md`          |
-| The checks' tools and their pins          | `tools/`, `.github/workflows/hack/tool-pins.sh`    |
-| `claudes upgrade` and its downloads       | `internal/cli/upgrade.go`, `internal/selfupdate`   |
-| Scripts the workflows run                 | `.github/workflows/hack/`                          |
-| The install scripts                       | `install/install.sh`, `install/install.ps1`        |
-| Developer tools, such as the notices file | `hack/`                                            |
-| Homebrew, winget, and their tokens        | `docs/releasing.md`, "Package managers"            |
-| The README's demo GIF                     | `docs/demo/`, rendered by `hack/demo.sh`           |
-| The agent skill and `claudes skill`       | `skills/claudes/SKILL.md`, `internal/install`      |
-| How a typed name or id finds a session    | `internal/target/target.go`                        |
-| Resume and remove commands, and quoting   | `internal/shell`, one file per platform            |
-| Stopping an interactive session           | `internal/procs`, one file per platform            |
-| The compiled binary against a fake claude | `test/e2e`, with the fake in `fakeclaude/`         |
+| You need                                    | Open                                               |
+| ------------------------------------------- | -------------------------------------------------- |
+| What a command does and its flags           | `docs/guide.md`, then `claudes <cmd> --help`       |
+| Why something is the way it is              | `docs/decisions.md`                                |
+| What's open                                 | GitHub issues, `docs/handoffs.md`                  |
+| Passthrough, wiring, and the host session   | `internal/cli/root.go`                             |
+| Restart, pause, and resume                  | `internal/cli/restart.go`, `pause.go`, `resume.go` |
+| Which sessions a bulk command picks         | `internal/cli/selection.go`                        |
+| Stopping, parking, and relaunching          | `internal/cli/relaunch.go`                         |
+| Ping, stop, logs, and attach                | `internal/cli/stop.go`                             |
+| ls and where                                | `internal/cli/ls.go`                               |
+| gc                                          | `internal/cli/gc.go`                               |
+| The calls to the `claude` command line      | `internal/claude/client.go`                        |
+| Agent view's pins and per-job versions      | `internal/jobs/jobs.go`                            |
+| The version a running session runs          | `internal/procs`, `cli.App.sessionVersion`         |
+| The park file                               | `internal/park/park.go`                            |
+| `config.yaml` and `claudes config`          | `internal/config`, `internal/cli/config*.go`       |
+| Compatibility checks and `claudes doctor`   | `internal/compat`, `internal/cli/doctor.go`        |
+| `claudes doctor env`                        | `internal/cli/doctor_env.go`                       |
+| `claudes session`, `cd`, and `init`         | `internal/cli/session*.go`, `internal/cli/init.go` |
+| Reading and copying transcripts             | `internal/transcripts`                             |
+| How `session search` matches and ranks      | `internal/transcripts/search.go`                   |
+| Disk use and removing past sessions         | `internal/cli/session_{du,gc,triage}.go`           |
+| Moving files to the system trash            | `internal/trash`, one file per platform            |
+| Agent teams and their task lists            | `internal/teams`, `internal/cli/team*.go`          |
+| MCP servers, profiles, and `claudes mcp`    | `internal/mcp`, `internal/cli/mcp.go`              |
+| The claudes mod and its request files       | `plugins/claudes-mod`, `internal/mod`              |
+| `claudes mod` and the `claude plugin` calls | `internal/cli/mod.go`, `internal/claude/plugin.go` |
+| Where claudes keeps its own files           | `internal/paths`, one file per platform            |
+| Atomic writes and lock directories          | `internal/safefile`                                |
+| Colors and the text tables' layout          | `internal/style`                                   |
+| CI, security scans, and releases            | `.github/workflows/`, `docs/releasing.md`          |
+| The checks' tools and their pins            | `tools/`, `.github/workflows/hack/tool-pins.sh`    |
+| `claudes upgrade` and its downloads         | `internal/cli/upgrade.go`, `internal/selfupdate`   |
+| Scripts the workflows run                   | `.github/workflows/hack/`                          |
+| The install scripts                         | `install/install.sh`, `install/install.ps1`        |
+| Developer tools, such as the notices file   | `hack/`                                            |
+| Homebrew, winget, and their tokens          | `docs/releasing.md`, "Package managers"            |
+| The README's demo GIF                       | `docs/demo/`, rendered by `hack/demo.sh`           |
+| The agent skill and `claudes skill`         | `skills/claudes/SKILL.md`, `internal/install`      |
+| How a typed name or id finds a session      | `internal/target/target.go`                        |
+| Resume and remove commands, and quoting     | `internal/shell`, one file per platform            |
+| Stopping an interactive session             | `internal/procs`, one file per platform            |
+| The compiled binary against a fake claude   | `test/e2e`, with the fake in `fakeclaude/`         |
 
 Files in `internal/cli` take their command's path as a prefix, such as
 `session_mv.go` for `claudes session mv` and `doctor_env.go` for
@@ -63,6 +65,12 @@ or `session gc` against them, and never edit `~/.claude/jobs/` or
 `~/.claude/projects/` by hand. Read-only commands are fine: `ls`, `where`,
 `doctor`, `session ls`, `session show`, `session where`, `session du`, and any
 command with `--dry-run`.
+
+Never install the claudes mod into the owner's Claude Code with
+`claudes mod install`, and never write its request files by hand: a request runs
+a command inside a live session. Try the mod in a throwaway session you start
+yourself with `--plugin-dir plugins/claudes-mod`, in a `git init` scratch
+directory.
 
 Tests drive the commands through the fake `claude.Agents` in
 `internal/cli/cli_test.go` and a temporary jobs directory, never the real
@@ -140,6 +148,13 @@ heredoc, and never run it through Prettier.
     binary.** `claudes skill` prints it, and `npx skills add uvw/claudes` reads
     it from the repository. Update it in the same change as any command, flag,
     or safety rule it describes.
+13. **The mod's `$` reaches only functions declared at the top of
+    `register.ts`.** `claude plugin validate` refuses a module that passes it
+    anywhere else. The mod API cannot delete a file either, so claudes removes
+    each request and result file once it has read them.
+14. **The mod and claudes must agree on the request format.** Raise `PROTOCOL`
+    in `register.ts` and `mod.Protocol` together, since the mod refuses a
+    request for any other version.
 
 ## Maintaining this file
 

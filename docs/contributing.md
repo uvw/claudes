@@ -13,11 +13,12 @@
    `internal/config`, the directories claudes keeps its own files in by
    `internal/paths`, the transcripts under `~/.claude/projects` by
    `internal/transcripts`, the agent teams under `~/.claude/teams` and their
-   task lists under `~/.claude/tasks` by `internal/teams`, and installing the
-   agent skill by `internal/install`. `internal/mcp` reads MCP configuration:
-   the MCP keys of `~/.claude.json` and the settings files, `.mcp.json` files,
-   plugins' MCP files, and `managed-mcp.json`. `internal/compat` reads the
-   feature flags in `~/.claude.json`, and nothing writes it.
+   task lists under `~/.claude/tasks` by `internal/teams`, the request files
+   claudes and the claudes mod share by `internal/mod`, and installing the agent
+   skill by `internal/install`. `internal/mcp` reads MCP configuration: the MCP
+   keys of `~/.claude.json` and the settings files, `.mcp.json` files, plugins'
+   MCP files, and `managed-mcp.json`. `internal/compat` reads the feature flags
+   in `~/.claude.json`, and nothing writes it.
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, and exec) are fields on `cli.App`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
@@ -144,6 +145,11 @@ fails without it, and CI keeps total coverage at 80% or more.
    session.
 5. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
    hand in a terminal, on each platform it changes.
+6. The claudes mod in `plugins/claudes-mod` has TypeScript tests in `tests/`,
+   which run against Claude Code's own engine. They need Claude Code, so CI does
+   not run them. After changing the mod, run
+   `claude plugin validate plugins/claudes-mod`, which reads the module the way
+   a session loads it, and `claude plugin test plugins/claudes-mod`.
 
 ## Pull requests
 
@@ -199,7 +205,8 @@ Types are `feat`, `fix`, `perf`, `docs`, `test`, `refactor`, `ci`, and `chore`.
 names the area: `cli`, `claude`, `compat`, `config`, `jobs`, `mcp`, `park`,
 `paths`, `target`, `transcripts`, `teams`, `procs`, `install`, `safefile`,
 `shell`, `selfupdate`, `style`, `trash`, and `version` for the packages under
-`internal/`; `e2e` for `test/e2e`; `skill` for `skills/claudes`; `hack` for the
-developer tools; `deps` for Dependabot's updates; and `release` or `docs`. Leave
-the scope out only when a commit spans several areas. Keep the body to one or
-two sentences about what changed and why.
+`internal/`; `e2e` for `test/e2e`; `skill` for `skills/claudes`; `mod` for
+`internal/mod` and `plugins/claudes-mod`; `hack` for the developer tools; `deps`
+for Dependabot's updates; and `release` or `docs`. Leave the scope out only when
+a commit spans several areas. Keep the body to one or two sentences about what
+changed and why.

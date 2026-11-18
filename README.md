@@ -201,6 +201,8 @@ Setup and diagnostics:
 | `config`                     | Show or change settings in `config.yaml`                    |
 | `mcp ls [TARGET]`            | List a session's MCP servers, and whether each is on        |
 | `mcp profiles`               | List the MCP profiles in `config.yaml`                      |
+| `mod install`, `uninstall`   | Add or remove the claudes mod, which reaches into sessions  |
+| `mod status`                 | Whether the mod is installed, and which sessions loaded it  |
 | `doctor`                     | Check the installed Claude Code against claudes             |
 | `doctor env`                 | Print versions, file locations, and the variables           |
 | `init bash\|zsh\|fish\|pwsh` | Print the shell function behind `claudes cd`                |
@@ -210,20 +212,20 @@ Setup and diagnostics:
 
 ## Documentation
 
-| Document                                                                                     | What it covers                                                       |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)               | Every way to install, shell setup, the agent skill, and uninstalling |
-| [Using claudes](https://github.com/uvw/claudes/blob/main/docs/guide.md)                      | Naming sessions, flags, safety, past sessions, teams, logs, and MCP  |
-| [Reference](https://github.com/uvw/claudes/blob/main/docs/reference.md)                      | Output, exit codes, troubleshooting, configuration, and files        |
-| [Agent skill](skills/claudes/SKILL.md)                                                       | How a coding agent uses claudes, as a skill                          |
-| [Security](https://github.com/uvw/claudes/blob/main/docs/security.md)                        | Reporting a problem, and checking a download                         |
-| [Contributing](https://github.com/uvw/claudes/blob/main/docs/contributing.md)                | Rules for changes, the checks, and releases                          |
-| [Agents](AGENTS.md)                                                                          | What coding agents need on top of the contributing guide             |
-| [Decisions](https://github.com/uvw/claudes/blob/main/docs/decisions.md)                      | Each settled choice, why, and the alternatives                       |
-| [Releasing](https://github.com/uvw/claudes/blob/main/docs/releasing.md)                      | How releases happen, recovering one, and repo settings               |
-| [Changelog](https://github.com/uvw/claudes/blob/main/docs/changelog.md)                      | What each release changed                                            |
-| [Handoffs](https://github.com/uvw/claudes/blob/main/docs/handoffs.md)                        | Work one machine leaves for another, and a resume prompt             |
-| [Third-party notices](https://github.com/uvw/claudes/blob/main/docs/third-party-notices.txt) | The licenses of the Go modules built into the binary                 |
+| Document                                                                                     | What it covers                                                                |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [Installing claudes](https://github.com/uvw/claudes/blob/main/docs/install.md)               | Every way to install, shell setup, the agent skill, the mod, and uninstalling |
+| [Using claudes](https://github.com/uvw/claudes/blob/main/docs/guide.md)                      | Naming sessions, flags, safety, past sessions, teams, logs, and MCP           |
+| [Reference](https://github.com/uvw/claudes/blob/main/docs/reference.md)                      | Output, exit codes, troubleshooting, configuration, and files                 |
+| [Agent skill](skills/claudes/SKILL.md)                                                       | How a coding agent uses claudes, as a skill                                   |
+| [Security](https://github.com/uvw/claudes/blob/main/docs/security.md)                        | Reporting a problem, and checking a download                                  |
+| [Contributing](https://github.com/uvw/claudes/blob/main/docs/contributing.md)                | Rules for changes, the checks, and releases                                   |
+| [Agents](AGENTS.md)                                                                          | What coding agents need on top of the contributing guide                      |
+| [Decisions](https://github.com/uvw/claudes/blob/main/docs/decisions.md)                      | Each settled choice, why, and the alternatives                                |
+| [Releasing](https://github.com/uvw/claudes/blob/main/docs/releasing.md)                      | How releases happen, recovering one, and repo settings                        |
+| [Changelog](https://github.com/uvw/claudes/blob/main/docs/changelog.md)                      | What each release changed                                                     |
+| [Handoffs](https://github.com/uvw/claudes/blob/main/docs/handoffs.md)                        | Work one machine leaves for another, and a resume prompt                      |
+| [Third-party notices](https://github.com/uvw/claudes/blob/main/docs/third-party-notices.txt) | The licenses of the Go modules built into the binary                          |
 
 ## Development
 

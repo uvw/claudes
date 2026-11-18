@@ -24,6 +24,7 @@ import (
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
+	"github.com/uvw/claudes/internal/mod"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
@@ -112,6 +113,8 @@ type App struct {
 	ClaudeConfig string
 	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads.
 	MCP mcp.Store
+	// Mod is the directory claudes and the claudes mod share.
+	Mod mod.Channel
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
@@ -223,6 +226,8 @@ func newApp() *App {
 	app.Teams, _ = teams.DefaultStore()
 	app.ClaudeConfig, _ = paths.ClaudeConfigFile()
 	app.MCP, _ = mcp.DefaultStore()
+	// Without a state directory, setupErr has already stopped every command.
+	app.Mod, _ = mod.DefaultChannel()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
@@ -486,6 +491,7 @@ same as Ctrl+T in agent view.`,
 		app.sessionCommand(),
 		app.teamCommand(),
 		app.mcpCommand(),
+		app.modCommand(),
 		app.cdCommand(),
 		app.initCommand(),
 		app.upgradeCommand(),
