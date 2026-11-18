@@ -16,12 +16,17 @@ import (
 // job's state.json with the code claudes uses. CLAUDES_LIVE_CLAUDE=list allows
 // an empty list, and job needs a background job. A job that just started has
 // no status and leaves keys out of its state.json, so the checks retry for up
-// to a minute.
+// to a minute. It runs only in CI, as compat-live.sh does, so a local go test
+// never reaches the Claude Code on the machine it runs on.
 func TestLiveClaude(t *testing.T) {
 	mode := os.Getenv("CLAUDES_LIVE_CLAUDE")
-	switch mode {
-	case "":
+	switch {
+	case mode == "":
 		t.Skip("set CLAUDES_LIVE_CLAUDE to list or job to check the real claude")
+	case os.Getenv("CI") != "true":
+		t.Skip("CLAUDES_LIVE_CLAUDE runs only in CI, where compat-live.sh starts its job")
+	}
+	switch mode {
 	case "list", "job":
 	default:
 		t.Fatalf("CLAUDES_LIVE_CLAUDE is %q, not list or job", mode)
