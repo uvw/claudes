@@ -254,15 +254,17 @@ every call, which would cut off a slow but healthy stop.
 
 ## 15. Windows kills an interactive session's process tree
 
-On Windows, `stop` and `--interactive` kill the session's `claude.exe` and every
+On Windows, `stop` and `--interactive` kill the session's process and every
 process it started, then wait for it to exit. On macOS and Linux it gets
 SIGTERM, then SIGKILL after ten seconds, and so does each process it started
 that outlives it, found from a process list taken before the first signal.
 Either way, claudes first checks that the process is Claude Code, and that it
 started no later than the session's `startedAt`, with two seconds of slack, and
 before the sessions were listed. It signals a child only while its start time
-still matches. On macOS and Linux, Claude Code is the native binary or the npm
-package under node; on Windows, only the native `claude.exe`.
+still matches. Claude Code is the native binary or node running the npm package,
+which claudes tells from other node programs by the command line. Windows reads
+that command line through `NtQueryInformationProcess`, which needs Windows 8.1
+or later.
 
 Why: Windows has no SIGTERM for console programs. Stopping only the session's
 own process orphaned its shells and MCP servers. A reused PID must never be
@@ -274,6 +276,9 @@ the gap is never required to be small.
 
 Weighed for macOS and Linux: signalling the process group, which misses a child
 that started a group of its own.
+
+Weighed for Windows: reading the command line from the process's memory, which
+needs more access than claudes asks for, and asking WMI, which is slow to start.
 
 Weighed: sending Ctrl-Break first and killing after a grace period, which is
 untested against Claude Code and stays open in issue #9.

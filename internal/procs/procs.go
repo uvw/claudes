@@ -27,7 +27,7 @@ func isClaudeExecutable(file string) bool {
 // isClaudeCommand reports whether a command line runs Claude Code: the native
 // binary, or the npm package under node.
 func isClaudeCommand(command string) bool {
-	if strings.Contains(command, "@anthropic-ai/claude-code") {
+	if strings.Contains(strings.ReplaceAll(command, `\`, "/"), "@anthropic-ai/claude-code") {
 		return true
 	}
 	command = strings.TrimSpace(command)

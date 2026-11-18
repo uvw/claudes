@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -39,8 +41,8 @@ func Terminate(pid int, sessionStarted, listedAt time.Time) error {
 	if err != nil {
 		return fmt.Errorf("cannot read the program of pid %d: %w", pid, err)
 	}
-	if !isClaudeExecutable(image) {
-		return fmt.Errorf("pid %d is not a claude process: %s", pid, image)
+	if err := checkClaude(h, pid, image); err != nil {
+		return err
 	}
 	started, err := startTime(h)
 	if err != nil {
@@ -87,6 +89,44 @@ func imagePath(h windows.Handle) (string, error) {
 		return "", err
 	}
 	return windows.UTF16ToString(buf[:size]), nil
+}
+
+// checkClaude refuses a process that is not Claude Code: the native claude, or
+// node running the npm package.
+func checkClaude(h windows.Handle, pid int, image string) error {
+	if isClaudeExecutable(image) {
+		return nil
+	}
+	if strings.EqualFold(filepath.Base(image), "node.exe") {
+		command, err := commandLine(h)
+		if err != nil {
+			return fmt.Errorf("cannot read the command line of pid %d: %w", pid, err)
+		}
+		if isClaudeCommand(command) {
+			return nil
+		}
+	}
+	return fmt.Errorf("pid %d is not a claude process: %s", pid, image)
+}
+
+// commandLine reads a process's command line, which Windows 8.1 and later
+// give to a handle opened with limited query access.
+func commandLine(h windows.Handle) (string, error) {
+	size := uint32(4096)
+	for {
+		// Whole words keep the UNICODE_STRING that starts the buffer aligned
+		// for its pointer.
+		buf := make([]uint64, (size+7)/8)
+		have := uint32(len(buf) * 8)
+		err := windows.NtQueryInformationProcess(h, windows.ProcessCommandLineInformation, unsafe.Pointer(&buf[0]), have, &size)
+		if err == nil {
+			return (*windows.NTUnicodeString)(unsafe.Pointer(&buf[0])).String(), nil
+		}
+		tooSmall := errors.Is(err, windows.STATUS_INFO_LENGTH_MISMATCH) || errors.Is(err, windows.STATUS_BUFFER_TOO_SMALL) || errors.Is(err, windows.STATUS_BUFFER_OVERFLOW)
+		if !tooSmall || size <= have {
+			return "", err
+		}
+	}
 }
 
 func startTime(h windows.Handle) (time.Time, error) {
