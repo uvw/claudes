@@ -83,8 +83,8 @@ them. Remove the sessions you pick with claudes session gc ID...`,
 	return cmd
 }
 
-// triage sorts the past sessions run in in, or active within since, or every
-// one when both are unset.
+// triage sorts the past sessions run in the directory in, and active within
+// since, or every one when both are unset.
 func (app *App) triage(ctx context.Context, in string, since time.Duration) (triageReport, error) {
 	report := triageReport{Remove: []triageItem{}, Review: []triageItem{}, Keep: []triageItem{}}
 	list, err := app.pastSessions(ctx)
