@@ -18,15 +18,17 @@ step.
    `feat` bumps the minor version and `fix` the patch while the version is below
    1.0. release-please writes the entry with long lines, so the same workflow
    then formats `docs/changelog.md` in that pull request with Prettier
-   (`.github/workflows/hack/format-changelog.sh`). It pushes with
-   `RELEASE_PLEASE_TOKEN`, so the pull request's checks start without approval.
+   (`.github/workflows/hack/format-changelog.sh`), in a job with no token that
+   can push. A later job pushes the result with `RELEASE_PLEASE_TOKEN`, so the
+   pull request's checks start without approval.
 3. Merging that pull request makes release-please create the `vX.Y.Z` tag and a
    draft release with the changelog as its notes. It then calls
    `.github/workflows/release.yaml` with the tag.
 4. `release.yaml` runs, in order:
    1. **Eligibility:** the tag is `vX.Y.Z`, with no prerelease part, and is on
-      `main`. Every later job builds the commit the tag named here, so moving
-      the tag mid-run fails the build.
+      `main`. Every later job builds the commit the tag named here, and publish
+      checks that the tag still names it, so moving the tag mid-run fails the
+      release.
    2. **CI:** the whole of `ci.yaml` on the tag.
    3. **Build:** goreleaser builds every archive, `checksums.txt`, and one SBOM
       per archive, but publishes nothing.
@@ -35,7 +37,8 @@ step.
       `.github/workflows/hack/smoke.sh`, which checks that `--version` reports
       the tag, then installed with their install script.
    5. **Attest:** build provenance for every file in `checksums.txt`.
-   6. **Publish:** uploads the assets to the draft and publishes it.
+   6. **Publish:** uploads the assets to the draft, checks the tag again, and
+      publishes it.
 
 Releases are immutable once published, so a broken release is fixed by releasing
 the next version, never by editing it.
@@ -90,8 +93,9 @@ a release newer than its pin ([contributing.md](contributing.md#checks)).
 
 `hack/release-tokens.sh` sets both up: it creates the tap and the fork if they
 are missing, opens each token's page with its fields filled in, checks the token
-you paste, and saves it as a secret. When a token expires, run it again with the
-secret's name, such as `hack/release-tokens.sh WINGET_TOKEN`.
+you paste, and saves it as a secret of the `release` environment
+([Repository settings](#repository-settings)). When a token expires, run it
+again with the secret's name, such as `hack/release-tokens.sh WINGET_TOKEN`.
 
 komac adds versions only to a package winget already has, so the first version
 of `uvw.claudes` is submitted by hand, on any machine with komac:
@@ -116,7 +120,8 @@ handles every version after it.
   `.goreleaser.yaml`, and the scripts under `.github/workflows/hack/`. The
   publish job uploads with `--clobber`, so it replaces any partial upload.
 - **The fix is in the tagged code, or the release should wait:** delete the
-  draft and the tag (`gh release delete vX.Y.Z --cleanup-tag`), then revert the
+  draft and the tag (`gh release delete vX.Y.Z --cleanup-tag`), which only a
+  repository admin can do, through the tag ruleset's bypass. Then revert the
   `chore(main): release X.Y.Z` commit through a pull request. That puts the
   manifest and `docs/changelog.md` back on the last published version, so
   release-please proposes X.Y.Z again, with every change since that release.
@@ -144,13 +149,22 @@ moving or recreating the repository.
 
 1. **Ruleset for `main`:** it requires a pull request, allows squash merges
    only, blocks force-pushes and deletion, and requires the "CI (all green)"
-   check.
+   check. It also requires CodeQL's results, and blocks a merge on an error
+   alert or a security alert of high severity or higher.
 
    ```bash
    gh api -X POST repos/uvw/claudes/rulesets --input .github/rulesets/main.json
    ```
 
-2. **Merge settings:** allow auto-merge and squash merging only, and delete
+2. **Ruleset for release tags:** "release tags" covers `refs/tags/v*` and blocks
+   moving, deleting, and force-pushing a tag. The repository admin role can
+   bypass it, to repair a broken tag whose release is not published yet.
+
+   ```bash
+   gh api -X POST repos/uvw/claudes/rulesets --input .github/rulesets/tags.json
+   ```
+
+3. **Merge settings:** allow auto-merge and squash merging only, and delete
    branches after merge. A squash commit takes the pull request's title, the one
    CI checks, even when the pull request has a single commit.
 
@@ -162,7 +176,7 @@ moving or recreating the repository.
      -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY
    ```
 
-3. **Actions may open pull requests,** so release-please can open its own, with
+4. **Actions may open pull requests,** so release-please can open its own, with
    workflow tokens read-only by default:
 
    ```bash
@@ -170,15 +184,32 @@ moving or recreating the repository.
      -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
    ```
 
-   `RELEASE_PLEASE_TOKEN` is a fine-grained token for this repository with
-   contents and pull requests read and write. With it, release-please opens and
-   updates the release pull request as you, so its checks start without
-   approval. `hack/release-tokens.sh` sets it up with `HOMEBREW_TAP_TOKEN` and
-   `WINGET_TOKEN`, skipping any already set; name a secret to renew it, such as
+5. **The `release` environment:** its deployment policy admits only the `main`
+   branch and `v*` tags. Every job that reads a release token runs in it: the
+   release-please job and the changelog push in `release-please.yaml`, and
+   publish, Homebrew, and winget in `release.yaml`. A workflow dispatched from
+   any other branch cannot publish or read the tokens.
+
+   ```bash
+   gh api -X PUT repos/uvw/claudes/environments/release \
+     -F 'deployment_branch_policy[protected_branches]=false' \
+     -F 'deployment_branch_policy[custom_branch_policies]=true'
+   gh api -X POST repos/uvw/claudes/environments/release/deployment-branch-policies \
+     -f name=main -f type=branch
+   gh api -X POST repos/uvw/claudes/environments/release/deployment-branch-policies \
+     -f name='v*' -f type=tag
+   ```
+
+   `RELEASE_PLEASE_TOKEN`, `HOMEBREW_TAP_TOKEN`, and `WINGET_TOKEN` are secrets
+   of this environment, not of the repository. `RELEASE_PLEASE_TOKEN` is a
+   fine-grained token for this repository with contents and pull requests read
+   and write. With it, release-please opens and updates the release pull request
+   as you, so its checks start without approval. `hack/release-tokens.sh` sets
+   all three, skipping any already set; name a secret to renew it, such as
    `hack/release-tokens.sh RELEASE_PLEASE_TOKEN`. Each token lasts a year.
 
-4. **Releases:** immutable releases are on
+6. **Releases:** immutable releases are on
    (`gh api -X PUT repos/uvw/claudes/immutable-releases`).
-5. **Security:** private vulnerability reporting, Dependabot alerts and security
+7. **Security:** private vulnerability reporting, Dependabot alerts and security
    updates, secret scanning, and push protection are on. Code scanning's default
    setup stays off, since `security.yaml` runs CodeQL itself.

@@ -24,7 +24,7 @@ cd "$(dirname "$0")/../../.."
 # the action whose step holds that key (or - for a key anywhere in the file),
 # and a checksum pinned beside the version (or -).
 pins=(
-  "goreleaser goreleaser/goreleaser version goreleaser/goreleaser-action -"
+  "goreleaser goreleaser/goreleaser GORELEASER_VERSION - -"
   "golangci-lint golangci/golangci-lint version golangci/golangci-lint-action -"
   "syft anchore/syft syft-version anchore/sbom-action/download-syft -"
   "zizmor zizmorcore/zizmor version zizmorcore/zizmor-action -"

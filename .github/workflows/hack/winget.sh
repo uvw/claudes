@@ -18,9 +18,15 @@ if [[ -z ${WINGET_TOKEN:-} ]]; then
   echo "::notice::WINGET_TOKEN is not set, so no winget pull request was opened"
   exit 0
 fi
-if ! GH_TOKEN=$WINGET_TOKEN gh api repos/microsoft/winget-pkgs/contents/manifests/u/uvw/claudes >/dev/null 2>&1; then
-  echo "::notice::$id is not in winget-pkgs yet; submit its first version by hand (docs/releasing.md)"
-  exit 0
+# Only a 404 means the package is missing. Any other error, such as an expired
+# token's 401, fails the job.
+if ! err=$(GH_TOKEN=$WINGET_TOKEN gh api repos/microsoft/winget-pkgs/contents/manifests/u/uvw/claudes 2>&1 >/dev/null); then
+  if [[ $err == *"(HTTP 404)"* ]]; then
+    echo "::notice::$id is not in winget-pkgs yet; submit its first version by hand (docs/releasing.md)"
+    exit 0
+  fi
+  echo "::error::Looking up $id in winget-pkgs failed: $err"
+  exit 1
 fi
 
 work=$(mktemp -d)

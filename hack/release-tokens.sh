@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Sets up the tokens the release workflows use, as secrets on uvw/claudes:
+# Sets up the tokens the release workflows use, as secrets of the release
+# environment on uvw/claudes, which only jobs on main or a v* tag can read:
 #
 #   RELEASE_PLEASE_TOKEN  opens and updates the release pull request, so its
 #                         checks start without a maintainer's approval
@@ -16,6 +17,7 @@
 set -euo pipefail
 
 repo=uvw/claudes
+env=release
 tap=uvw/homebrew-tap
 
 say() { printf '%s\n' "$*"; }
@@ -59,7 +61,8 @@ wanted() {
 
 command -v gh >/dev/null 2>&1 || die "the GitHub CLI (gh) is not installed"
 gh auth status >/dev/null 2>&1 || die "gh is not signed in: run gh auth login"
-existing=$(gh secret list -R "$repo" --json name -q '.[].name')
+existing=$(gh secret list -R "$repo" --env "$env" --json name -q '.[].name') ||
+  die "cannot list the secrets of the $env environment on $repo; create it first (docs/releasing.md)"
 
 say "1. Repositories"
 if gh repo view "$tap" >/dev/null 2>&1; then
@@ -87,8 +90,8 @@ if wanted RELEASE_PLEASE_TOKEN; then
   [[ $push == true ]] || die "that token cannot write to $repo; check its repository access and Contents permission"
   GH_TOKEN=$token gh api "repos/$repo/pulls?per_page=1" >/dev/null 2>&1 ||
     die "that token cannot read $repo's pull requests; check its Pull requests permission"
-  printf '%s' "$token" | gh secret set RELEASE_PLEASE_TOKEN -R "$repo"
-  say "   saved RELEASE_PLEASE_TOKEN on $repo"
+  printf '%s' "$token" | gh secret set RELEASE_PLEASE_TOKEN -R "$repo" --env "$env"
+  say "   saved RELEASE_PLEASE_TOKEN in the $env environment on $repo"
 fi
 
 say ""
@@ -101,8 +104,8 @@ if wanted HOMEBREW_TAP_TOKEN; then
   read_token "Homebrew tap"
   push=$(GH_TOKEN=$token gh api "repos/$tap" -q .permissions.push 2>/dev/null) || push=
   [[ $push == true ]] || die "that token cannot push to $tap; check its repository access and Contents permission"
-  printf '%s' "$token" | gh secret set HOMEBREW_TAP_TOKEN -R "$repo"
-  say "   saved HOMEBREW_TAP_TOKEN on $repo"
+  printf '%s' "$token" | gh secret set HOMEBREW_TAP_TOKEN -R "$repo" --env "$env"
+  say "   saved HOMEBREW_TAP_TOKEN in the $env environment on $repo"
 fi
 
 say ""
@@ -115,8 +118,8 @@ if wanted WINGET_TOKEN; then
   read_token "winget"
   scopes=$(GH_TOKEN=$token gh api -i user 2>/dev/null | tr -d '\r' | sed -n 's/^[Xx]-[Oo][Aa]uth-[Ss]copes: //p') || scopes=
   [[ ",${scopes// /}," == *,public_repo,* ]] || die "that token lacks the public_repo scope (it has: ${scopes:-none})"
-  printf '%s' "$token" | gh secret set WINGET_TOKEN -R "$repo"
-  say "   saved WINGET_TOKEN on $repo"
+  printf '%s' "$token" | gh secret set WINGET_TOKEN -R "$repo" --env "$env"
+  say "   saved WINGET_TOKEN in the $env environment on $repo"
 fi
 unset token
 

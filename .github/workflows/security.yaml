@@ -5,8 +5,8 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    # Weekly, so a new CodeQL query, gitleaks rule, or Go vulnerability report
-    # reaches code that has not changed.
+    # Weekly, so a new CodeQL query, Go vulnerability report, or advisory
+    # against an action reaches code that has not changed.
     - cron: "17 6 * * 1"
   workflow_dispatch:
 
@@ -16,10 +16,6 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-env:
-  GITLEAKS_VERSION: 8.30.1
-  GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
 
 jobs:
   codeql:
@@ -43,8 +39,13 @@ jobs:
           queries: security-and-quality
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
 
+  # CI runs zizmor and govulncheck on every push and pull request, and fails on
+  # a finding. Here they run only on the schedule or by hand, for what arrives
+  # between pushes: zizmor runs its online audits and sends its findings to code
+  # scanning, and govulncheck reads the newest vulnerability reports.
   zizmor:
     name: Workflow audit (zizmor)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -58,12 +59,12 @@ jobs:
         with:
           # Pinned, so a new zizmor release cannot turn this job red on its own.
           version: 1.32.0
-          # Pull requests from forks cannot upload to code scanning, so they
-          # report in the log instead.
-          advanced-security: ${{ github.event.pull_request.head.repo.fork != true }}
+          # SARIF for code scanning. It exits 0 on a finding.
+          advanced-security: true
 
   govulncheck:
     name: Go vulnerabilities (govulncheck)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -79,31 +80,3 @@ jobs:
             go.sum
             tools/go.sum
       - run: go tool -modfile=tools/go.mod govulncheck ./...
-
-  gitleaks:
-    name: Secrets (gitleaks)
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Install gitleaks, checked against its published hash
-        run: |
-          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl -fsSL --retry 3 -o "$archive" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
-          echo "${GITLEAKS_SHA256}  $archive" | sha256sum --check --strict
-          tar -xzf "$archive" gitleaks
-          sudo install gitleaks /usr/local/bin/gitleaks
-      - name: Scan the history
-        run: gitleaks git --redact --report-format sarif --report-path gitleaks.sarif .
-      - if: always() && github.event.pull_request.head.repo.fork != true
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
-        with:
-          sarif_file: gitleaks.sarif
-          category: gitleaks

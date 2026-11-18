@@ -3,22 +3,26 @@ name: Tool pins
 # Dependabot updates go.mod, tools/, and the actions, but not the tool versions
 # the workflows pass to actions or download themselves. This compares each with
 # its latest release every week, and keeps one issue open listing the ones that
-# are behind.
+# are behind. A pull request that changes the workflows gets a dry run, so a
+# pin the check can no longer find fails there.
 on:
   schedule:
     - cron: "29 8 * * 1"
   workflow_dispatch:
+  pull_request:
+    paths: [".github/**"]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
     name: Tool pins against their latest releases
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -28,9 +32,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # An explicit bash shell runs with pipefail, so the step fails when the
+      # script does, not only when tee does.
       - name: Open, update, or close the tool pins issue
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: bash .github/workflows/hack/tool-pins.sh "$RUN_URL"
+        run: bash .github/workflows/hack/tool-pins.sh "$RUN_URL" 2>&1 | tee tool-pins.txt
+      - name: Report the failed check on the tool pins issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/workflows/hack/tool-pins-failed.sh tool-pins.txt "$RUN_URL"
+
+  dry-run:
+    name: Tool pins dry run
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Find every pin, and print what the check would do
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash .github/workflows/hack/tool-pins.sh --dry-run

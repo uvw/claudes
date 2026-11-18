@@ -68,37 +68,59 @@ Run all of these before you commit, and keep them clean, with zero warnings:
 gofmt -l .
 go mod tidy -diff
 go -C tools mod tidy -diff
+go mod verify
 go vet ./...
 GOOS=windows go vet ./...
-go test -race ./...
-go tool -modfile=tools/go.mod staticcheck ./...
-golangci-lint run ./...
-go tool -modfile=tools/go.mod govulncheck ./...
+go test -race "-coverprofile=coverage.out" ./...
+bash .github/workflows/hack/coverage.sh 80 coverage.out
+go tool "-modfile=tools/go.mod" staticcheck ./...
+GOOS=windows "$(go tool "-modfile=tools/go.mod" -n staticcheck)" ./...
+GOOS=linux golangci-lint run ./...
+GOOS=darwin golangci-lint run ./...
+GOOS=windows golangci-lint run ./...
+go tool "-modfile=tools/go.mod" govulncheck ./...
 go run hack/notices.go --check
 goreleaser build --snapshot --clean
+zizmor --offline .
+gitleaks git --redact .
 npm ci --prefix tools --ignore-scripts
 tools/node_modules/.bin/prettier --check .
-tools/node_modules/.bin/markdownlint-cli2 "**/*.md" "#dist" "#.claude/worktrees" "#docs/local" "#tools/node_modules"
+tools/node_modules/.bin/markdownlint-cli2
 ```
 
-Both `go mod tidy -diff` commands and `gofmt -l` must print nothing.
+Both `go mod tidy -diff` commands and `gofmt -l` must print nothing. The quotes
+keep PowerShell from splitting a flag at its dot. PowerShell also has no
+`GOOS=windows command` form: run `$env:GOOS = "windows"` first, then the
+command, then `Remove-Item Env:GOOS`. The coverage line needs bash, which Git
+for Windows provides. The Windows staticcheck line runs a staticcheck built for
+this machine, since `GOOS=windows go tool` would build one for Windows.
 
-Every tool the checks run has a pinned version, and each pin is updated or
+Every tool the checks run has a pinned version. These pins are updated or
 checked each week (decision 31):
 
 1. staticcheck, govulncheck, and go-licenses are `tool` lines in `tools/go.mod`,
    a module of its own, so their dependencies stay out of the `go.mod` claudes
    ships, its notices, and the govulncheck scan. `go tool -modfile=tools/go.mod`
-   builds each from that module and runs it on this one. PowerShell splits the
-   flag at the dot, so quote it there: `"-modfile=tools/go.mod"`. Dependabot
-   updates them.
+   builds each from that module and runs it on this one. Dependabot updates
+   them.
 2. Prettier and markdownlint-cli2 are in `tools/package.json`, and `npm ci`
    installs the versions `tools/package-lock.json` locks. Dependabot updates
    them.
 3. goreleaser, golangci-lint, syft, zizmor, gitleaks, and komac stay pinned in
-   the workflows. The weekly Tool pins workflow
+   the workflows, each written once per workflow. The weekly Tool pins workflow
    (`.github/workflows/tool-pins.yaml`) keeps an issue labeled `tool-pins` open
-   while any of them is behind its latest release.
+   while any of them is behind its latest release, and opens one when the check
+   itself fails. A pull request that changes `.github/` gets a dry run of it.
+
+Node, the Go toolchain, and the demo's VHS image are raised by hand instead,
+since no weekly check fits them:
+
+1. Node runs at the major version in `tools/.nvmrc`, an LTS line, and setup-node
+   takes its newest release. Raise it when that line leaves active LTS.
+2. The Go toolchain is the `go` line in `go.mod`, which setup-go and
+   `GOTOOLCHAIN=auto` both read. Raise it when a Go release comes out.
+3. The demo's VHS image is pinned by tag and digest in `hack/demo.sh`. Raise it
+   when you render the demo again, since no check runs it.
 
 `goreleaser build` needs [goreleaser](https://goreleaser.com/install/) and
 builds every release target. `hack/notices.go` builds go-licenses from
@@ -109,19 +131,30 @@ license changes, run it without `--check` to rewrite
 `docs/third-party-notices.txt`.
 
 [golangci-lint](https://golangci-lint.run/welcome/install/) needs v2.15.0 or
-later, the first to read Go 1.27's packages. Run it with `GOOS=darwin` and
-`GOOS=windows` too, since each platform's files build only for it, as CI does.
-`.golangci.yaml` lists what it leaves out, and why.
+later, the first to read Go 1.27's packages. It runs once for each `GOOS`, as CI
+does, since each platform's files build only for it. `.golangci.yaml` lists what
+it leaves out, and why, including staticcheck, which runs on its own.
+[zizmor](https://docs.zizmor.sh/installation/) and
+[gitleaks](https://github.com/gitleaks/gitleaks#installing) need installing at
+the versions `.github/workflows/ci.yaml` pins. zizmor runs offline, as in CI, so
+it needs no token; the weekly Security workflow runs its online audits.
+`.markdownlint-cli2.yaml` lists the files markdownlint-cli2 checks and the paths
+it skips.
 
-CI runs the Go checks on Linux, macOS, and Windows, except `gofmt`, which skips
-Windows. The coverage floor of 80% (`.github/workflows/hack/coverage.sh`),
-govulncheck, the notices, and the Markdown checks run on Linux. Each platform
-also builds and runs the release binary (`.github/workflows/hack/smoke.sh`) and
-installs it with its install script. macOS does that inside its Go job, since a
-macOS runner can take most of an hour to arrive, and runs on Intel, since
-GitHub's Apple silicon runners are short on capacity. The "CI (all green)" job
-is the one required check. Workflow steps longer than a few lines live in
-`.github/workflows/hack/`, so they run the same way locally.
+CI runs the Go checks on Linux and Windows, each on Intel and Arm, and on macOS,
+except `gofmt`, which skips Windows. Windows on Arm runs the tests without the
+race detector, which Go lacks there. The coverage floor of 80%
+(`.github/workflows/hack/coverage.sh`) and govulncheck run on Linux on Intel,
+and the notices, the Markdown checks, zizmor, and gitleaks on Linux. Each
+platform also builds and runs the release binary
+(`.github/workflows/hack/smoke.sh`) and installs it with its install script.
+macOS does that inside its Go job, since a macOS runner can take most of an hour
+to arrive, and runs on Intel, since GitHub's Apple silicon runners are short on
+capacity. The "CI (all green)" job is the one required check, and a finding from
+zizmor or gitleaks fails it. The weekly Security workflow
+(`.github/workflows/security.yaml`) runs CodeQL, and runs zizmor and govulncheck
+again for what arrives between pushes. Workflow steps longer than a few lines
+live in `.github/workflows/hack/`, so they run the same way locally.
 
 ## Tests
 
