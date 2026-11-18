@@ -74,13 +74,14 @@ GOOS=windows go vet ./...
 go test -race "-coverprofile=coverage.out" ./...
 bash .github/workflows/hack/coverage.sh 80 coverage.out
 go tool "-modfile=tools/go.mod" staticcheck ./...
+GOOS=windows "$(go tool "-modfile=tools/go.mod" -n staticcheck)" ./...
 GOOS=linux golangci-lint run ./...
 GOOS=darwin golangci-lint run ./...
 GOOS=windows golangci-lint run ./...
 go tool "-modfile=tools/go.mod" govulncheck ./...
 go run hack/notices.go --check
 goreleaser build --snapshot --clean
-zizmor .
+zizmor --offline .
 gitleaks git --redact .
 npm ci --prefix tools --ignore-scripts
 tools/node_modules/.bin/prettier --check .
@@ -91,7 +92,8 @@ Both `go mod tidy -diff` commands and `gofmt -l` must print nothing. The quotes
 keep PowerShell from splitting a flag at its dot. PowerShell also has no
 `GOOS=windows command` form: run `$env:GOOS = "windows"` first, then the
 command, then `Remove-Item Env:GOOS`. The coverage line needs bash, which Git
-for Windows provides.
+for Windows provides. The Windows staticcheck line runs a staticcheck built for
+this machine, since `GOOS=windows go tool` would build one for Windows.
 
 Every tool the checks run has a pinned version. These pins are updated or
 checked each week (decision 31):
@@ -134,9 +136,10 @@ does, since each platform's files build only for it. `.golangci.yaml` lists what
 it leaves out, and why, including staticcheck, which runs on its own.
 [zizmor](https://docs.zizmor.sh/installation/) and
 [gitleaks](https://github.com/gitleaks/gitleaks#installing) need installing at
-the versions `.github/workflows/ci.yaml` pins. zizmor runs its online audits
-only with a GitHub token in `GH_TOKEN`, as CI does. `.markdownlint-cli2.yaml`
-lists the files markdownlint-cli2 checks and the paths it skips.
+the versions `.github/workflows/ci.yaml` pins. zizmor runs offline, as in CI, so
+it needs no token; the weekly Security workflow runs its online audits.
+`.markdownlint-cli2.yaml` lists the files markdownlint-cli2 checks and the paths
+it skips.
 
 CI runs the Go checks on Linux and Windows, each on Intel and Arm, and on macOS,
 except `gofmt`, which skips Windows. Windows on Arm runs the tests without the

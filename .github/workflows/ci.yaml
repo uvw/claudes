@@ -235,6 +235,10 @@ jobs:
           # Plain output, with a failing exit code on a finding. The SARIF
           # mode exits 0 and needs a token that can write to code scanning.
           advanced-security: false
+          # Offline, so a new advisory against a pinned action cannot turn a
+          # pull request or a release red on its own. The weekly Security run
+          # audits online and sends advisories to code scanning.
+          online-audits: false
 
   gitleaks:
     name: Secrets (gitleaks)

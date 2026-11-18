@@ -41,8 +41,8 @@ jobs:
 
   # CI runs zizmor and govulncheck on every push and pull request, and fails on
   # a finding. Here they run only on the schedule or by hand, for what arrives
-  # between pushes: zizmor sends its findings to code scanning, and govulncheck
-  # reads the newest vulnerability reports.
+  # between pushes: zizmor runs its online audits and sends its findings to code
+  # scanning, and govulncheck reads the newest vulnerability reports.
   zizmor:
     name: Workflow audit (zizmor)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
