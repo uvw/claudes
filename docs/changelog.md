@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.5.0](https://github.com/uvw/claudes/compare/v0.4.0...v0.5.0) (2026-11-18)
+
+
+### Features
+
+* **cli:** add short forms for the flags typed most often ([#69](https://github.com/uvw/claudes/issues/69)) ([879328d](https://github.com/uvw/claudes/commit/879328d89e14e5bcea333a419909e6c0d6a9cb32))
+* **cli:** carry a stopped background job over in session mv ([#73](https://github.com/uvw/claudes/issues/73)) ([b353c7f](https://github.com/uvw/claudes/commit/b353c7f8b317b25be24d1ef5793ddde47812c390))
+* **cli:** list the MCP servers a session or directory has with claudes mcp ls ([#81](https://github.com/uvw/claudes/issues/81)) ([abca868](https://github.com/uvw/claudes/commit/abca8683d7d51d8359ec252daa6690f204dbfb52))
+* **cli:** mask secrets in session search and rename --limit to --top ([#91](https://github.com/uvw/claudes/issues/91)) ([65c8da0](https://github.com/uvw/claudes/commit/65c8da08a0d769456d1401cbdfef1d7e56d92475))
+* **cli:** search past sessions by what was said in them ([#78](https://github.com/uvw/claudes/issues/78)) ([6f53734](https://github.com/uvw/claudes/commit/6f53734fe0f0ddb76ffe1b6e68cf8962fa0c534b))
+* **cli:** shorten long directories to fit every text table ([#85](https://github.com/uvw/claudes/issues/85)) ([c67d2ff](https://github.com/uvw/claudes/commit/c67d2ffb94ef061d64ea82239dee9aa72f65c031))
+* **cli:** show running subagents in ls, and more with --wide ([#74](https://github.com/uvw/claudes/issues/74)) ([3667368](https://github.com/uvw/claudes/commit/36673681610c52714678807b4517a45449e25c62))
+* **cli:** warn in doctor when Claude Code may write pins without the lock ([#66](https://github.com/uvw/claudes/issues/66)) ([35539a0](https://github.com/uvw/claudes/commit/35539a0cc847715b8be159465f0e3a80b0b58497))
+* **procs:** read process start times from /proc on linux ([#67](https://github.com/uvw/claudes/issues/67)) ([280c852](https://github.com/uvw/claudes/commit/280c85208e8315db7cef412882f7bef29953aced))
+* **safefile:** replace open files with posix rename semantics on windows ([#75](https://github.com/uvw/claudes/issues/75)) ([85b3415](https://github.com/uvw/claudes/commit/85b34153d5df2064adc45d9f555acec09b3d622f))
+
+
+### Bug fixes
+
+* **claude:** drop the child-notes and effort variables when starting claude ([#84](https://github.com/uvw/claudes/issues/84)) ([aa286f0](https://github.com/uvw/claudes/commit/aa286f0d5821a948c9d16ed6ce975b7ea5e2a9fa))
+* **cli:** add --confirm to gc and session gc, and lay out cli by command ([#92](https://github.com/uvw/claudes/issues/92)) ([d33ab4b](https://github.com/uvw/claudes/commit/d33ab4b7f5d28261233de5e559727e62bad876dd))
+* **cli:** close safety gaps in gc, session mv, pause, and their hints ([#89](https://github.com/uvw/claudes/issues/89)) ([2d59df4](https://github.com/uvw/claudes/commit/2d59df45bbbc78425bbda7bd249cdd025acc71ee))
+* **cli:** trash what gc --teams and session mv --rm remove, and survive SIGTERM and a suspend ([#95](https://github.com/uvw/claudes/issues/95)) ([2a2b981](https://github.com/uvw/claudes/commit/2a2b981a6794e3d3288a85f8d5d0afd9f58fe0c3))
+* **deps:** Bump charm.land/lipgloss/v2 from 2.0.6 to 2.1.0 in the gomod group across 1 directory ([#76](https://github.com/uvw/claudes/issues/76)) ([596aa8f](https://github.com/uvw/claudes/commit/596aa8f27e8c2a209053de82eeabdbf1244678e9))
+* **hack:** date the names of the release tokens so a renewal can be made ([#94](https://github.com/uvw/claudes/issues/94)) ([b611df5](https://github.com/uvw/claudes/commit/b611df550d5190138cd55f63c2dffb1ba64f3414))
+* judge sessions only on records claudes knows, and harden moves and renames ([#90](https://github.com/uvw/claudes/issues/90)) ([06ce4c7](https://github.com/uvw/claudes/commit/06ce4c7e4a26a910c0075cf71277951bd2250ad6))
+* **procs:** bound the start time read from /proc ([#80](https://github.com/uvw/claudes/issues/80)) ([300a1ee](https://github.com/uvw/claudes/commit/300a1eea112b0d7abb398e0549475e64cd2a98c3))
+* **procs:** refuse a process that started after its session ([#70](https://github.com/uvw/claudes/issues/70)) ([79d3cb1](https://github.com/uvw/claudes/commit/79d3cb1fddbba5368945d0f87ea4f7c215af3fa3))
+* **procs:** stop an npm-installed claude code on windows ([#71](https://github.com/uvw/claudes/issues/71)) ([6f5a390](https://github.com/uvw/claudes/commit/6f5a39040d05d0be1cf2bb8ec694795b71339ed4))
+* **style:** follow the clicolors convention, and check Claude Code's formats weekly ([#93](https://github.com/uvw/claudes/issues/93)) ([ddacc3d](https://github.com/uvw/claudes/commit/ddacc3dd9210b5f483c7164533c6951b8cd03b5d))
+
 ## [0.4.0](https://github.com/uvw/claudes/compare/v0.3.0...v0.4.0) (2026-11-17)
 
 ### Features
