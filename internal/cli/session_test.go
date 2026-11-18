@@ -328,7 +328,25 @@ func TestSessionMvRmDeletesTheOriginalOnceCopied(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	assertContains(t, h.out.String(), "removed the original")
+	assertContains(t, h.out.String(), "moved the original from")
+	if len(h.trashed) != 2 {
+		t.Fatalf("trashed %q, want the transcript and its sidecar", h.trashed)
+	}
+}
+
+func TestSessionMvRmPurgeDeletesForGood(t *testing.T) {
+	h := newHarness(t)
+	from := h.folder("from")
+	id := h.transcript(t, "plan", from, time.Hour)
+	src := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(from), id+".jsonl")
+
+	h.fails(t, "session", "mv", "--purge", "plan", h.folder("to"))
+	assertContains(t, h.err.String(), "--purge goes with --rm")
+	h.ok(t, "session", "mv", "--rm", "--purge", "plan", h.folder("to"))
+	if len(h.trashed) != 0 || exists(src) {
+		t.Fatalf("trashed %q, or kept %s", h.trashed, src)
+	}
+	assertContains(t, h.out.String(), "deleted the original from")
 }
 
 func TestSessionMvRmRefusesTheHost(t *testing.T) {

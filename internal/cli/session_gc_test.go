@@ -238,13 +238,13 @@ func TestSessionGcRefusesAPathOutsideClaudesFolder(t *testing.T) {
 	outside := filepath.Join(t.TempDir(), sessionID("x"))
 	writeFile(t, filepath.Join(outside, "f"), "keep me")
 	it := gcItem{sessionID: sessionID("x"), name: "x", paths: []string{outside}}
-	if err := h.app.gcRemoveItem(it, h.root, true); err == nil || !exists(outside) {
+	if err := h.app.Transcripts.Remove(it.sessionID, it.paths, os.RemoveAll); err == nil || !exists(outside) {
 		t.Fatalf("removed %s: %v", outside, err)
 	}
 	inside := filepath.Join(h.root, "projects", "-w", "not-the-session")
 	writeFile(t, filepath.Join(inside, "f"), "keep me")
 	it.paths = []string{inside}
-	if err := h.app.gcRemoveItem(it, h.root, true); err == nil || !exists(inside) {
+	if err := h.app.Transcripts.Remove(it.sessionID, it.paths, os.RemoveAll); err == nil || !exists(inside) {
 		t.Fatalf("removed %s: %v", inside, err)
 	}
 }
@@ -412,10 +412,10 @@ func TestSessionGcRemovesOnlyFoldersInsideTheSessionsSidecar(t *testing.T) {
 	theirs := filepath.Join(h.root, "projects", "-w", sessionID("y"), "tool-results")
 	writeFile(t, filepath.Join(theirs, "r.txt"), "keep me")
 
-	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{theirs}}, h.root, true); err == nil || !exists(theirs) {
+	if err := h.app.Transcripts.Remove(id, []string{theirs}, os.RemoveAll); err == nil || !exists(theirs) {
 		t.Fatalf("removed another session's directory: %v", err)
 	}
-	if err := h.app.gcRemoveItem(gcItem{sessionID: id, paths: []string{mine}}, h.root, true); err != nil || exists(mine) {
+	if err := h.app.Transcripts.Remove(id, []string{mine}, os.RemoveAll); err != nil || exists(mine) {
 		t.Fatalf("kept the session's own directory: %v", err)
 	}
 }

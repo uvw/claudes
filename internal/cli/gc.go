@@ -44,7 +44,7 @@ func requireFinished(sessions []claude.Session) error {
 func (app *App) gcCommand() *cobra.Command {
 	var olderThan days
 	var plan planFlags
-	var withTeams, withPinned bool
+	var withTeams, withPinned, purge bool
 	olderThan.d = 7 * 24 * time.Hour
 	cmd := &cobra.Command{
 		Use:   "gc [TARGET...]",
@@ -57,15 +57,19 @@ ones, and pinned ones unless --pinned is given.
 
 --teams removes the agent team directories under ~/.claude/teams and the task lists
 under ~/.claude/tasks that Claude Code leaves behind: those of sessions that no
-longer run and have not changed for longer than --older-than.`,
+longer run and have not changed for longer than --older-than. They go to the
+system trash; --purge deletes them for good.`,
 		ValidArgsFunction: app.completeSessions(finishedSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if purge && !withTeams {
+				return errors.New("--purge goes with --teams: claude rm keeps each conversation")
+			}
 			if withTeams {
 				if len(args) > 0 {
 					return errors.New("gc --teams takes no targets")
 				}
-				return app.gcTeams(ctx, olderThan.d, plan, withPinned)
+				return app.gcTeams(ctx, gcTeamsOpts{olderThan: olderThan.d, plan: plan, withPinned: withPinned, purge: purge})
 			}
 			sessions, err := app.listed(ctx, true)
 			if err != nil {
@@ -115,6 +119,7 @@ longer run and have not changed for longer than --older-than.`,
 	cmd.Flags().Var(&olderThan, "older-than", "without targets, only sessions older than this, such as 7d or 12h")
 	cmd.Flags().BoolVar(&withTeams, "teams", false, "remove leftover agent team directories and task lists instead of sessions")
 	cmd.Flags().BoolVar(&withPinned, "pinned", false, "without targets, remove pinned sessions too")
+	cmd.Flags().BoolVar(&purge, "purge", false, "with --teams, delete for good instead of moving to the trash")
 	plan.add(cmd)
 	app.addForce(cmd, forceUsage)
 	return cmd
@@ -166,10 +171,17 @@ func (l leftover) Label() string {
 	return "task list"
 }
 
+// gcTeamsOpts are the flags of gc --teams.
+type gcTeamsOpts struct {
+	olderThan         time.Duration
+	plan              planFlags
+	withPinned, purge bool
+}
+
 // gcTeams removes the team directories and task lists of sessions that no longer
 // run and that have not changed since olderThan ago, keeping a pinned
 // session's unless withPinned.
-func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planFlags, withPinned bool) error {
+func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 	sessions, err := app.listed(ctx, true)
 	if err != nil {
 		return err
@@ -179,7 +191,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planF
 	// when claude agents no longer lists the session.
 	keep := map[string]bool{}
 	pinned := map[string]bool{}
-	if !withPinned {
+	if !o.withPinned {
 		if pinned, err = app.protectedPins(sessions); err != nil {
 			return err
 		}
@@ -197,7 +209,7 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planF
 	for _, e := range parked {
 		keep[claude.ShortID(e.SessionID)] = true
 	}
-	folders, err := app.Teams.Leftovers(keep, app.Now().Add(-olderThan))
+	folders, err := app.Teams.Leftovers(keep, app.Now().Add(-o.olderThan))
 	if err != nil {
 		return err
 	}
@@ -211,8 +223,12 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planF
 		rows = append(rows, planRow{id: l.ID(), name: l.Label(), cwd: f.Path, note: "last changed " + ago(app.Now(), f.Modified)})
 	}
 	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
-	if proceed, err := app.gate(plan, "Remove these team dirs and task lists?"); !proceed {
+	if proceed, err := app.gate(o.plan, "Remove these team dirs and task lists?"); !proceed {
 		return err
+	}
+	verb := "trashed"
+	if o.purge {
+		verb = "deleted"
 	}
 	var failures []failure
 	for i, f := range folders {
@@ -221,12 +237,12 @@ func (app *App) gcTeams(ctx context.Context, olderThan time.Duration, plan planF
 			break
 		}
 		l := leftover{f}
-		if err := app.Teams.Remove(f); err != nil {
+		if err := app.Teams.Remove(f, app.remover(o.purge)); err != nil {
 			failures = append(failures, failure{l.Label() + " " + l.ID(), err.Error(), l})
 			app.progressFailed(l)
 			continue
 		}
-		app.progress("removed", l, "")
+		app.progress(verb, l, "")
 	}
 	return app.reportFailures(failures)
 }

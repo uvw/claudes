@@ -39,7 +39,7 @@ func TestRemoveDoesNotFollowAJunction(t *testing.T) {
 	if err != nil || len(folders) != 1 {
 		t.Fatalf("leftovers %v, err %v", folders, err)
 	}
-	if err := st.Remove(folders[0]); err != nil {
+	if err := st.Remove(folders[0], os.RemoveAll); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(keep); err != nil {

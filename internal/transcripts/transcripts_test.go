@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+
 	"github.com/uvw/claudes/internal/safefile"
 )
 
@@ -253,7 +254,7 @@ func TestRemoveOriginalKeepsItWhenTheCopyDiffers(t *testing.T) {
 	dest := filepath.Join(dir, "-b")
 	write(t, filepath.Join(dest, sid+".jsonl"), time.Now(), "something else\n")
 
-	err := (Store{Dir: dir}).RemoveOriginal(Session{SessionID: sid, Path: src}, dest)
+	err := (Store{Dir: dir}).RemoveOriginal(Session{SessionID: sid, Path: src}, dest, os.RemoveAll)
 	if err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("err %v", err)
 	}
@@ -271,7 +272,7 @@ func TestRemoveOriginalKeepsItWhenTheSubagentCopyDiffers(t *testing.T) {
 	write(t, filepath.Join(dest, sid+".jsonl"), time.Now(), "same\n")
 	write(t, filepath.Join(dest, sid, "subagents", "a.jsonl"), time.Now(), "part")
 
-	err := (Store{Dir: dir}).RemoveOriginal(Session{SessionID: sid, Path: src}, dest)
+	err := (Store{Dir: dir}).RemoveOriginal(Session{SessionID: sid, Path: src}, dest, os.RemoveAll)
 	if err == nil || !strings.Contains(err.Error(), "subagent directory does not match") {
 		t.Fatalf("err %v", err)
 	}

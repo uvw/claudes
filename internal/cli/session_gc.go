@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -249,10 +247,10 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 			items = append(items, app.wholeSession(p, kindOld))
 		case f.copies:
 			for _, c := range p.Copies {
-				if changed := modTime(c); !changed.IsZero() && changed.Before(recent) {
+				if changed := transcripts.Changed(c); !changed.IsZero() && changed.Before(recent) {
 					paths := transcripts.CopyFiles(c)
 					items = append(items, gcItem{sessionID: p.SessionID, name: p.Label() + " (older copy)", why: kindCopy,
-						dir: filepath.Dir(c), paths: paths, size: sizeOf(paths), transcript: c, changed: changed})
+						dir: filepath.Dir(c), paths: paths, size: transcripts.Size(paths), transcript: c, changed: changed})
 				}
 			}
 		}
@@ -288,23 +286,18 @@ func (app *App) gcPick(list []pastSession, keep map[string]string, f gcFlags) ([
 // sidecarItem is the part of p's sidecar directory --sidecars trims: its saved
 // command outputs, and its subagent transcripts too when withSubagents.
 func sidecarItem(p pastSession, withSubagents bool) (gcItem, bool) {
-	sidecar := transcripts.Sidecar(p.Session)
-	parts := []struct{ folder, what string }{{"tool-results", "saved outputs"}}
-	if withSubagents {
-		parts = append(parts, struct{ folder, what string }{"subagents", "subagents"})
-	}
-	var paths, what []string
-	for _, part := range parts {
-		path := filepath.Join(sidecar, part.folder)
-		if info, err := os.Lstat(path); err == nil && info.IsDir() && sizeOf([]string{path}) > 0 {
-			paths, what = append(paths, path), append(what, part.what)
-		}
-	}
-	if len(paths) == 0 {
+	parts := transcripts.SidecarParts(p.Session, withSubagents)
+	if len(parts) == 0 {
 		return gcItem{}, false
 	}
-	return gcItem{sessionID: p.SessionID, name: p.Label() + " (" + strings.Join(what, " and ") + ")", why: kindSidecar, dir: cmp.Or(p.Cwd, sidecar),
-		paths: paths, size: sizeOf(paths), transcript: p.Path, changed: modTime(p.Path)}, true
+	it := gcItem{sessionID: p.SessionID, why: kindSidecar, dir: cmp.Or(p.Cwd, transcripts.Sidecar(p.Session)),
+		transcript: p.Path, changed: transcripts.Changed(p.Path)}
+	what := make([]string, len(parts))
+	for i, part := range parts {
+		it.paths, it.size, what[i] = append(it.paths, part.Path), it.size+part.Size, part.What
+	}
+	it.name = p.Label() + " (" + strings.Join(what, " and ") + ")"
+	return it, true
 }
 
 // trivial reports whether p holds nothing worth keeping: it changed no file,
@@ -321,20 +314,8 @@ func trivial(p pastSession) bool {
 
 func (app *App) wholeSession(p pastSession, why gcKind) gcItem {
 	return gcItem{sessionID: p.SessionID, name: p.Label(), why: why, dir: cmp.Or(p.Cwd, filepath.Dir(p.Path)),
-		paths: app.Transcripts.SessionFiles(p.Session), size: p.Disk.Total + app.extraSize(p.Session),
-		transcript: p.Path, changed: modTime(p.Path)}
-}
-
-// extraSize is what SessionFiles takes beyond the session's Disk: its
-// session-env directory and debug log.
-func (app *App) extraSize(s transcripts.Session) int64 {
-	if app.Transcripts.Home == "" {
-		return 0
-	}
-	return sizeOf([]string{
-		filepath.Join(app.Transcripts.Home, "session-env", s.SessionID),
-		filepath.Join(app.Transcripts.Home, "debug", s.SessionID+".txt"),
-	})
+		paths: app.Transcripts.SessionFiles(p.Session), size: p.Disk.Total + app.Transcripts.ExtraSize(p.Session),
+		transcript: p.Path, changed: transcripts.Changed(p.Path)}
 }
 
 // gcRemove removes items, after checking once more that none of them runs
@@ -350,7 +331,6 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			live[s.SessionID] = true
 		}
 	}
-	root := cmp.Or(app.Transcripts.Home, app.Transcripts.Dir)
 	verb := "trashed"
 	if purge {
 		verb = "deleted"
@@ -366,11 +346,11 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 			app.progress("skipped", it, " (it started running)")
 			continue
 		}
-		if it.transcript != "" && !modTime(it.transcript).Equal(it.changed) {
+		if it.transcript != "" && !transcripts.Changed(it.transcript).Equal(it.changed) {
 			app.progress("skipped", it, " (it changed since the plan)")
 			continue
 		}
-		if err := app.gcRemoveItem(it, root, purge); err != nil {
+		if err := app.Transcripts.Remove(it.sessionID, it.paths, app.remover(purge)); err != nil {
 			failures = append(failures, failure{it.name, err.Error(), it})
 			app.progressFailed(it)
 			continue
@@ -387,52 +367,4 @@ func (app *App) gcRemove(ctx context.Context, items []gcItem, purge bool) error 
 		app.say("\nFreed %s.", style.Size(freed))
 	}
 	return app.reportFailures(failures)
-}
-
-// gcRemoveItem removes each of an item's paths. It refuses a path outside
-// root, or one whose name, or whose directory's name, does not carry the session
-// id, so nothing else is ever touched.
-func (app *App) gcRemoveItem(it gcItem, root string, purge bool) error {
-	for _, p := range it.paths {
-		rel, err := filepath.Rel(root, p)
-		owned := strings.Contains(filepath.Base(p), it.sessionID) || filepath.Base(filepath.Dir(p)) == it.sessionID
-		if err != nil || rel == "." || strings.HasPrefix(rel, "..") || !owned {
-			return fmt.Errorf("refused to remove %s, which is not a file of session %s under %s", p, it.sessionID, root)
-		}
-		if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
-			continue
-		}
-		if purge {
-			err = os.RemoveAll(p)
-		} else {
-			err = app.Trash(p)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func modTime(path string) time.Time {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return time.Time{}
-	}
-	return info.ModTime()
-}
-
-func sizeOf(paths []string) int64 {
-	var n int64
-	for _, p := range paths {
-		_ = filepath.WalkDir(p, func(_ string, d fs.DirEntry, err error) error {
-			if err == nil && d.Type().IsRegular() {
-				if info, err := d.Info(); err == nil {
-					n += info.Size()
-				}
-			}
-			return nil
-		})
-	}
-	return n
 }

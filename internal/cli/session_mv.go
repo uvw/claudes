@@ -17,7 +17,7 @@ import (
 )
 
 func (app *App) sessionMvCommand() *cobra.Command {
-	var resume, rm bool
+	var resume, rm, purge bool
 	cmd := &cobra.Command{
 		Use:     "mv TARGET DIR",
 		Aliases: []string{"move"},
@@ -26,7 +26,8 @@ func (app *App) sessionMvCommand() *cobra.Command {
 finds it when started there. The original stays, so the session still resumes
 from its old directory too; claudes prints the command that removes it. The old
 directory's project memory and the directory recorded inside the transcript are left
-alone. --rm deletes the original once the copy matches it byte for byte.
+alone. --rm moves the original to the system trash once the copy matches it
+byte for byte, and --rm --purge deletes it for good.
 
 A running session is refused, since what it says after the copy stays in the
 old transcript. The session running claudes is the exception: copy it, then
@@ -43,16 +44,20 @@ claudes session resume --bg then starts a new job in DIR with those options.`,
 			return app.completePast(true)(cmd, args, toComplete)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return app.moveSession(cmd.Context(), args[0], args[1], resume, rm)
+			if purge && !rm {
+				return errors.New("--purge goes with --rm")
+			}
+			return app.moveSession(cmd.Context(), args[0], args[1], resume, rm, purge)
 		},
 	}
 	cmd.Flags().BoolVarP(&resume, "resume", "r", false, "resume the session from DIR once it is copied")
-	cmd.Flags().BoolVar(&rm, "rm", false, "delete the original once the copy matches it")
+	cmd.Flags().BoolVar(&rm, "rm", false, "move the original to the trash once the copy matches it")
+	cmd.Flags().BoolVar(&purge, "purge", false, "with --rm, delete the original for good instead")
 	app.addForce(cmd, "copy although claudes cannot tell whether the session runs, or Claude Code may name project directories differently now")
 	return cmd
 }
 
-func (app *App) moveSession(ctx context.Context, token, to string, resume, rm bool) error {
+func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, purge bool) error {
 	dir, err := realDir(to)
 	if errors.Is(err, errNoDir) {
 		return fmt.Errorf("%w. Create or clone it first", err)
@@ -114,10 +119,14 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm bo
 	}
 	remove := shell.RemoveCommand(transcripts.Files(p.Session))
 	if rm {
-		if err := app.Transcripts.RemoveOriginal(p.Session, dest); err != nil {
+		if err := app.Transcripts.RemoveOriginal(p.Session, dest, app.remover(purge)); err != nil {
 			return fmt.Errorf("copied, but %w. Remove it by hand with: %s", err, remove)
 		}
-		app.say("removed the original from %s", filepath.Dir(p.Path))
+		if purge {
+			app.say("deleted the original from %s", filepath.Dir(p.Path))
+		} else {
+			app.say("moved the original from %s to the trash", filepath.Dir(p.Path))
+		}
 	} else {
 		app.say("\nThe original stays, so it still resumes from %s. Remove it with:\n  %s", p.Cwd, remove)
 	}

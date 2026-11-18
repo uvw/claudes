@@ -552,10 +552,11 @@ func stage(transcript, sidecar, target, sidecarTarget string) error {
 	return nil
 }
 
-// RemoveOriginal deletes s's transcript and its directory of subagent
-// transcripts and tool results, once every file of the copy in dest matches
-// the original byte for byte.
-func (st Store) RemoveOriginal(s Session, dest string) error {
+// RemoveOriginal removes s's transcript and its directory of subagent
+// transcripts and tool results with remove, once every file of the copy in
+// dest matches the original byte for byte. remove moves a path to the system
+// trash, or is os.RemoveAll to delete it for good.
+func (st Store) RemoveOriginal(s Session, dest string, remove func(string) error) error {
 	copied := filepath.Join(dest, filepath.Base(s.Path))
 	if same(s.Path, copied) {
 		return fmt.Errorf("%s is the original, not a copy", copied)
@@ -567,10 +568,12 @@ func (st Store) RemoveOriginal(s Session, dest string) error {
 	if err := sameTree(sidecar, filepath.Join(dest, filepath.Base(sidecar))); err != nil {
 		return fmt.Errorf("kept the original, since the copy of its subagent directory does not match it: %w", err)
 	}
-	if err := os.RemoveAll(sidecar); err != nil {
-		return err
+	if isDir(sidecar) {
+		if err := remove(sidecar); err != nil {
+			return err
+		}
 	}
-	return os.Remove(s.Path)
+	return remove(s.Path)
 }
 
 // sameTree checks that every file under src has an identical copy under

@@ -125,3 +125,31 @@ func TestGCConfirmAsksFirst(t *testing.T) {
 	assertCalls(t, h, "rm "+old.JobID)
 	assertContains(t, h.out.String(), "Remove these sessions from the list? [y/N]")
 }
+
+// gc --teams moves what it removes to the trash, as session gc does, and
+// --purge deletes it for good.
+func TestGCTeamsTrashesUnlessPurged(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{}}
+	tasks := func(name string) string {
+		p := filepath.Join(h.app.Teams.Tasks, teams.Name(sessionID(name)), "1.json")
+		writeFile(t, p, "{}")
+		h.aged(t, filepath.Dir(p), 30*24*time.Hour)
+		return filepath.Dir(p)
+	}
+	first := tasks("first")
+	h.ok(t, "gc", "--teams")
+	if len(h.trashed) != 1 || h.trashed[0] != first {
+		t.Fatalf("trashed %q, want %s", h.trashed, first)
+	}
+	assertContains(t, h.out.String(), "trashed")
+
+	second := tasks("second")
+	h.trashed = nil
+	h.ok(t, "gc", "--teams", "--purge")
+	if len(h.trashed) != 0 || exists(second) {
+		t.Fatalf("--purge trashed %q, or kept %s", h.trashed, second)
+	}
+	h.fails(t, "gc", "--purge")
+	assertContains(t, h.err.String(), "--purge goes with --teams")
+}
