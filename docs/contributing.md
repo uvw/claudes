@@ -35,6 +35,7 @@
    | The directories claudes keeps its own files in                                                                         | `internal/paths`       |
    | The cached `claude --version`                                                                                          | `internal/compat`      |
    | The installed agent skill                                                                                              | `internal/cli`         |
+   | `mod/`, the directory claudes and the claudes mod share, in claudes' state directory                                   | `internal/mod`         |
 
    Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
    files, plugin files, or `managed-mcp.json`.
@@ -248,7 +249,12 @@ fails without it, and CI keeps total coverage at 80% or more.
    `.github/workflows/hack/fuzz.sh`. When one fails, it uploads the failing
    inputs and opens an issue labeled `fuzz`.
 
-7. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
+7. The claudes mod in `plugins/claudes-mod` has TypeScript tests in `tests/`,
+   which run against Claude Code's own engine. They need Claude Code, so CI does
+   not run them. After changing the mod, run
+   `claude plugin validate plugins/claudes-mod`, which reads the module the way
+   a session loads it, and `claude plugin test plugins/claudes-mod`.
+8. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
    hand in a terminal, on each platform it changes.
 
 ## Pull requests
@@ -294,7 +300,7 @@ in lowercase imperative and no closing period, for example
 `test`, `refactor`, `ci`, and `chore`. `feat` and `fix` decide the next version
 and appear in the changelog. The scope names the area: the package's name for
 code under `internal/`, such as `cli` or `transcripts`; `e2e` for `test/e2e`;
-`skill` for `skills/claudes`; `hack` for the developer tools; `deps` for
-Dependabot's updates; and `release` or `docs`. Leave the scope out only when a
-commit spans several areas. Keep the body to one or two sentences about what
-changed and why.
+`skill` for `skills/claudes`; `mod` for `internal/mod` and
+`plugins/claudes-mod`; `hack` for the developer tools; `deps` for Dependabot's
+updates; and `release` or `docs`. Leave the scope out only when a commit spans
+several areas. Keep the body to one or two sentences about what changed and why.

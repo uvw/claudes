@@ -1,0 +1,11 @@
+{
+  "name": "claudes",
+  "owner": { "name": "uvw" },
+  "plugins": [
+    {
+      "name": "claudes-mod",
+      "source": "./plugins/claudes-mod",
+      "description": "Lets claudes run slash commands, such as /mcp disable, in a running Claude Code session."
+    }
+  ]
+}

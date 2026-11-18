@@ -86,7 +86,7 @@ func CheckPins(ids []string) []string {
 // commands and flags are the parts of claude's command line that claudes
 // calls. CheckHelp looks for them in `claude --help`.
 var (
-	commands    = []string{"agents", "attach", "logs", "respawn", "rm", "stop"}
+	commands    = []string{"agents", "attach", "logs", "plugin", "respawn", "rm", "stop"}
 	flags       = []string{"--bg", "--resume", "--version"}
 	agentsFlags = []string{"--json", "--all"}
 )

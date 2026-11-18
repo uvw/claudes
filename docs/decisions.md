@@ -36,6 +36,7 @@ it.
 | [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
 | [35](#35-session-search-masks-secrets-in-what-it-prints)                            | session search masks secrets in what it prints                             |
 | [36](#36-claudes-records-what-it-trashes-and-restores-without-replacing)            | claudes records what it trashes, and restores without replacing            |
+| [37](#37-claudes-reaches-into-a-running-session-through-a-mod)                      | claudes reaches into a running session through a mod                       |
 
 ## 3. Anything else goes to `claude agents`
 
@@ -507,3 +508,29 @@ trashed; reading `.trashinfo` on Linux and searching the Recycle Bin's `$I`
 files on Windows, which are two more code paths; restoring what it can when a
 file is missing or a path is taken, which leaves a session half back; and a
 trash directory of claudes' own, which decision 27 turned down.
+
+## 37. claudes reaches into a running session through a mod
+
+The claudes mod is a Claude Code plugin in `plugins/claudes-mod`. It runs the
+slash commands claudes asks for inside a running session once the session is
+idle, and only those it allows ([The claudes mod](guide.md#the-claudes-mod)).
+claudes asks through one request file per session, in a directory only the user
+can read. `claudes mod install` installs it with `claude plugin` commands.
+
+Why: claudes could reach a running session only from outside, by stopping,
+respawning, or killing it, which cuts off a turn and drops what the session
+loaded. Claude Code's mod API queues `$.command.run` until the session is idle,
+and live tests on throwaway sessions showed it leaves a permission prompt and a
+typed draft alone, in interactive sessions too. Files need no server, so claudes
+stays one binary with nothing running behind it, and each session reads only its
+own requests. An allowlist in the mod means a request file can run nothing but
+what claudes was built to ask for.
+
+Weighed: typing the command into `claude attach`, which in the tests approved an
+open permission prompt and mixed the command into a half-typed draft; stopping
+and resuming the session, which still works with `--restart` but interrupts
+work; a socket or HTTP listener in the mod, which every session would hold open;
+and writing the plugin into Claude Code's plugin directory by hand, which
+`claude plugin` does with its own checks. The mod does not load in sessions
+started with `--bare`, `--safe-mode`, or `disableAllHooks`, or under a managed
+`allowManagedHooksOnly`, so every command that uses it has a fallback.

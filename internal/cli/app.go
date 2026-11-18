@@ -15,6 +15,7 @@ import (
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
+	"github.com/uvw/claudes/internal/mod"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
@@ -66,6 +67,8 @@ type App struct {
 	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads. Its
 	// ConfigFile is ~/.claude.json, whose feature flags doctor reports.
 	MCP mcp.Store
+	// Mod is the directory claudes and the claudes mod share.
+	Mod mod.Channel
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
@@ -179,6 +182,7 @@ func newApp() *App {
 	app.MCP, _ = mcp.DefaultStore()
 	// Without a state directory, the park file's error stops every command.
 	app.Trashed, _ = trash.DefaultManifest()
+	app.Mod, _ = mod.DefaultChannel()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {

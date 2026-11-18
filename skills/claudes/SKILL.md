@@ -141,6 +141,7 @@ binary by its full path rather than assuming it is gone.
 | change the default ping or timeout   | `claudes config get`, then `claudes config set KEY VALUE` |
 | which MCPs does X have, what's on    | `claudes mcp ls X`, or `--in DIR`; `-o json` for scripts  |
 | what would profile P turn off        | `claudes mcp ls X --profile P`; it changes nothing        |
+| is the claudes mod installed, loaded | `claudes mod status`; see "The claudes mod"               |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.
@@ -204,7 +205,7 @@ These commands are read-only. Run them freely:
 - `ls`, `where`, `team ls`, and `logs` without `-f`
 - the `session` commands `ls`, `search`, `show`, `where`, `du`, and `triage`,
   and `session restore` without targets
-- `mcp ls` and `mcp profiles`
+- `mcp ls`, `mcp profiles`, and `mod status`
 - `doctor`, `doctor env`, `config get`, `config path`, `upgrade --check`,
   `skill` without `--install` or `--dir`, `--version`, and `--help`
 - `restart`, `pause`, `resume`, `gc`, `session gc`, and `session restore` with
@@ -405,6 +406,21 @@ an agent team. Whether one is worth keeping takes reading what it was asked.
    An older copy or a leftover in `remove` has an empty `id`, and its
    `sessionId` is the original session's: passing that to `session gc` removes
    the whole session. Remove those only with the printed `session gc` command.
+
+## The claudes mod
+
+The claudes mod is a Claude Code plugin that runs inside each session and runs
+the commands claudes asks for, such as `/mcp disable`, once the session is idle.
+It is optional, and installing it changes the user's Claude Code setup, so ask
+before `claudes mod install` or `claudes mod uninstall`.
+
+1. `claudes mod status` says whether it is installed and which running sessions
+   loaded it. A session loads it at start or at `/reload-plugins`, which the
+   user types in that session; you cannot.
+2. `claudes mod install --from DIR` installs it from a clone of the claudes
+   repository, for an unreleased version.
+3. Never write the request files under claudes' state directory yourself. Go
+   through the claudes commands that use the mod.
 
 ## Never
 

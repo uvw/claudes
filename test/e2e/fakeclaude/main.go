@@ -239,6 +239,7 @@ Commands:
   agents [options]                      Manage background agents
   attach <id|name>                      Open a background session
   logs <id|name>                        Print a background session's output
+  plugin|plugins                        Manage Claude Code plugins
   respawn [options] [id]                Restart a background session
   rm <id>                               Remove a background session
   stop|kill <id>                        Stop a background session

@@ -44,6 +44,8 @@ adds what an agent needs on top of them.
 | Putting them back, and `trashed.json`           | `internal/trash/manifest.go`                              |
 | Agent teams, task lists, and `team ls` rows     | `internal/teams`                                          |
 | MCP servers and profiles                        | `internal/mcp`                                            |
+| The claudes mod and its request files           | `plugins/claudes-mod`, `internal/mod`                     |
+| `claudes mod` and the `claude plugin` calls     | `internal/cli/mod*.go`, `internal/claude/plugin.go`       |
 | Where claudes keeps its own files               | `internal/paths`, one file per platform                   |
 | Checking directories: within, same, gone        | `internal/paths/dirs.go`                                  |
 | Atomic writes and lock directories              | `internal/files`                                          |
@@ -102,6 +104,12 @@ owner's machine, run only the commands that "Before you change anything" in
 owner's yes first, even one the skill lets an agent run when its user asks: that
 includes `upgrade`, `skill --install`, `config set`, `config edit`, and
 `gc --teams`. Never edit `~/.claude/jobs/` or `~/.claude/projects/` by hand.
+
+Never install the claudes mod into the owner's Claude Code with
+`claudes mod install`, and never write its request files by hand: a request runs
+a command inside a live session. Try the mod in a throwaway session you start
+yourself with `--plugin-dir plugins/claudes-mod`, in a `git init` scratch
+directory.
 
 Tests drive the commands through the fake `claude.Agents` in
 `internal/cli/harness_test.go` and a temporary jobs directory, never the real
@@ -181,6 +189,14 @@ heredoc, and never run it through Prettier.
     `session gc`'s empty and trivial kinds.** When Claude Code adds a type that
     holds no conversation, add it to `bookkeeping` in
     `internal/transcripts/transcripts.go`, or such sessions pile up.
+
+12. **The mod's `$` reaches only functions declared at the top of
+    `register.ts`.** `claude plugin validate` refuses a module that passes it
+    anywhere else. The mod API cannot delete a file either, so claudes removes
+    each request and result file once it has read them.
+13. **The mod and claudes must agree on the request format.** Raise `PROTOCOL`
+    in `register.ts` and `mod.Protocol` together, since the mod refuses a
+    request for any other version.
 
 ## Maintaining this file
 

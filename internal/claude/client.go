@@ -37,6 +37,17 @@ type Agents interface {
 	// CheckPrompt refuses a prompt that claude would not receive as one
 	// argument, so a command can refuse it before it stops any session.
 	CheckPrompt(prompt string) error
+	// Plugins lists the installed plugins.
+	Plugins(ctx context.Context) ([]Plugin, error)
+	// Marketplaces lists the plugin marketplaces Claude Code has added.
+	Marketplaces(ctx context.Context) ([]Marketplace, error)
+	// AddMarketplace adds a marketplace from a GitHub repository, a URL, or a
+	// path, for the user.
+	AddMarketplace(ctx context.Context, source string) error
+	RemoveMarketplace(ctx context.Context, name string) error
+	// InstallPlugin installs PLUGIN@MARKETPLACE for the user.
+	InstallPlugin(ctx context.Context, id string) error
+	UninstallPlugin(ctx context.Context, id string) error
 }
 
 // NewJob is what claude --bg --resume gets for a session that has no
