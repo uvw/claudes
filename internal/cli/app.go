@@ -142,7 +142,7 @@ func newApp() *App {
 		Trash:          trash.Move,
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
-		Edit:           editFile,
+		Edit:           config.Edit,
 		Interrupt:      interrupt.Context,
 		Which:          exec.LookPath,
 		Chdir:          os.Chdir,

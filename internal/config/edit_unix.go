@@ -1,5 +1,5 @@
 //go:build unix
 
-package cli
+package config
 
 const defaultEditor = "vi"

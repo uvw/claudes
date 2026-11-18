@@ -1,5 +1,5 @@
 //go:build windows
 
-package cli
+package config
 
 const defaultEditor = "notepad"

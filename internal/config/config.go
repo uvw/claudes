@@ -1,4 +1,5 @@
-// Package config reads and writes claudes' config file, config.yaml.
+// Package config reads and writes claudes' config file, config.yaml, and opens
+// it in the user's editor.
 package config
 
 import (

@@ -117,7 +117,7 @@ var appFile = regexp.MustCompile(`^app_[a-z]+$`)
 // notYetMoved are the files that are neither root, an app file, nor a
 // command's.
 var notYetMoved = []string{
-	"cells.go", "cells_test.go", "config_edit_unix.go", "config_edit_windows.go"}
+	"cells.go", "cells_test.go"}
 
 // commandFiles are the names, without .go, that a command's file takes: its
 // path below claudes, joined by underscores, such as session_mv.
@@ -256,7 +256,7 @@ var notYetHelpers = []string{
 	"activity", "age", "ago", "branchCell", "checkFail",
 	"checkOK", "checkWarn", "clearStyle", "completeKeys", "count", "countCell",
 	"dash", "describeForCompletion", "dirCell", "doing", "duRow",
-	"duTally", "duTop", "editFile", "entryOf", "firstLine",
+	"duTally", "duTop", "entryOf", "firstLine",
 	"firstPrompt", "gcCommandFor", "homeShort", "hostJob", "isFinished", "joinNotes", "keepWhy", "kind", "labels", "labelsOf",
 	"leftovers", "managedBy", "nameCell", "nameWithSource", "named", "noProfile",
 	"noteOf", "oneEach", "orList", "pickPast", "printableList", "readTally",
