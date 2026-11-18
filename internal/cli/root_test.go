@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -106,4 +107,32 @@ func TestBuildVersionPrefersTheReleaseVersion(t *testing.T) {
 	if got := buildVersion(); got != "0.3.0" {
 		t.Fatalf("got %q", got)
 	}
+}
+
+// maxHelpWidth is the widest line help may print, so it reads in an
+// 80-column terminal without wrapping.
+const maxHelpWidth = 80
+
+func TestHelpFitsEightyColumns(t *testing.T) {
+	h := newHarness(t)
+	var walk func(*cobra.Command)
+	walk = func(cmd *cobra.Command) {
+		for _, c := range cmd.Commands() {
+			// cobra's own help and completion commands.
+			if c.Name() != "help" && c.Name() != "completion" {
+				walk(c)
+			}
+		}
+		var b strings.Builder
+		cmd.SetOut(&b)
+		if err := cmd.Help(); err != nil {
+			t.Fatal(err)
+		}
+		for line := range strings.Lines(b.String()) {
+			if line = strings.TrimRight(line, "\n"); utf8.RuneCountInString(line) > maxHelpWidth {
+				t.Errorf("%s --help has a line of %d columns:\n%s", cmd.CommandPath(), utf8.RuneCountInString(line), line)
+			}
+		}
+	}
+	walk(h.app.rootCommand())
 }

@@ -36,7 +36,7 @@ func (app *App) teamLsCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "ls [LEAD...]",
-		Short: "List agent teams at work: their leads, teammates, and task progress",
+		Short: "List agent teams at work: leads, teammates, and task progress",
 		Long: `List the agent teams with teammates at work now: the lead, its teammates, and
 how many of the team's tasks are done. With agent teams on, Claude Code keeps a
 team for every session, so -a lists those too, and the ones whose lead no longer

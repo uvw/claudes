@@ -23,8 +23,9 @@ func (app *App) resumeCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resume [TARGET...]",
 		Short: "Bring paused sessions back, or recover stopped ones by name",
-		Long: `Bring back the sessions claudes pause stopped. With targets, resumes those: parked
-sessions, or any stopped or failed session by name, such as one killed by accident.
+		Long: `Bring back the sessions claudes pause stopped. With targets, resumes those:
+parked sessions, or any stopped or failed session by name, such as one killed by
+accident.
 
 --ping sends a prompt to parked sessions that were mid-turn when paused, and to
 every named session that was not parked.

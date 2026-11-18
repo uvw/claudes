@@ -54,8 +54,8 @@ func (app *App) sessionDuCommand() *cobra.Command {
 results (SIDECARS), older copies session mv left, and Claude Code's backups of
 the files each session edited (HISTORY).
 
-Leftovers are sidecar and file-history directories whose transcript is gone. They
-count only when no target, --in, or --since narrows the sessions.
+Leftovers are sidecar and file-history directories whose transcript is gone.
+They count only when no target, --in, or --since narrows the sessions.
 
 --top N also lists the N sessions that take the most space, with the share their
 sidecars take: tool results and subagent transcripts are often most of a big

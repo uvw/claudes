@@ -467,6 +467,11 @@ same as Ctrl+T in agent view.`,
 	if ps, _, err := root.Find([]string{"completion", "powershell"}); err == nil && ps.Name() == "powershell" {
 		ps.Aliases = append(ps.Aliases, "pwsh")
 	}
+	// Flag help wraps to fit 80 columns, as the rest of the help does.
+	root.SetUsageTemplate(strings.NewReplacer(
+		".LocalFlags.FlagUsages", ".LocalFlags.FlagUsagesWrapped 80",
+		".InheritedFlags.FlagUsages", ".InheritedFlags.FlagUsagesWrapped 80",
+	).Replace(root.UsageTemplate()))
 	return root
 }
 

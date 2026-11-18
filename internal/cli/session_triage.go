@@ -30,8 +30,8 @@ type triageItem struct {
 	Size       int64     `json:"size"`
 	LastActive time.Time `json:"lastActive"`
 	// Why is the kind session gc removes it as, or why it is kept.
-	Why        string                `json:"why"`
-	LastPrompt string                `json:"lastPrompt"`
+	Why        string             `json:"why"`
+	LastPrompt string             `json:"lastPrompt"`
 	Activity   *transcripts.Tally `json:"activity"`
 }
 

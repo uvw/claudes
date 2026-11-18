@@ -25,13 +25,13 @@ func (app *App) sessionMvCommand() *cobra.Command {
 		Long: `Copy a session's transcript into DIR's project directory, so claude --resume
 finds it when started there. The original stays, so the session still resumes
 from its old directory too; claudes prints the command that removes it. The old
-directory's project memory and the directory recorded inside the transcript are left
-alone. --rm moves the original to the system trash once the copy matches it
+directory's project memory and the directory recorded inside the transcript are
+left alone. --rm moves the original to the system trash once the copy matches it
 byte for byte, and --rm --purge deletes it for good.
 
-A running session is refused, since what it says after the copy stays in the
-old transcript. The session running claudes is the exception: copy it, then
-exit it and resume it from DIR. --resume resumes the copy in this terminal.
+A running session is refused, since what it says after the copy stays in the old
+transcript. The session running claudes is the exception: copy it, then exit it
+and resume it from DIR. --resume resumes the copy in this terminal.
 
 A stopped background session's job would wake in the old directory, so mv
 removes the job with claude rm and keeps the options Claude Code saved for it.

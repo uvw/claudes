@@ -31,7 +31,7 @@ func (app *App) doctorCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Check that the installed Claude Code still looks the way claudes expects",
+		Short: "Check that Claude Code still looks the way claudes expects",
 		Long: `Check claude's version against the range claudes was tested with, its command
 line for the commands and flags claudes calls, claude agents --json and
 pins.json for values claudes does not recognize, and claudes' own files.

@@ -352,7 +352,7 @@ func TestSessionShowSaysWhatASessionDid(t *testing.T) {
 	h.out.Reset()
 	h.ok(t, "session", "show", "flaky", "-o", "json")
 	var got struct {
-		NameSource string               `json:"nameSource"`
+		NameSource string            `json:"nameSource"`
 		Activity   transcripts.Tally `json:"activity"`
 	}
 	if err := json.Unmarshal(h.out.Bytes(), &got); err != nil {

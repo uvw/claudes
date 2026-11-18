@@ -78,8 +78,8 @@ func (app *App) sessionGcCommand() *cobra.Command {
 		Long: `Remove past sessions from ~/.claude, with everything Claude Code keeps for each:
 its transcript, subagent transcripts and tool results, older copies, file
 history, session-env directory, and debug log. They go to the system trash, so a
-mistake can be undone; --purge deletes them for good. Windows deletes an item too
-big for the Recycle Bin, or on a drive without one, for good.
+mistake can be undone; --purge deletes them for good. Windows deletes an item
+too big for the Recycle Bin, or on a drive without one, for good.
 
 Without flags or targets, removes:
 
@@ -87,20 +87,20 @@ Without flags or targets, removes:
   copies     older copies session mv left, keeping the newest
   leftovers  subagent and file-history directories whose transcript is gone
 
---empty, --trivial, --gone, --copies, --leftovers, and --older-than pick
-exactly the kinds they name instead. --trivial takes sessions that changed no
-file and made no tool call, and either only ran slash commands or got one
-prompt, such as a quick health check; a session renamed with /rename or started
-by an agent team is never trivial. --gone takes sessions whose directory no longer
-exists, which includes a directory on a disk that is not attached, so read the
-plan first. --older-than takes sessions last active longer ago than that.
+--empty, --trivial, --gone, --copies, --leftovers, and --older-than pick exactly
+the kinds they name instead. --trivial takes sessions that changed no file and
+made no tool call, and either only ran slash commands or got one prompt, such as
+a quick health check; a session renamed with /rename or started by an agent team
+is never trivial. --gone takes sessions whose directory no longer exists, which
+includes a directory on a disk that is not attached, so read the plan first.
+--older-than takes sessions last active longer ago than that.
 
 --sidecars keeps each session and trims its sidecar directory instead: the big
 command outputs Claude Code saved to tool-results, which the transcript keeps a
 preview of. With --older-than, it also takes the subagent transcripts of
 sessions last active longer ago than that, and removes no whole session. A
-session resumes as before; it only cannot read a saved output again, or
-continue a subagent it ran.
+session resumes as before; it only cannot read a saved output again, or continue
+a subagent it ran.
 
 It never removes a running session, one agent view still lists (claudes gc
 removes those from the list), a parked one, or the session running claudes.

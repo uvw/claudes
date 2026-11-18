@@ -55,10 +55,10 @@ worktree only when that is safe. With targets, removes those. Without, removes
 every finished session last active longer ago than --older-than, except parked
 ones, and pinned ones unless --pinned is given.
 
---teams removes the agent team directories under ~/.claude/teams and the task lists
-under ~/.claude/tasks that Claude Code leaves behind: those of sessions that no
-longer run and have not changed for longer than --older-than. They go to the
-system trash; --purge deletes them for good.`,
+--teams removes the agent team directories under ~/.claude/teams and the task
+lists under ~/.claude/tasks that Claude Code leaves behind: those of sessions
+that no longer run and have not changed for longer than --older-than. They go to
+the system trash; --purge deletes them for good.`,
 		ValidArgsFunction: app.completeSessions(finishedSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()

@@ -51,7 +51,7 @@ func (app *App) lsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
 		Aliases: []string{"list"},
-		Short:   "List sessions, or the ones the targets match: pinned first, then busy, then newest",
+		Short:   "List sessions: pinned first, then busy, then newest",
 		Long: `List sessions: pinned first, then busy, then newest. With targets, lists only
 the sessions they match. A target with *, ?, or [ is a pattern over names and
 ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,

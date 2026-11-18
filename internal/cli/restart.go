@@ -15,16 +15,17 @@ func (app *App) restartCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "restart [TARGET...]",
 		Short: "Restart running sessions: the named ones, or all but pinned ones",
-		Long: `Restart running sessions. With targets, restarts exactly those. Without, restarts
-every running background session except pinned ones; --pinned takes those too.
+		Long: `Restart running sessions. With targets, restarts exactly those. Without,
+restarts every running background session except pinned ones; --pinned takes
+those too.
 
 Background sessions are restarted with claude respawn. A session that is busy,
 waiting on a question, or running a shell task comes back idle, so --ping sends
 it a prompt to carry on: it is stopped and resumed with the prompt instead.
 Interactive sessions are left alone unless asked.
 
-The session running claudes goes last, after everything else is printed,
-because stopping it ends this command.`,
+The session running claudes goes last, after everything else is printed, because
+stopping it ends this command.`,
 		ValidArgsFunction: app.completeSessions(runningSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return app.restart(cmd.Context(), args, &f)

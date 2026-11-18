@@ -35,7 +35,7 @@ func (app *App) mcpLsCommand() *cobra.Command {
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:   "ls [TARGET]",
-		Short: "List the MCP servers a session's directory, or another directory, has",
+		Short: "List the MCP servers a session or directory has",
 		Long: `List every MCP server Claude Code gives a session in a directory: TARGET's, past
 or running, or --in DIR, or the current directory. STATE is on, off, or pending
 for a project server in .mcp.json that nobody has approved yet. PROFILES names
