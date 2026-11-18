@@ -29,7 +29,7 @@ func TestLsJSONPrintsEveryKeyInCamelCase(t *testing.T) {
 	if err := json.Unmarshal([]byte(r.stdout), &rows); err != nil {
 		t.Fatalf("ls -o json printed something other than a list: %v\n%s", err, r.stdout)
 	}
-	want := []string{"cwd", "id", "kind", "name", "outdated", "pid", "pinned", "sessionId", "startedAt", "state", "status", "teammates", "version"}
+	want := []string{"cwd", "doing", "id", "kind", "name", "outdated", "pid", "pinned", "prs", "sessionId", "shells", "startedAt", "state", "status", "subagents", "teammates", "tokens", "version"}
 	for _, row := range rows {
 		keys := make([]string, 0, len(row))
 		for k := range row {

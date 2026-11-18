@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,10 +30,27 @@ type row struct {
 	Outdated bool   `json:"outdated"`
 	// Teammates are the agent team members the session leads that run now.
 	Teammates []string `json:"teammates"`
+	// Subagents and Shells count the subagents and background shells the
+	// session runs now. Tokens is agent view's running total of the tokens it
+	// used, PRs the pull requests it opened, and Doing agent view's one-line
+	// status. Each is null when unknown, as for an interactive session.
+	Subagents *int    `json:"subagents"`
+	Shells    *int    `json:"shells"`
+	Tokens    *int64  `json:"tokens"`
+	PRs       *int    `json:"prs"`
+	Doing     *string `json:"doing"`
 }
 
+// agentsHeader heads the column that shows a session's agent team and the
+// subagents it runs.
+const agentsHeader = "AGENTS"
+
+// maxDoing is the most characters of DOING a table shows when it does not go
+// to a terminal, and minDoing the fewest when it does.
+const maxDoing, minDoing = 50, 10
+
 func (app *App) lsCommand() *cobra.Command {
-	var all, asJSON bool
+	var all, asJSON, wide bool
 	var out outputFlag
 	cmd := &cobra.Command{
 		Use:     "ls [TARGET...]",
@@ -59,12 +77,13 @@ ids, such as 'plan*'; in zsh, quote it or alias claudes to noglob claudes.`,
 			if out.format != "text" {
 				return out.encode(app.Out, rows)
 			}
-			app.printTable(app.Out, rows)
+			app.printTable(app.Out, rows, wide)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVarP(&all, "all", "a", false, "include finished background sessions")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print the list as JSON, as -o json does")
+	cmd.Flags().BoolVar(&wide, "wide", false, "add the background shells, tokens, pull requests, and what each session is doing")
 	out.add(cmd, app.Config.Output.Format)
 	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	return cmd
@@ -85,6 +104,12 @@ func (app *App) rows(ctx context.Context, all bool, installed string) ([]row, er
 	for _, s := range sessions {
 		r := row{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
+		a := app.Jobs.Activity(s.JobID)
+		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
+		if !s.Running() {
+			// state.json can still list what ran when the process ended.
+			r.Subagents, r.Shells = none(r.Subagents), none(r.Shells)
+		}
 		rows = append(rows, r)
 	}
 	slices.SortStableFunc(rows, func(a, b row) int {
@@ -105,13 +130,29 @@ func trueFirst(a, b bool) int {
 	}
 }
 
-func (app *App) printTable(w io.Writer, rows []row) {
+// none is 0 for a known count, and nil for an unknown one.
+func none(n *int) *int {
+	if n == nil {
+		return nil
+	}
+	return new(int)
+}
+
+func (app *App) printTable(w io.Writer, rows []row, wide bool) {
 	if len(rows) == 0 {
 		fmt.Fprintln(w, "No sessions.")
 		return
 	}
 	c := app.colors
-	table := [][]string{{"ID", "PINNED", "KIND", "STATE", "STATUS", "TEAM", "AGE", "VERSION", "DIR", "NAME"}}
+	header := []string{"ID", "PINNED", "KIND", "STATE", "STATUS", agentsHeader}
+	if wide {
+		header = append(header, "SHELLS", "TOKENS", "PRS")
+	}
+	header = append(header, "AGE", "VERSION", "DIR", "NAME")
+	if wide {
+		header = append(header, "DOING")
+	}
+	table := [][]string{header}
 	outdated := false
 	for _, r := range rows {
 		mark := "-"
@@ -122,17 +163,99 @@ func (app *App) printTable(w io.Writer, rows []row) {
 		if r.Outdated {
 			ver, outdated = c.Yellow(ver+" (old)"), true
 		}
-		team := "-"
-		if n := len(r.Teammates); n > 0 {
-			team = c.Magenta(fmt.Sprintf("lead+%d", n))
+		cells := []string{r.ID(), mark, kind(r.Session), dash(r.State), app.status(dash(r.Status)), app.agents(r)}
+		if wide {
+			cells = append(cells, countCell(r.Shells), tokenCount(r.Tokens), countCell(r.PRs))
 		}
-		table = append(table, []string{r.ID(), mark, kind(r.Session), dash(r.State),
-			app.status(dash(r.Status)), team, age(app.Now(), r.Started()), ver, c.Faint(homeShort(r.Cwd)), nameCell(r.Label())})
+		cells = append(cells, age(app.Now(), r.Started()), ver, c.Faint(homeShort(r.Cwd)), nameCell(r.Label()))
+		if wide {
+			cells = append(cells, "")
+		}
+		table = append(table, cells)
+	}
+	if wide {
+		app.fillDoing(table, rows)
 	}
 	style.Table(w, table)
 	if outdated {
 		fmt.Fprintln(w, "\n(old): behind the installed Claude Code, see claudes restart --outdated")
 	}
+}
+
+// agents is the AGENTS cell: lead+N for the agent team a session leads, and
+// how many subagents it runs now.
+func (app *App) agents(r row) string {
+	var parts []string
+	if n := len(r.Teammates); n > 0 {
+		parts = append(parts, app.colors.Magenta(fmt.Sprintf("lead+%d", n)))
+	}
+	if r.Subagents != nil && *r.Subagents > 0 {
+		parts = append(parts, strconv.Itoa(*r.Subagents))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// fillDoing fills the last column of table, which is empty, with each row's
+// DOING, cut to what is left of the terminal's width, or to maxDoing when the
+// table does not go to a terminal, so it never wraps.
+func (app *App) fillDoing(table [][]string, rows []row) {
+	limit := maxDoing
+	if app.Width != nil {
+		if width := app.Width(); width > 0 {
+			limit = max(width-style.Indent(table), minDoing)
+		}
+	}
+	for i, r := range rows {
+		doing := "-"
+		if r.Doing != nil {
+			doing = cut(shell.Printable(*r.Doing), limit)
+		}
+		table[i+1][len(table[i+1])-1] = doing
+	}
+}
+
+// cut shortens s to at most limit columns, ending it with … when it shortens.
+func cut(s string, limit int) string {
+	s = strings.TrimSpace(s)
+	if style.Width(s) <= limit {
+		return s
+	}
+	r := []rune(s)
+	for len(r) > 0 && style.Width(string(r))+1 > limit {
+		r = r[:len(r)-1]
+	}
+	return strings.TrimRight(string(r), " ") + "…"
+}
+
+func countCell(n *int) string {
+	if n == nil || *n == 0 {
+		return "-"
+	}
+	return strconv.Itoa(*n)
+}
+
+// tokenCount is a token count as agent view prints it, such as 1.4M.
+func tokenCount(n *int64) string {
+	if n == nil {
+		return "-"
+	}
+	if *n < 1000 {
+		return strconv.FormatInt(*n, 10)
+	}
+	v, unit := float64(*n), ""
+	for _, unit = range []string{"K", "M", "B"} {
+		// Moves on at 999.5, which would round up to 1000.
+		if v /= 1000; v < 999.5 {
+			break
+		}
+	}
+	if v < 9.95 {
+		return fmt.Sprintf("%.1f%s", v, unit)
+	}
+	return fmt.Sprintf("%.0f%s", v, unit)
 }
 
 // status colors a session's status: busy, waiting, and shell each in their own

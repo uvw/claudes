@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -127,5 +128,38 @@ func TestSizeReadsAsDuDoes(t *testing.T) {
 		if got := Size(n); got != want {
 			t.Errorf("Size(%d) = %q, want %q", n, got, want)
 		}
+	}
+}
+
+func TestIndentIsWhereTheLastCellStarts(t *testing.T) {
+	rows := [][]string{{"ID", "NAME", "DOING"}, {"abf00936", On.Green("a name"), "tests"}}
+	var b strings.Builder
+	if err := Table(&b, rows); err != nil {
+		t.Fatal(err)
+	}
+	line := strings.Split(b.String(), "\n")[1]
+	if got, want := Indent(rows), Width(line)-len("tests"); got != want {
+		t.Errorf("Indent is %d, the last cell starts at %d in %q", got, want, line)
+	}
+	if Indent(nil) != 0 {
+		t.Error("an empty table has an indent")
+	}
+}
+
+func TestTerminalWidthOfWhatIsNoTerminal(t *testing.T) {
+	if w := TerminalWidth(&strings.Builder{}); w != 0 {
+		t.Errorf("a buffer has width %d", w)
+	}
+	f, err := os.CreateTemp(t.TempDir(), "out")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if w := TerminalWidth(f); w != 0 {
+		t.Errorf("a file has width %d", w)
+	}
+	asTerminal(t)
+	if w := TerminalWidth(f); w != 0 {
+		t.Errorf("a file taken for a terminal has width %d", w)
 	}
 }

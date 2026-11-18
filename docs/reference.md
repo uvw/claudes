@@ -26,8 +26,8 @@ A few cases differ:
 
 Every text table, and every plan a command prints before it acts, starts with
 the id and ends with the directory and the name, followed by a note when there
-is one. Names longer than 40 characters are cut, with `…`; JSON, YAML, and
-`session show` keep them whole.
+is one, or by `DOING` in `ls --wide`. Names longer than 40 characters are cut,
+with `…`; JSON, YAML, and `session show` keep them whole.
 
 ### Fields
 
@@ -49,6 +49,15 @@ is always present, and an empty list is `[]`.
 | `version`                 | The Claude Code it runs                                  |
 | `outdated`                | Whether that is older than the installed Claude Code     |
 | `teammates`               | The names of its agent team's members, when it leads one |
+| `subagents`, `shells`     | How many subagents and background shells it runs now     |
+| `tokens`                  | Agent view's running total of the tokens it has used     |
+| `prs`                     | How many pull requests it opened                         |
+| `doing`                   | Agent view's one-line status of what it is doing         |
+
+`subagents`, `shells`, `tokens`, `prs`, and `doing` come from the job's
+`state.json`, and are `null` when claudes cannot tell, as for an interactive
+session. `subagents` leaves out teammates, which `teammates` lists. `tokens`
+keeps growing over the session's life, so it is not the size of the context.
 
 #### Past sessions
 

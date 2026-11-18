@@ -41,6 +41,28 @@ changes both. `gc` removes through `claude rm`, which keeps each conversation,
 so `session resume` still finds it, and deletes the session's worktree only when
 that is safe.
 
+### Listing sessions
+
+`claudes ls` lists the running sessions, and `-a` adds finished background ones.
+Its `AGENTS` column shows the agents a session runs: `lead+2` when it leads an
+agent team with two teammates at work, `3` when three of its subagents run now,
+and `lead+2, 3` for both. `-` means neither. `--wide` adds four columns:
+
+- `SHELLS`: the background shells it runs now.
+- `TOKENS`: agent view's running total of the tokens the session has used, such
+  as `1.4M`. It keeps growing over the session's life, so it is not the size of
+  the context.
+- `PRS`: the pull requests the session opened.
+- `DOING`: agent view's one-line status of what the session is doing. It comes
+  last, after `NAME`, and is cut to fit the terminal, or to 50 characters when
+  the output goes elsewhere, so it never wraps.
+
+The subagent count and the `--wide` columns come from the job's `state.json` in
+`~/.claude/jobs`, which is not a stable Claude Code interface. Interactive
+sessions have no job, so they show `-`, as does a field Claude Code stops
+writing. A session with no process runs no subagents or shells, whatever its
+`state.json` lists.
+
 ### Common flags
 
 | Flag                | Commands                           | Effect                                                            |
@@ -114,8 +136,8 @@ claudes is built to restart and stop sessions without losing work:
    stops its teammates, and in-process teammates cannot be resumed. So bulk
    `restart` and `pause` leave such a lead alone. Named, it goes ahead: the
    plan, `stop`, and `ping` name the teammates that stop with it, and a pinged
-   lead can start them again. Check the `TEAM` column of `claudes ls` before you
-   `stop` or `ping` one.
+   lead can start them again. Check the `AGENTS` column of `claudes ls` before
+   you `stop` or `ping` one.
 8. **Ctrl-C is graceful.** The first one finishes the session in hand, leaves
    the rest untouched, and lists them. A second one ends claudes at once.
 9. **Unfamiliar data stops it.** See
@@ -269,8 +291,8 @@ ID        TEAMMATES       TASKS                      DIR       LEAD
 62d022d3  writer, tester  1/2 done, working: tester  ~/src/rev  teams-lead
 ```
 
-- `ls` marks a lead with its teammate count, such as `lead+2`, and `-o json`
-  lists them under `teammates`.
+- `ls` marks a lead with its teammate count in the `AGENTS` column, such as
+  `lead+2`, and `-o json` lists them under `teammates`.
 - `claudes team ls` lists the teams with teammates at work, their task progress,
   and who works on the open tasks. `-a` adds every team Claude Code keeps,
   including those whose lead no longer runs.

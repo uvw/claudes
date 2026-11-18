@@ -140,6 +140,9 @@ type App struct {
 	// Interrupt returns a context that the first Ctrl-C cancels, and the
 	// function that restores the default, so a second Ctrl-C ends claudes.
 	Interrupt func(context.Context) (context.Context, context.CancelFunc)
+	// Width is how many columns the terminal Out writes to has, or 0 when Out
+	// is not a terminal.
+	Width func() int
 	// Edit opens a file in the user's editor and waits for it to close.
 	Edit func(path string) error
 	// setupErr stops every claudes command before it starts, such as when the
@@ -201,6 +204,7 @@ func newApp() *App {
 		Environ:     os.Environ,
 	}
 	app.Provenance = app.ghProvenance
+	app.Width = func() int { return style.TerminalWidth(app.Out) }
 	client := claude.NewClient()
 	client.Log = app.log()
 	app.Agents = client

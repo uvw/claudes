@@ -129,15 +129,7 @@ func Pad(text string, width int, paint func(string) string) string {
 // measures each cell without its colors, so colored cells line up. The last
 // cell of a row is not padded.
 func Table(w io.Writer, rows [][]string) error {
-	var widths []int
-	for _, row := range rows {
-		for i, cell := range row[:max(0, len(row)-1)] {
-			if i == len(widths) {
-				widths = append(widths, 0)
-			}
-			widths[i] = max(widths[i], Width(cell))
-		}
-	}
+	widths := columnWidths(rows)
 	var b strings.Builder
 	for _, row := range rows {
 		for i, cell := range row {
@@ -150,6 +142,43 @@ func Table(w io.Writer, rows [][]string) error {
 	}
 	_, err := io.WriteString(w, b.String())
 	return err
+}
+
+func columnWidths(rows [][]string) []int {
+	var widths []int
+	for _, row := range rows {
+		for i, cell := range row[:max(0, len(row)-1)] {
+			if i == len(widths) {
+				widths = append(widths, 0)
+			}
+			widths[i] = max(widths[i], Width(cell))
+		}
+	}
+	return widths
+}
+
+// Indent is how many columns Table puts before the last cell of rows that all
+// have the same number of cells.
+func Indent(rows [][]string) int {
+	n := 0
+	for _, w := range columnWidths(rows) {
+		n += w + 2
+	}
+	return n
+}
+
+// TerminalWidth is how many columns the terminal w writes to has, or 0 when w
+// is not a terminal.
+func TerminalWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok || !isTerminal(w) {
+		return 0
+	}
+	width, _, err := term.GetSize(f.Fd())
+	if err != nil {
+		return 0
+	}
+	return width
 }
 
 // Size is a byte count as du -h prints it: 512B, 12K, 3.4M, or 1.2G, in

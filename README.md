@@ -43,11 +43,15 @@ to `claude agents`.
 
 ```console
 $ claudes ls
-ID        PINNED  KIND  STATE    STATUS  TEAM    AGE  VERSION  DIR            NAME
-3ec56511  yes     bg    working  busy    lead+2  3h   2.1.325  ~/src/api      api-refactor
-ff78d735  -       bg    done     idle    -       5h   2.1.325  ~/src/claudes  claudes-mvp
-e89ec2c4  -       tty   -        idle    -       20m  -        ~/src/claudes  e89ec2c4
+ID        PINNED  KIND  STATE    STATUS  AGENTS     AGE  VERSION  DIR            NAME
+3ec56511  yes     bg    working  busy    lead+2, 3  3h   2.1.325  ~/src/api      api-refactor
+ff78d735  -       bg    done     idle    -          5h   2.1.325  ~/src/claudes  claudes-mvp
+e89ec2c4  -       tty   -        idle    -          20m  -        ~/src/claudes  e89ec2c4
 ```
+
+`AGENTS` shows the agent team a session leads, as `lead+2`, and the subagents it
+runs now, as `3`. `claudes ls --wide` adds its background shells, tokens, pull
+requests, and what it's doing.
 
 ## Quick start
 
