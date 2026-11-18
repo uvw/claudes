@@ -1,6 +1,6 @@
 //go:build windows
 
-package safefile
+package files
 
 import (
 	"os"

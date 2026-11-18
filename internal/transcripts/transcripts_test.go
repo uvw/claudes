@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 func TestFolder(t *testing.T) {
@@ -342,7 +342,7 @@ func TestCopyLeavesNothingBehindWhenItFails(t *testing.T) {
 
 func TestMovesWaitForTheLock(t *testing.T) {
 	st := Store{Dir: t.TempDir(), Moves: filepath.Join(t.TempDir(), "moves.json")}
-	release, err := safefile.Lock{Path: st.Moves + ".lock", Stale: time.Minute}.Acquire()
+	release, err := files.Lock{Path: st.Moves + ".lock", Stale: time.Minute}.Acquire()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,6 @@
 //go:build unix
 
-package safefile
+package files
 
 import (
 	"io/fs"

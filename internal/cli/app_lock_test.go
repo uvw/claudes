@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 func TestOneClaudesChangesSessionsAtATime(t *testing.T) {
 	h := newHarness(t)
 	s := h.bg("api", "idle")
 	h.agents.snapshots = [][]claude.Session{{s}}
-	release, err := safefile.Lock{Path: h.app.LockPath, Stale: time.Minute}.Acquire()
+	release, err := files.Lock{Path: h.app.LockPath, Stale: time.Minute}.Acquire()
 	if err != nil {
 		t.Fatal(err)
 	}

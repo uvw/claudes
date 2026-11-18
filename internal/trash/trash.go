@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 // moveInto renames path into dir under its own name, or under the name with a
@@ -30,7 +30,7 @@ func moveInto(path, dir string) (string, error) {
 			name = fmt.Sprintf("%s %d", base, i)
 		}
 		dest := filepath.Join(dir, name)
-		err := safefile.RenameNoReplace(path, dest)
+		err := files.RenameNoReplace(path, dest)
 		if errors.Is(err, fs.ErrExist) {
 			continue
 		}

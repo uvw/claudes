@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 // cacheFor is how long a cached `claude --version` is trusted. Starting
@@ -43,7 +43,7 @@ func CachedVersion(dir, binary string, now time.Time, lookup func() (string, err
 		return v, err
 	}
 	if data, err := json.Marshal(cached{binary, v, now}); err == nil {
-		_ = safefile.WriteFileAll(path, data, 0o644)
+		_ = files.WriteFileAll(path, data, 0o644)
 	}
 	return v, nil
 }

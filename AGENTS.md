@@ -37,7 +37,7 @@ adds what an agent needs on top of them.
 | Agent teams and their task lists             | `internal/teams`, `internal/cli/team*.go`                   |
 | MCP servers, profiles, and `claudes mcp`     | `internal/mcp`, `internal/cli/mcp*.go`                      |
 | Where claudes keeps its own files            | `internal/paths`, one file per platform                     |
-| Atomic writes and lock directories           | `internal/safefile`                                         |
+| Atomic writes and lock directories           | `internal/files`                                            |
 | Colors and the text tables' layout           | `internal/style`                                            |
 | Fitting tables to the terminal               | `internal/style`, `internal/cli/app_output.go`              |
 | CI, security scans, and releases             | `.github/workflows/`, `docs/releasing.md`                   |

@@ -1,7 +1,7 @@
-// Package safefile writes files atomically and locks them the way the
+// Package files writes files atomically and locks them the way the
 // proper-lockfile package that Claude Code uses does: with a directory next to
 // the file.
-package safefile
+package files
 
 import (
 	"bytes"

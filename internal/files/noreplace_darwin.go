@@ -1,6 +1,6 @@
 //go:build darwin
 
-package safefile
+package files
 
 import (
 	"errors"

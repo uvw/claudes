@@ -1,6 +1,6 @@
 //go:build linux
 
-package safefile
+package files
 
 import (
 	"errors"

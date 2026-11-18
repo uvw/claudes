@@ -1,5 +1,5 @@
 //go:build unix && !darwin && !linux
 
-package safefile
+package files
 
 func renameNoReplace(from, to string) error { return renameChecked(from, to) }

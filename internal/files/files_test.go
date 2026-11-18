@@ -1,4 +1,4 @@
-package safefile
+package files
 
 import (
 	"errors"

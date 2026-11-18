@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/safefile"
+	"github.com/uvw/claudes/internal/files"
 )
 
 // lockStale is how long the run lock outlives a claudes that died holding it.
@@ -32,8 +32,8 @@ func (app *App) lock(cmd *cobra.Command) error {
 	if f := cmd.Flags().Lookup("dry-run"); f != nil && f.Value.String() == "true" {
 		return nil
 	}
-	release, err := safefile.Lock{Path: app.LockPath, Stale: lockStale, Attempts: 1, Owner: app.lockOwner(), Gone: app.lockOwnerGone}.Acquire()
-	if errors.Is(err, safefile.ErrHeld) {
+	release, err := files.Lock{Path: app.LockPath, Stale: lockStale, Attempts: 1, Owner: app.lockOwner(), Gone: app.lockOwnerGone}.Acquire()
+	if errors.Is(err, files.ErrHeld) {
 		return fmt.Errorf("%w, so this one changed nothing. Try again once it ends; "+
 			"a claudes that crashed frees %s within %s", errBusy, app.LockPath, lockStale)
 	}

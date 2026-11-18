@@ -18,8 +18,8 @@ import (
 
 	"go.yaml.in/yaml/v4"
 
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 	"github.com/uvw/claudes/internal/style"
 )
 
@@ -286,7 +286,7 @@ func Set(path, name, value string) error {
 	if _, err := parse(path, out.Bytes()); err != nil {
 		return err
 	}
-	return safefile.WriteFileAll(path, out.Bytes(), 0o600)
+	return files.WriteFileAll(path, out.Bytes(), 0o600)
 }
 
 // Create writes Template to path when no file is there yet.
@@ -294,7 +294,7 @@ func Create(path string) error {
 	if Exists(path) {
 		return nil
 	}
-	return safefile.WriteFileAll(path, Template(), 0o600)
+	return files.WriteFileAll(path, Template(), 0o600)
 }
 
 // Exists reports whether there is a file at path, so the built-in defaults are

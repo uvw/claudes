@@ -14,8 +14,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 )
 
 // lockStale matches the stale time Claude Code passes to its lock for
@@ -142,13 +142,13 @@ func writePins(path string, ids []string) error {
 	if err != nil {
 		return err
 	}
-	return safefile.WriteFile(path, data, 0o644)
+	return files.WriteFile(path, data, 0o644)
 }
 
 // withLock holds the same lock Claude Code takes for pins.json: a directory
 // named pins.json.lock.
 func (s Store) withLock(fn func() error) error {
-	lock := safefile.Lock{Path: s.pinsPath() + ".lock", Stale: lockStale, Attempts: s.LockAttempts, Delay: s.LockDelay}
+	lock := files.Lock{Path: s.pinsPath() + ".lock", Stale: lockStale, Attempts: s.LockAttempts, Delay: s.LockDelay}
 	return lock.Do(fn)
 }
 

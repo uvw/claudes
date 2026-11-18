@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/files"
 	"github.com/uvw/claudes/internal/paths"
-	"github.com/uvw/claudes/internal/safefile"
 	"github.com/uvw/claudes/internal/shell"
 )
 
@@ -105,7 +105,7 @@ func (f File) adopt() error {
 	if err != nil {
 		return err
 	}
-	if err := safefile.WriteFileAll(f.Path, data, 0o644); err != nil {
+	if err := files.WriteFileAll(f.Path, data, 0o644); err != nil {
 		return err
 	}
 	return os.Remove(f.Legacy)
@@ -142,7 +142,7 @@ func (f File) Load() ([]Entry, error) {
 // Update changes the entries under a lock, so two claudes runs at once cannot
 // lose each other's changes.
 func (f File) Update(change func([]Entry) []Entry) error {
-	lock := safefile.Lock{Path: f.Path + ".lock", Stale: 10 * time.Second, Attempts: 50, Delay: 10 * time.Millisecond}
+	lock := files.Lock{Path: f.Path + ".lock", Stale: 10 * time.Second, Attempts: 50, Delay: 10 * time.Millisecond}
 	return lock.Do(func() error {
 		if err := f.adopt(); err != nil {
 			return fmt.Errorf("cannot move the park file from %s: %w", f.Legacy, err)
@@ -174,7 +174,7 @@ func (f File) Save(entries []Entry) error {
 	if err != nil {
 		return err
 	}
-	return safefile.WriteFile(f.Path, append(data, '\n'), 0o644)
+	return files.WriteFile(f.Path, append(data, '\n'), 0o644)
 }
 
 // Merge keeps earlier entries; a session paused again replaces its old entry.
