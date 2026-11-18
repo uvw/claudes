@@ -1,0 +1,32 @@
+root = true
+
+# All files. Prettier reads these too: indent_size becomes tabWidth and
+# max_line_length becomes printWidth (see .prettierrc.yaml).
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Windows scripts keep CRLF (mirrors .gitattributes).
+[*.{ps1,cmd,bat}]
+end_of_line = crlf
+
+# Go. gofmt indents with tabs and sets no line width; editors show a tab as
+# four columns.
+[{*.go,go.mod,go.sum}]
+indent_style = tab
+indent_size = 4
+
+# Config and the files Prettier formats at 100 columns.
+[*.{json,yml,yaml,toml,html}]
+max_line_length = 100
+
+# Markdown. Prettier wraps prose at this width (proseWrap in .prettierrc.yaml)
+# and markdownlint checks it (MD013 in .markdownlint.yaml). Don't trim
+# trailing whitespace: two trailing spaces are a Markdown hard line break.
+[*.md]
+max_line_length = 80
+trim_trailing_whitespace = false

@@ -1,0 +1,19 @@
+# The files markdownlint-cli2 lints, so CI, the checks in
+# docs/contributing.md, and editors all run it with no arguments. The rules are
+# in .markdownlint.yaml.
+globs:
+  - "**/*.md"
+
+# Add a path only when the Markdown there is vendored or generated, and say
+# which.
+ignores:
+  # goreleaser output: generated.
+  - dist
+  # Agent worktrees: copies of this checkout.
+  - .claude/worktrees
+  # Local-only docs, never committed.
+  - docs/local
+  # The Markdown tools' npm packages: vendored.
+  - tools/node_modules
+  # Copilot CLI's npm packages, for the release notes: vendored.
+  - .github/release-notes/node_modules

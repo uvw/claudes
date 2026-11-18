@@ -1,0 +1,13 @@
+# Add only Prettier rules that .editorconfig can't express, so each formatting
+# rule has one home. Prettier reads indentation and width from .editorconfig:
+# indent_size becomes tabWidth and max_line_length becomes printWidth, which is
+# 100 for config and 80 for Markdown.
+
+overrides:
+  # Hard-wrap Markdown prose at the width above. Scoped to Markdown because
+  # YAML reads proseWrap too and would fold long plain scalars in workflows.
+  # Code blocks stay as written, at their own width.
+  - files: "*.md"
+    options:
+      proseWrap: always
+      embeddedLanguageFormatting: "off"

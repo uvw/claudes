@@ -1,0 +1,7 @@
+dist
+go.sum
+
+
+# Agent worktrees and local-only docs
+.claude/worktrees
+docs/local

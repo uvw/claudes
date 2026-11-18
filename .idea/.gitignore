@@ -1,0 +1,21 @@
+# Ignore everything here except the settings meant to be shared.
+/*
+!/.gitignore
+!/codeStyles/
+!/inspectionProfiles/
+!/runConfigurations/
+!/scopes/
+!/copyright/
+!/fileTemplates/
+!/externalDependencies.xml
+!/go.imports.xml
+!/encodings.xml
+!/vcs.xml
+!/watcherTasks.xml
+!/prettier.xml
+!/modules.xml
+!/*.iml
+# Only the project dictionary; the other files in this folder are per user.
+!/dictionaries/
+/dictionaries/*
+!/dictionaries/project.xml
