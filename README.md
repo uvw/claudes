@@ -1,59 +1,110 @@
-# claudes
+# Claudes
 
-Manage your Claude Code sessions from the command line: list, restart, pause,
-resume, follow, and find them.
+**A pocketknife for your Claude Code sessions.**
+
+You run Claude Code in three terminals and a dozen background sessions. Claude
+Code updates, and every one of them stays on yesterday's version. You reboot,
+and they all die mid-thought. claudes restarts or parks them in one command,
+skips the pinned ones, and nudges any caught mid-turn to carry on.
 
 ![claudes listing sessions, restarting and pinging the busy ones while the
 pinned one stays put, pausing and resuming them, then sizing and cleaning up
 past sessions](docs/demo/demo.gif)
 
-You run Claude Code sessions in the background (`claude --bg`), and
-`claude agents` lists them. Then Claude Code updates, and every running session
-stays on the old version until it restarts. Or you reboot, and every session
-dies with whatever it was doing. Agent view acts on one session at a time, and a
-plain restart drops the turn a session was in the middle of.
+## Use cases
 
-claudes does those jobs in one command, without losing work:
+### Claude Code just updated
+
+Your sessions still run the old version, and `claudes ls` marks them `(old)`.
+Restart those, and ping the ones that were busy:
 
 ```console
-$ claudes restart --outdated --ping --dry-run
-Restarting 2 session(s):
-  ID        STATUS  DIR                 NAME          NOTE
-  034d46b9  busy    ~/src/api-refactor  api-refactor  will be pinged
-  51572bb7  idle    ~/src/docs          docs
+$ claudes ls
+ID        PINNED  KIND  STATE    STATUS  AGENTS  AGE  VERSION        DIR                  NAME
+c41d7e93  yes     bg    done     idle    -       40m  2.1.322 (old)  ~/src/release-notes  release-notes
+5e9b2a64  -       bg    working  busy    -       15m  2.1.325        ~/src/flaky-tests    flaky-tests
+3f2a9c41  -       bg    working  busy    3       1h   2.1.322 (old)  ~/src/api-refactor   api-refactor
+8b7e1d02  -       bg    done     idle    -       4h   2.1.322 (old)  ~/src/docs           docs
 
-Dry run: nothing was changed.
-
-Pinned, not restarted: release-notes. Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.
+(old): behind the installed Claude Code, see claudes restart --outdated
 
 $ claudes restart --outdated --ping
 Restarting 2 session(s):
   ID        STATUS  DIR                 NAME          NOTE
-  034d46b9  busy    ~/src/api-refactor  api-refactor  will be pinged
-  51572bb7  idle    ~/src/docs          docs
+  3f2a9c41  busy    ~/src/api-refactor  api-refactor  will be pinged
+  8b7e1d02  idle    ~/src/docs          docs
   restarted  api-refactor and pinged
   restarted  docs
 
 Pinned, not restarted: release-notes. Add --pinned to include them. Named sessions replace the bulk selection, so name every session you want.
 ```
 
-`api-refactor` was mid-turn, so claudes stopped it, resumed it on the new Claude
-Code, and sent it a prompt to pick up where it left off. The pinned session
-stayed as it was. claudes also finds every past session, running or not, and
-resumes or moves it from any directory. Anything it doesn't handle goes straight
-to `claude agents`.
+`api-refactor` was mid-turn with three subagents at work. claudes stopped it,
+resumed it on the new version, and told it to pick up where it left off. The
+pinned `release-notes` stayed put, and `flaky-tests`, already current, kept
+working. Add `--dry-run` to see the plan first.
 
-```console
-$ claudes ls
-ID        PINNED  KIND  STATE    STATUS  AGENTS     AGE  VERSION  DIR            NAME
-3ec56511  yes     bg    working  busy    lead+2, 3  3h   2.1.325  ~/src/api      api-refactor
-ff78d735  -       bg    done     idle    -          5h   2.1.325  ~/src/claudes  claudes-mvp
-e89ec2c4  -       tty   -        idle    -          20m  -        ~/src/claudes  e89ec2c4
+### Rebooting
+
+A reboot kills every session. Park them first, and bring them back after:
+
+```bash
+claudes pause            # stop background sessions and remember them
+# reboot
+claudes resume --ping    # bring them back; the mid-turn ones carry on
 ```
 
-`AGENTS` shows the agent team a session leads, as `lead+2`, and the subagents it
-runs now, as `3`. `claudes ls --wide` adds its background shells, tokens, pull
-requests, and what it's doing.
+`pause` skips pinned sessions, interactive ones, and leads of an agent team, and
+a reboot ends those too. `--pinned` and `--interactive` take the first two. A
+lead goes only when you name it, along with every other session you want. After
+the reboot, `claudes resume NAME` brings back any stopped background session,
+parked or not, and the resume commands `pause` printed bring back interactive
+ones.
+
+### Finding an old session
+
+"Which session fixed that lock race on Monday?" Search every session, running or
+long finished, by what was said in it:
+
+```console
+$ claudes session search lock race -l week
+ID        ACTIVE  WHERE   DIR           NAME         MATCH
+a1b2c3d4  1d      you     ~/src/api     cache-fix    …I think it is a lock race in the writer
+b2c3d4e5  2d      claude  ~/src/ingest  ingest-perf  The lock is held across the network call. A race shows up only under…
+
+Resume the first with:
+  claudes session resume a1b2c3d4
+```
+
+`session resume` works from any directory: it starts the session in its own.
+
+### Moving a session
+
+You started in `~/scratch`, and the work grew into a repository at
+`~/src/billing`. Move the session so it resumes there:
+
+```bash
+claudes session mv billing-spike ~/src/billing
+```
+
+It copies the transcript, keeps the original, and prints the commands that
+resume the copy and remove the original.
+
+### Clearing out old transcripts
+
+Transcripts pile up under `~/.claude` by the gigabyte. See where the space went,
+sort out what's worth keeping, and sweep the rest:
+
+```bash
+claudes session du --top 10     # disk use by directory, and the 10 biggest
+claudes session triage          # sort sessions into remove, review, and keep
+claudes session gc --dry-run    # empty sessions, old copies, and leftovers
+claudes session gc              # move them to the system trash
+```
+
+They go to the trash, not the void, so a mistake can be undone. `triage` prints
+the `session gc` command for its remove pile, and the
+[agent skill](#agent-skill) teaches an agent to judge the review pile for you.
 
 ## Quick start
 
@@ -74,22 +125,6 @@ claudes doctor                   # check claudes against the installed Claude Co
 
 `restart`, `pause`, `resume`, and `gc` take `--dry-run` to show their plan
 first. `ping`, `stop`, `pin`, and `unpin` act on the sessions you name.
-
-### Before and after a reboot
-
-```bash
-claudes pause --dry-run          # see what will be parked, and what won't
-claudes pause                    # stop and park background sessions
-# reboot
-claudes resume --dry-run
-claudes resume --ping            # bring them back; mid-turn ones carry on
-```
-
-`pause` leaves out pinned sessions, interactive ones, and leads of an agent
-team, and a reboot ends them too. To keep them, name them
-(`claudes pause api notes`) or add `--interactive`. After the reboot,
-`claudes resume NAME` brings back any stopped background session, parked or not,
-and the resume commands `pause` printed bring back interactive ones.
 
 ## Install
 
