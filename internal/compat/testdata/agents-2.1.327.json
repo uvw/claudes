@@ -1,0 +1,13 @@
+[
+  {
+    "pid": 4242,
+    "id": "5e1f0c3a",
+    "cwd": "/home/user/project",
+    "kind": "background",
+    "startedAt": 1795000000000,
+    "sessionId": "5e1f0c3a-7b2d-4c8e-9a10-3f6b2d8e4c71",
+    "name": "say hi",
+    "status": "idle",
+    "state": "blocked"
+  }
+]

@@ -25,24 +25,57 @@ func asTerminal(t *testing.T) {
 }
 
 func TestDetect(t *testing.T) {
+	const pipe, tty = false, true
 	for _, tc := range []struct {
 		name string
+		tty  bool
 		env  []string
 		want bool
 	}{
-		{"not a terminal", []string{"TERM=xterm-256color"}, false},
-		{"a terminal", terminal, true},
-		{"a dumb terminal", []string{"TERM=dumb"}, false},
-		{"NO_COLOR on a terminal", append([]string{"NO_COLOR=1"}, terminal...), false},
-		{"NO_COLOR set to anything", append([]string{"NO_COLOR=yes"}, terminal...), false},
-		{"NO_COLOR over CLICOLOR=1", []string{"NO_COLOR=1", "CLICOLOR=1"}, false},
-		{"CLICOLOR=0 on a terminal", append([]string{"CLICOLOR=0"}, terminal...), false},
-		{"CLICOLOR=1 when not a terminal", []string{"CLICOLOR=1"}, true},
-		{"the last value wins", []string{"CLICOLOR=0", "CLICOLOR=1"}, true},
-		{"an empty NO_COLOR", []string{"NO_COLOR=", "CLICOLOR=1"}, true},
+		{"a pipe", pipe, terminal, false},
+		{"a terminal", tty, terminal, true},
+		{"a dumb terminal", tty, []string{"TERM=dumb"}, false},
+
+		{"NO_COLOR on a terminal", tty, append([]string{"NO_COLOR=1"}, terminal...), false},
+		{"NO_COLOR set to anything", tty, append([]string{"NO_COLOR=yes"}, terminal...), false},
+		{"NO_COLOR=0", tty, append([]string{"NO_COLOR=0"}, terminal...), false},
+		{"an empty NO_COLOR", tty, append([]string{"NO_COLOR="}, terminal...), true},
+
+		{"CLICOLOR=1 on a terminal", tty, append([]string{"CLICOLOR=1"}, terminal...), true},
+		{"CLICOLOR=1 on a pipe", pipe, append([]string{"CLICOLOR=1"}, terminal...), false},
+		{"CLICOLOR=1 on a dumb terminal", tty, []string{"CLICOLOR=1", "TERM=dumb"}, false},
+		{"CLICOLOR=0 on a terminal", tty, append([]string{"CLICOLOR=0"}, terminal...), false},
+		{"an empty CLICOLOR on a terminal", tty, append([]string{"CLICOLOR="}, terminal...), true},
+
+		{"CLICOLOR_FORCE=1 on a pipe", pipe, []string{"CLICOLOR_FORCE=1"}, true},
+		{"CLICOLOR_FORCE set to anything", pipe, []string{"CLICOLOR_FORCE=yes"}, true},
+		{"CLICOLOR_FORCE on a dumb terminal", tty, []string{"CLICOLOR_FORCE=1", "TERM=dumb"}, true},
+		{"CLICOLOR_FORCE=0 on a pipe", pipe, []string{"CLICOLOR_FORCE=0"}, false},
+		{"CLICOLOR_FORCE=0 on a terminal", tty, append([]string{"CLICOLOR_FORCE=0"}, terminal...), true},
+		{"an empty CLICOLOR_FORCE on a pipe", pipe, []string{"CLICOLOR_FORCE="}, false},
+
+		{"FORCE_COLOR=1 on a pipe", pipe, []string{"FORCE_COLOR=1"}, true},
+		{"FORCE_COLOR set to anything", pipe, []string{"FORCE_COLOR=true"}, true},
+		{"FORCE_COLOR on a dumb terminal", tty, []string{"FORCE_COLOR=1", "TERM=dumb"}, true},
+		{"FORCE_COLOR=0 on a pipe", pipe, []string{"FORCE_COLOR=0"}, false},
+		{"FORCE_COLOR=0 on a terminal", tty, append([]string{"FORCE_COLOR=0"}, terminal...), true},
+		{"an empty FORCE_COLOR on a pipe", pipe, []string{"FORCE_COLOR="}, false},
+		{"FORCE_COLOR=0 leaves CLICOLOR_FORCE", pipe, []string{"FORCE_COLOR=0", "CLICOLOR_FORCE=1"}, true},
+		{"CLICOLOR_FORCE=0 leaves FORCE_COLOR", pipe, []string{"CLICOLOR_FORCE=0", "FORCE_COLOR=1"}, true},
+
+		{"NO_COLOR over CLICOLOR_FORCE", pipe, []string{"NO_COLOR=1", "CLICOLOR_FORCE=1"}, false},
+		{"NO_COLOR over FORCE_COLOR", pipe, []string{"NO_COLOR=1", "FORCE_COLOR=1"}, false},
+		{"FORCE_COLOR over CLICOLOR=0", pipe, []string{"CLICOLOR=0", "FORCE_COLOR=1"}, true},
+		{"NO_COLOR over CLICOLOR=1", tty, append([]string{"NO_COLOR=1", "CLICOLOR=1"}, terminal...), false},
+		{"CLICOLOR_FORCE over CLICOLOR=0", pipe, []string{"CLICOLOR=0", "CLICOLOR_FORCE=1"}, true},
+		{"CLICOLOR_FORCE=0 leaves CLICOLOR=0", tty, append([]string{"CLICOLOR=0", "CLICOLOR_FORCE=0"}, terminal...), false},
+		{"an empty NO_COLOR leaves CLICOLOR_FORCE", pipe, []string{"NO_COLOR=", "CLICOLOR_FORCE=1"}, true},
+
+		{"the last CLICOLOR wins", tty, append([]string{"CLICOLOR=0", "CLICOLOR=1"}, terminal...), true},
+		{"the last CLICOLOR_FORCE wins", pipe, []string{"CLICOLOR_FORCE=1", "CLICOLOR_FORCE=0"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "not a terminal" {
+			if tc.tty {
 				asTerminal(t)
 			}
 			if got := Detect(&bytes.Buffer{}, tc.env).Colors(); got != tc.want {

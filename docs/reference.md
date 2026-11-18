@@ -260,9 +260,21 @@ and errors go to stderr as well.
 Text output is colored when it goes to a terminal: session status, pins,
 outdated versions, and directories in the tables, what happened to each session,
 failures and errors, and each `doctor` result. Stdout and stderr are checked
-apart, so a pipe gets plain text. `NO_COLOR`, set to any value but empty, turns
-colors off. `CLICOLOR=0` turns them off too, and `CLICOLOR=1` turns them on even
-for a pipe. `json`, `yaml`, completions, `init`, and `skill` are never colored.
+apart, so a pipe gets plain text. `json`, `yaml`, completions, `init`, and
+`skill` are never colored.
+
+Environment variables change that for text output, as the
+[clicolors convention](https://bixense.com/clicolors/) says. claudes reads these
+variables in this order, and the first that applies wins. An empty variable
+counts as unset.
+
+1. `NO_COLOR`, set to any value, turns colors off.
+2. `CLICOLOR_FORCE` or `FORCE_COLOR`, set to any value but `0`, turns colors on,
+   even for a pipe. Many CI systems and Node tools set `FORCE_COLOR`.
+3. `CLICOLOR=0` turns colors off.
+4. Otherwise a terminal that shows colors gets them, unlike one with
+   `TERM=dumb`, and a pipe doesn't. `CLICOLOR=1`, which many macOS users export
+   for `ls`, changes nothing here.
 
 ## Exit codes
 

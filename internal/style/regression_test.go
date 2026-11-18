@@ -5,10 +5,12 @@ import (
 	"testing"
 )
 
-// Detect's doc names only CLICOLOR=1 as the way to color a pipe.
-func TestOnlyCLICOLORColorsAPipe(t *testing.T) {
+// Detect's doc names only CLICOLOR_FORCE as the way to color a pipe. Many
+// macOS users export CLICOLOR=1 for ls, and colorprofile honors TTY_FORCE.
+func TestOnlyCLICOLORFORCEColorsAPipe(t *testing.T) {
 	for _, env := range [][]string{
-		{"CLICOLOR_FORCE=1"},
+		{"CLICOLOR=1"},
+		{"CLICOLOR=1", "TERM=xterm-256color"},
 		{"TTY_FORCE=1", "TERM=xterm-256color"},
 		{"TTY_FORCE=1", "WT_SESSION=abc"},
 	} {

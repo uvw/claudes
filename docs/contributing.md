@@ -175,7 +175,12 @@ fails without it, and CI keeps total coverage at 80% or more.
    agent view writes.
 4. `internal/procs` tests stop stand-in processes named `claude`, never a real
    session.
-5. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
+5. `internal/compat` parses samples of the real `claude agents --json` and
+   `state.json` in its `testdata`. `TestLiveClaude` reads the real ones, and
+   runs only with `CLAUDES_LIVE_CLAUDE` set. The weekly Compatibility workflow
+   sets it through `.github/workflows/hack/compat-live.sh`, which starts a
+   background job and so runs only in CI.
+6. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
    hand in a terminal, on each platform it changes.
 
 ## Pull requests
