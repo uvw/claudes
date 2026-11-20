@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -533,5 +534,37 @@ func TestSessionGcConfirmAsksFirst(t *testing.T) {
 	assertContains(t, h.out.String(), "Delete these for good? [y/N]")
 	if exists(path) {
 		t.Fatal("session gc --confirm kept a session after a yes")
+	}
+}
+
+func TestSessionGcForgetsTheMovesOfASessionItRemoves(t *testing.T) {
+	h := newHarness(t)
+	id := h.transcript(t, "plan", h.folder("from"), 7*24*time.Hour)
+	h.ok(t, "session", "mv", "plan", h.folder("to"))
+	h.ok(t, "session", "mv", "plan", h.folder("next"))
+	other := h.transcript(t, "other", h.folder("from"), 7*24*time.Hour)
+	h.ok(t, "session", "mv", "other", h.folder("to"))
+	moves := func() string {
+		t.Helper()
+		data, err := os.ReadFile(h.app.Transcripts.Moves)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	if strings.Count(moves(), id) != 2 {
+		t.Fatalf("moves.json after two moves:\n%s", moves())
+	}
+
+	h.app.Trash = func(string) error { return errors.New("the trash is full") }
+	h.fails(t, "session", "gc", id[:8])
+	if strings.Count(moves(), id) != 2 {
+		t.Fatalf("a failed removal changed moves.json:\n%s", moves())
+	}
+
+	h.app.Trash = os.RemoveAll
+	h.ok(t, "session", "gc", id[:8])
+	if left := moves(); strings.Contains(left, id) || !strings.Contains(left, other) {
+		t.Fatalf("moves.json after session gc %s:\n%s", id[:8], left)
 	}
 }

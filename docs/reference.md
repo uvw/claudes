@@ -392,6 +392,8 @@ as usual. `--version` prints the version.
   When `session mv` removed the session's stopped background job, the entry is
   an object, `{"dir": DIR, "options": [...]}`, with the options Claude Code had
   saved for the job. `session resume --bg` passes them to the new job.
+  `session gc` drops a copy's entry once it removes that copy, alone or with its
+  whole session.
 - `run.lock` is a directory that exists only while a command changes sessions.
   Its `owner` file holds the PID and start time of the claudes that holds it. A
   lock that has not been refreshed for 30 seconds is broken only once that

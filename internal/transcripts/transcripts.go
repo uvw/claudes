@@ -245,13 +245,18 @@ func (st Store) recordMove(path, sessionID string, m move) error {
 	})
 }
 
-// ForgetMove drops the record of the copy at path, once that copy is gone.
-func (st Store) ForgetMove(path, sessionID string) error {
+// ForgetMoves drops the record of each copy at paths, once those copies are
+// gone.
+func (st Store) ForgetMoves(sessionID string, paths ...string) error {
 	return st.updateMoves(func(moves map[string]move) bool {
-		key := moveKey(path, sessionID)
-		_, ok := moves[key]
-		delete(moves, key)
-		return ok
+		changed := false
+		for _, path := range paths {
+			key := moveKey(path, sessionID)
+			_, ok := moves[key]
+			delete(moves, key)
+			changed = changed || ok
+		}
+		return changed
 	})
 }
 

@@ -188,24 +188,23 @@ func TestSessionFilesListsWhatExists(t *testing.T) {
 	}
 }
 
-func TestForgetMoveDropsOnlyThatCopy(t *testing.T) {
+func TestForgetMovesDropsOnlyThoseCopies(t *testing.T) {
 	root := t.TempDir()
 	st := Store{Dir: filepath.Join(root, "projects"), Moves: filepath.Join(root, "moves.json")}
-	a, b := filepath.Join(st.Dir, "-a", sid+".jsonl"), filepath.Join(st.Dir, "-b", sid+".jsonl")
-	if err := st.recordMove(a, sid, move{Dir: "/a"}); err != nil {
-		t.Fatal(err)
+	a, b, c := filepath.Join(st.Dir, "-a", sid+".jsonl"), filepath.Join(st.Dir, "-b", sid+".jsonl"), filepath.Join(st.Dir, "-c", sid+".jsonl")
+	for _, p := range []string{a, b, c} {
+		if err := st.recordMove(p, sid, move{Dir: p}); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := st.recordMove(b, sid, move{Dir: "/b"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := st.ForgetMove(a, sid); err != nil {
+	if err := st.ForgetMoves(sid, a, c); err != nil {
 		t.Fatal(err)
 	}
 	moves, err := st.loadMoves()
-	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)].Dir != "/b" {
+	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)].Dir != b {
 		t.Fatalf("moves %v, err %v", moves, err)
 	}
-	if err := st.ForgetMove(a, sid); err != nil {
+	if err := st.ForgetMoves(sid, a); err != nil {
 		t.Fatalf("forgetting twice: %v", err)
 	}
 }
