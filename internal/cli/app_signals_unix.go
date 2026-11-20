@@ -1,6 +1,6 @@
 //go:build unix
 
-package interrupt
+package cli
 
 import (
 	"os"

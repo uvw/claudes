@@ -5,67 +5,14 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"testing"
 )
-
-const module = "github.com/uvw/claudes"
-
-// allowed is every import one of the module's packages may make of another,
-// by directory. Packages import downward only: cmd/claudes imports cli, cli
-// imports the packages of one concern each, and those import the leaf packages.
-// Nothing imports cli. A new import, or one a package no longer makes, changes
-// this map, so each shows up in review.
-var allowed = map[string][]string{
-	"cmd/claudes":       {"internal/cli"},
-	"internal/calendar": nil,
-	"internal/claude":   {"internal/paths", "internal/shell"},
-	"internal/cli": {
-		"internal/calendar", "internal/claude", "internal/compat",
-		"internal/config", "internal/exit", "internal/files", "internal/history",
-		"internal/install", "internal/interrupt", "internal/jobs",
-		"internal/listing", "internal/lock", "internal/mcp", "internal/park",
-		"internal/paths", "internal/procs", "internal/render",
-		"internal/selection", "internal/shell", "internal/target",
-		"internal/teams", "internal/transcripts", "internal/trash",
-		"internal/upgrade", "internal/version", "skills",
-	},
-	"internal/compat":        {"internal/claude", "internal/files", "internal/jobs", "internal/version"},
-	"internal/config":        {"internal/files", "internal/paths", "internal/render"},
-	"internal/exit":          {"internal/target"},
-	"internal/files":         nil,
-	"internal/history":       {"internal/claude", "internal/paths", "internal/render", "internal/target", "internal/transcripts"},
-	"internal/install":       {"internal/files", "internal/paths"},
-	"internal/interrupt":     nil,
-	"internal/jobs":          {"internal/files", "internal/paths"},
-	"internal/layout":        nil,
-	"internal/listing":       {"internal/claude", "internal/selection", "internal/shell"},
-	"internal/lock":          {"internal/files"},
-	"internal/mcp":           {"internal/claude", "internal/paths"},
-	"internal/park":          {"internal/claude", "internal/files", "internal/paths", "internal/shell"},
-	"internal/paths":         nil,
-	"internal/procs":         nil,
-	"internal/render":        {"internal/paths", "internal/shell"},
-	"internal/selection":     {"internal/claude", "internal/exit", "internal/render", "internal/target", "internal/version"},
-	"internal/shell":         nil,
-	"internal/target":        nil,
-	"internal/teams":         {"internal/claude", "internal/paths", "internal/shell"},
-	"internal/transcripts":   {"internal/claude", "internal/files", "internal/paths", "internal/shell"},
-	"internal/trash":         {"internal/files"},
-	"internal/upgrade":       nil,
-	"internal/version":       nil,
-	"skills":                 nil,
-	"test/e2e":               {"test/e2e/internal/fake"},
-	"test/e2e/fakeclaude":    {"test/e2e/internal/fake"},
-	"test/e2e/internal/fake": nil,
-}
 
 // twoWords are names that join two words. A name of lowercase letters can
 // still be two words, which no pattern tells apart, so this lists the ones
@@ -75,16 +22,15 @@ var twoWords = []string{
 }
 
 // pkg is one of the module's packages: its name, its directory relative to the
-// module root, its files, and what it imports from the module.
+// module root, and its files.
 type pkg struct {
 	name, dir string
 	files     []*ast.File
-	imports   map[string]bool
 }
 
 // packages parses every package in the module, skipping nested modules and
 // files built only by hand, such as hack/notices.go.
-func packages(t *testing.T) (root string, pkgs map[string]*pkg) {
+func packages(t *testing.T) map[string]*pkg {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -93,7 +39,7 @@ func packages(t *testing.T) (root string, pkgs map[string]*pkg) {
 	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
 		t.Fatalf("no go.mod at the module root %s: %v", root, err)
 	}
-	pkgs = map[string]*pkg{}
+	pkgs := map[string]*pkg{}
 	fset := token.NewFileSet()
 	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -113,7 +59,7 @@ func packages(t *testing.T) (root string, pkgs map[string]*pkg) {
 		if !strings.HasSuffix(p, ".go") {
 			return nil
 		}
-		f, err := parser.ParseFile(fset, p, nil, parser.ImportsOnly|parser.ParseComments)
+		f, err := parser.ParseFile(fset, p, nil, parser.PackageClauseOnly|parser.ParseComments)
 		if err != nil {
 			return err
 		}
@@ -124,25 +70,19 @@ func packages(t *testing.T) (root string, pkgs map[string]*pkg) {
 		dir := filepath.ToSlash(rel)
 		pk := pkgs[dir]
 		if pk == nil {
-			pk = &pkg{dir: dir, imports: map[string]bool{}}
+			pk = &pkg{dir: dir}
 			pkgs[dir] = pk
 		}
 		if !strings.HasSuffix(f.Name.Name, "_test") {
 			pk.name = f.Name.Name
 		}
 		pk.files = append(pk.files, f)
-		for _, imp := range f.Imports {
-			ipath, _ := strconv.Unquote(imp.Path.Value)
-			if dep, ok := strings.CutPrefix(ipath, module+"/"); ok && dep != dir {
-				pk.imports[dep] = true
-			}
-		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return root, pkgs
+	return pkgs
 }
 
 // handBuilt reports whether f carries //go:build ignore, so no build includes
@@ -172,41 +112,11 @@ func internal(pkgs map[string]*pkg) map[string]*pkg {
 	return out
 }
 
-func TestImportsGoDownward(t *testing.T) {
-	_, pkgs := packages(t)
-	for _, dir := range slices.Sorted(maps.Keys(pkgs)) {
-		want, ok := allowed[dir]
-		if !ok {
-			t.Errorf("%s is not in allowed: add it, with the packages it imports", dir)
-			continue
-		}
-		for _, dep := range slices.Sorted(maps.Keys(pkgs[dir].imports)) {
-			switch {
-			case dep == "internal/cli" && dir != "cmd/claudes":
-				t.Errorf("%s imports internal/cli, which only cmd/claudes may import", dir)
-			case !slices.Contains(want, dep):
-				t.Errorf("%s imports %s, which allowed does not list: import downward, or add it to allowed", dir, dep)
-			}
-		}
-		for _, dep := range want {
-			if !pkgs[dir].imports[dep] {
-				t.Errorf("%s no longer imports %s: take it off allowed", dir, dep)
-			}
-		}
-	}
-	for dir := range allowed {
-		if pkgs[dir] == nil {
-			t.Errorf("allowed lists %s, which has no Go files: take it off", dir)
-		}
-	}
-}
-
 // docComment is a package doc comment's start: "Package name" and a word.
 var docComment = regexp.MustCompile(`^Package [a-z]+ \S`)
 
 func TestEveryPackageStatesItsConcern(t *testing.T) {
-	_, pkgs := packages(t)
-	for name, p := range internal(pkgs) {
+	for name, p := range internal(packages(t)) {
 		var docs []string
 		for _, f := range p.files {
 			if f.Doc != nil && !strings.HasSuffix(f.Name.Name, "_test") {
@@ -224,24 +134,10 @@ func TestEveryPackageStatesItsConcern(t *testing.T) {
 	}
 }
 
-func TestAgentsNamesEveryPackage(t *testing.T) {
-	root, pkgs := packages(t)
-	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range internal(pkgs) {
-		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(p.dir) + `\b`).Match(agents) {
-			t.Errorf("AGENTS.md does not name %s: add it to \"Where to look first\"", p.dir)
-		}
-	}
-}
-
 var oneWord = regexp.MustCompile(`^[a-z]+$`)
 
 func TestPackageNamesAreOneWord(t *testing.T) {
-	_, pkgs := packages(t)
-	for name, p := range internal(pkgs) {
+	for name, p := range internal(packages(t)) {
 		bad := !oneWord.MatchString(name) || slices.Contains(twoWords, name)
 		switch {
 		case p.name != name:

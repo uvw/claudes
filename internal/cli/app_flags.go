@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/uvw/claudes/internal/calendar"
 )
 
 // lifecycleFlags are the flags of restart, pause, and resume.
@@ -122,9 +120,9 @@ func (v *days) String() string {
 
 func (v *days) Set(s string) error {
 	v.word = ""
-	if word := strings.ToLower(s); slices.Contains(calendar.Words, word) {
+	if word := strings.ToLower(s); slices.Contains(calendarWords, word) {
 		now := v.now()
-		start, _ := calendar.Start(word, now)
+		start, _ := calendarStart(word, now)
 		// 0 means the flag is unset, so a word given at the very midnight it
 		// starts at still takes a span.
 		v.d, v.word = max(now.Sub(start), time.Nanosecond), word
@@ -147,6 +145,27 @@ func (v *days) Set(s string) error {
 }
 
 func (v *days) Type() string { return "duration" }
+
+var calendarWords = []string{"today", "yesterday", "week", "month"}
+
+// calendarStart is the midnight, in now's location, that begins word: today,
+// yesterday, the Monday of this week, or the 1st of this month. Letter case
+// does not matter. ok is false for any other word.
+func calendarStart(word string, now time.Time) (start time.Time, ok bool) {
+	y, m, d := now.Date()
+	switch strings.ToLower(word) {
+	case "today":
+	case "yesterday":
+		d--
+	case "week":
+		d -= (int(now.Weekday()) + 6) % 7
+	case "month":
+		d = 1
+	default:
+		return time.Time{}, false
+	}
+	return time.Date(y, m, d, 0, 0, 0, 0, now.Location()), true
+}
 
 // countFlag is a flag that takes a whole number, 0 or more.
 type countFlag struct{ n int }

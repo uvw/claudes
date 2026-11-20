@@ -8,7 +8,6 @@ import (
 	"slices"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/version"
@@ -45,7 +44,7 @@ func Named(targets []string, sessions []claude.Session, skip map[string]bool, wi
 	}
 	for _, s := range picked {
 		if s.Interactive() && !withInteractive {
-			return sel, exit.Refusal(fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label()))
+			return sel, refused(fmt.Errorf("%s is an interactive session: add --interactive or --interactive-bg", s.Label()))
 		}
 		if skip[s.SessionID] {
 			sel.Skipped = append(sel.Skipped, s)
@@ -120,11 +119,21 @@ func Skip[T target.Ref](skip []string, candidates []T, id func(T) string) (map[s
 	return set, nil
 }
 
+// RefusedError is a session a command must not act on, found before it
+// changed anything.
+type RefusedError struct{ Err error }
+
+func (e *RefusedError) Error() string { return e.Err.Error() }
+
+func (e *RefusedError) Unwrap() error { return e.Err }
+
+func refused(err error) error { return &RefusedError{Err: err} }
+
 // RequireRunning refuses a named session that is not running.
 func RequireRunning(sessions []claude.Session) error {
 	for _, s := range sessions {
 		if !s.Running() {
-			return exit.Refusal(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
+			return refused(fmt.Errorf("%s is not running (%s): name a running session, or bring it back with claudes resume",
 				s.Label(), render.Dash(s.State)))
 		}
 	}
@@ -149,11 +158,11 @@ func RequireFinished(sessions []claude.Session) error {
 	for _, s := range sessions {
 		switch {
 		case s.Interactive():
-			return exit.Refusal(fmt.Errorf("%s is an interactive session: gc removes only finished background sessions", s.Label()))
+			return refused(fmt.Errorf("%s is an interactive session: gc removes only finished background sessions", s.Label()))
 		case s.Running():
-			return exit.Refusal(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
+			return refused(fmt.Errorf("%s is still running: gc removes only finished background sessions. Stop it first", s.Label()))
 		case !IsFinished(s):
-			return exit.Refusal(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), render.Dash(s.State)))
+			return refused(fmt.Errorf("%s is not finished (%s): gc removes only finished background sessions", s.Label(), render.Dash(s.State)))
 		}
 	}
 	return nil

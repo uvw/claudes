@@ -3,6 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"go/ast"
+	"go/parser"
+	"go/token"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,7 +13,6 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/teams"
@@ -41,7 +42,7 @@ func TestRestartPrintsOneJSONReport(t *testing.T) {
 	h.pin(t, pinned)
 	h.agents.failures = map[string]string{"respawn " + bad.JobID: "boom"}
 
-	h.exits(t, exit.SomeFailed, "restart", "--ping", "-o", "json")
+	h.exits(t, exitSomeFailed, "restart", "--ping", "-o", "json")
 	r := readReport(t, h)
 	if r.Command != "restart" || r.DryRun || len(r.Plan) != 2 {
 		t.Fatalf("report %+v", r)
@@ -178,7 +179,7 @@ func TestTheReportListsLeftAloneTerminalsWarningsAndTheError(t *testing.T) {
 	}
 
 	h.out.Reset()
-	h.exits(t, exit.NoMatch, "stop", "nobody", "-o", "json")
+	h.exits(t, exitNoMatch, "stop", "nobody", "-o", "json")
 	if r = readReport(t, h); !strings.Contains(r.Error, "nobody") {
 		t.Fatalf("error %q", r.Error)
 	}
@@ -212,7 +213,7 @@ func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
 	assertContains(t, h.err.String(), h.app.errColors.Red("  bad: worktree has changes"))
 
 	h.err.Reset()
-	h.exits(t, exit.NoMatch, "where", "nobody")
+	h.exits(t, exitNoMatch, "where", "nobody")
 	if !strings.HasPrefix(h.err.String(), "\x1b[31mclaudes: ") {
 		t.Fatalf("the error is not red:\n%q", h.err)
 	}
@@ -243,4 +244,37 @@ func TestEverySubjectCarriesItsDirectory(t *testing.T) {
 			}
 		}
 	}
+}
+
+// parsed is this package's files, without its tests, by name.
+func parsed(t *testing.T) map[string]*ast.File {
+	t.Helper()
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]*ast.File{}
+	fset := token.NewFileSet()
+	for _, name := range names {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[name] = f
+	}
+	return files
+}
+
+func recvType(fn *ast.FuncDecl) string {
+	expr := fn.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if idx, ok := expr.(*ast.IndexExpr); ok {
+		expr = idx.X
+	}
+	return expr.(*ast.Ident).Name
 }

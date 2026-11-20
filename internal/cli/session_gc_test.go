@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/transcripts"
@@ -157,7 +156,7 @@ func TestSessionGcLeavesProtectedSessionsAlone(t *testing.T) {
 
 	for _, name := range []string{live.SessionID[:8], listed.SessionID[:8], parked[:8], host[:8]} {
 		h.err.Reset()
-		if code := h.run("session", "gc", name); code != exit.Refused {
+		if code := h.run("session", "gc", name); code != exitRefused {
 			t.Fatalf("gc %s: exit %d\n%s", name, code, h.err)
 		}
 		if !strings.Contains(h.err.String(), "session gc leaves it alone") {
@@ -274,7 +273,7 @@ func TestSessionGcRefusesWhenItCannotTellWhatRuns(t *testing.T) {
 	h.emptyTranscript(t, "e", h.folder("work"), 7*24*time.Hour)
 	h.agents.failures = map[string]string{"list": "claude agents failed"}
 
-	if code := h.run("session", "gc"); code != exit.Refused {
+	if code := h.run("session", "gc"); code != exitRefused {
 		t.Fatalf("exit %d\n%s", code, h.err)
 	}
 	if len(h.trashed) != 0 {

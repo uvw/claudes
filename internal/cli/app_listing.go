@@ -1,7 +1,4 @@
-// Package listing holds the rows claudes ls and claudes where print and
-// encode: each session with its pin, its Claude Code version, the team it
-// leads, and what agent view counts for it now.
-package listing
+package cli
 
 import (
 	"cmp"
@@ -12,9 +9,10 @@ import (
 	"github.com/uvw/claudes/internal/shell"
 )
 
-// Row is a session as claudes ls shows it. Scripts read its JSON, so a key
-// keeps its name.
-type Row struct {
+// sessionRow is a session as claudes ls and claudes where show it: with its
+// pin, its Claude Code version, the team it leads, and what agent view counts
+// for it now. Scripts read its JSON, so a key keeps its name.
+type sessionRow struct {
 	claude.Session
 	Pinned bool `json:"pinned"`
 	// Version is the Claude Code version the session last ran, when known.
@@ -33,23 +31,23 @@ type Row struct {
 	Doing     *string `json:"doing"`
 }
 
-// Sort orders rows pinned first, then busy, then newest.
-func Sort(rows []Row) {
-	slices.SortStableFunc(rows, func(a, b Row) int {
+// sortRows orders rows pinned first, then busy, then newest.
+func sortRows(rows []sessionRow) {
+	slices.SortStableFunc(rows, func(a, b sessionRow) int {
 		return cmp.Or(selection.TrueFirst(a.Pinned, b.Pinned), selection.TrueFirst(a.Busy(), b.Busy()), cmp.Compare(b.StartedAt, a.StartedAt))
 	})
 }
 
-// Doing is r's DOING cell, which the table cuts to fit.
-func Doing(r Row) string {
+// doingCell is r's DOING cell, which the table cuts to fit.
+func doingCell(r sessionRow) string {
 	if r.Doing == nil {
 		return "-"
 	}
 	return shell.Printable(*r.Doing)
 }
 
-// ZeroIfKnown is 0 for a known count, and nil for an unknown one.
-func ZeroIfKnown(n *int) *int {
+// zeroIfKnown is 0 for a known count, and nil for an unknown one.
+func zeroIfKnown(n *int) *int {
 	if n == nil {
 		return nil
 	}

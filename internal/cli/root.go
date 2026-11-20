@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/version"
@@ -90,7 +89,7 @@ func (app *App) Run(args []string) int {
 		switch {
 		case ctx.Err() != nil && !app.endsOnInterrupt:
 			r.Error = "interrupted"
-		case err != nil && !errors.Is(err, exit.ErrSomeFailed) && !errors.Is(err, exit.ErrReported):
+		case err != nil && !errors.Is(err, errSomeFailed) && !errors.Is(err, errReported):
 			r.Error = err.Error()
 		}
 	})
@@ -100,16 +99,16 @@ func (app *App) Run(args []string) int {
 	case ctx.Err() != nil:
 		fmt.Fprintln(app.Err)
 		app.errorLine("claudes: interrupted. Some sessions may already be stopped or restarted: check claudes ls")
-		return exit.Interrupted
+		return exitInterrupted
 	case err == nil:
 		return 0
-	case errors.Is(err, exit.ErrSomeFailed):
-		return exit.SomeFailed
-	case errors.Is(err, exit.ErrReported):
-		return exit.Failed
+	case errors.Is(err, errSomeFailed):
+		return exitSomeFailed
+	case errors.Is(err, errReported):
+		return exitFailed
 	}
 	app.errorLine("claudes: %s", shell.PrintableText(err.Error()))
-	return exit.Code(err)
+	return exitCode(err)
 }
 
 // commandName is the first argument after claudes' own -v or --verbose, or

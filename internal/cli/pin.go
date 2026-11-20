@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/compat"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 )
@@ -34,7 +33,7 @@ func (app *App) pinCommand(pin bool) *cobra.Command {
 			ids := make([]string, 0, len(picked))
 			for _, s := range picked {
 				if s.JobID == "" {
-					return exit.Refusal(fmt.Errorf("%s is an interactive session: only background sessions can be pinned", s.Label()))
+					return refusal(fmt.Errorf("%s is an interactive session: only background sessions can be pinned", s.Label()))
 				}
 				ids = append(ids, s.JobID)
 			}

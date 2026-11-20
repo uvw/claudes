@@ -9,7 +9,6 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/compat"
-	"github.com/uvw/claudes/internal/exit"
 )
 
 // compatible warns once when the installed Claude Code is outside the tested
@@ -36,7 +35,7 @@ func (app *App) protectedPins(sessions []claude.Session) (map[string]bool, error
 		missing := fmt.Sprintf("the jobs directory %s does not exist, though claude agents lists background sessions, "+
 			"so claudes cannot see which are pinned. CLAUDE_CONFIG_DIR may point to the wrong directory", app.Jobs.Dir)
 		if !app.force {
-			return nil, exit.Refusal(errors.New(missing + ". Pass --force to go ahead anyway"))
+			return nil, refusal(errors.New(missing + ". Pass --force to go ahead anyway"))
 		}
 		app.warn("claudes: going ahead with --force, although %s", missing)
 	}
@@ -58,7 +57,7 @@ func (app *App) refuse(source string, problems []string) error {
 		app.warn("claudes: going ahead with --force, although %s looks unfamiliar:%s", source, list)
 		return nil
 	}
-	return exit.Refusal(fmt.Errorf("%s holds something claudes does not recognize, so it changed nothing:%s\n"+
+	return refusal(fmt.Errorf("%s holds something claudes does not recognize, so it changed nothing:%s\n"+
 		"Claude Code may have changed. Run claudes doctor, or pass --force to go ahead anyway", source, list))
 }
 

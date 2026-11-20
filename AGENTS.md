@@ -18,7 +18,7 @@ adds what an agent needs on top of them.
 | The `App` and the real side effects it wires    | `internal/cli/app.go`                                     |
 | Printing, warnings, the log, and `writeTable`   | `internal/cli/app_output.go`                              |
 | Plans, progress, the report, and the gate       | `internal/cli/app_report.go`, `internal/render/report.go` |
-| Flags several commands share                    | `internal/cli/app_flags.go`, `internal/calendar`          |
+| Flags several commands share                    | `internal/cli/app_flags.go`                               |
 | Shell completion                                | `internal/cli/app_complete.go`                            |
 | Listing sessions, past sessions, and team leads | `internal/cli/app_sessions.go`                            |
 | Which sessions a bulk command picks             | `internal/selection`, `internal/cli/app_selection.go`     |
@@ -26,11 +26,11 @@ adds what an agent needs on top of them.
 | Stopping, parking, and relaunching              | `internal/cli/app_relaunch.go`                            |
 | Handing the terminal to `claude`                | `internal/cli/app_handoff.go`                             |
 | The compatibility gate and installed version    | `internal/cli/app_compat.go`, `internal/compat`           |
-| The run lock                                    | `internal/lock`, `internal/cli/app_lock.go`               |
-| The rows `ls` and `where` print                 | `internal/listing`                                        |
+| The run lock                                    | `internal/files/runlock.go`, `internal/cli/app_lock.go`   |
+| The rows `ls` and `where` print                 | `internal/cli/app_listing.go`                             |
 | Past sessions: gc, triage, du, show, and search | `internal/history`                                        |
-| The signals that end a run                      | `internal/interrupt`                                      |
-| Error types and exit codes                      | `internal/exit`                                           |
+| The signals that end a run                      | `internal/cli/app_signals.go`, one file per platform      |
+| Error types and exit codes                      | `internal/cli/app_exit.go`                                |
 | The calls to the `claude` command line          | `internal/claude/client.go`                               |
 | Reading `~/.claude.json`                        | `internal/claude/config.go`                               |
 | Agent view's pins and per-job versions          | `internal/jobs`                                           |
@@ -52,7 +52,7 @@ adds what an agent needs on top of them.
 | How a typed name or id finds a session          | `internal/target`                                         |
 | Resume and remove commands, and quoting         | `internal/shell`, one file per platform                   |
 | Stopping an interactive session                 | `internal/procs`, one file per platform                   |
-| The agent skill and `claudes skill`             | `skills/claudes/SKILL.md`, `internal/install`             |
+| The agent skill and `claudes skill`             | `skills/claudes/SKILL.md`, `internal/cli/skill.go`        |
 | The compiled binary against a fake claude       | `test/e2e`, with the fake in `fakeclaude/`                |
 | CI, security scans, and releases                | `.github/workflows/`, `docs/releasing.md`                 |
 | The release notes' prompt, tests, and pin       | `.github/release-notes/`                                  |
@@ -65,41 +65,29 @@ adds what an agent needs on top of them.
 
 ## Package layout
 
-A test or a CI check enforces each of these rules. The tests live in
-`internal/cli/root_test.go` and `internal/layout/layout_test.go`.
+Tests in `internal/cli/root_test.go` and `internal/layout/layout_test.go` check
+rules 1 and 2, and CI checks rule 5's coverage floor.
 
 1. **`internal/cli` holds three kinds of file.** `root.go`; `app.go` and the
-   `app_<concern>.go` files, which hold the plumbing the commands share; and one
-   file per command, named for its path, such as `session_mv.go` for
-   `claudes session mv`. Test files take the same names, and `harness_test.go`
-   holds the harness they share. `TestEveryFileIsACommandAnAppFileOrRoot` checks
-   the names, and `TestEachCommandLivesInItsFile` checks that each command runs
-   from its own file.
-2. **A command's file holds no helpers.** It holds its builder, its flag and
-   output types and their methods, and the `App` methods only it calls.
-   `TestCLIDeclaresNoHelpers` fails on any other function, and
-   `TestSharedAppMethodsLiveInAppFiles` on an `App` method another file calls.
-3. **`app_` files hold only `App` methods.** The exceptions are named, each with
-   why: `plumbingFuncs` for the few functions, such as `Main`, and
-   `plumbingTypes` for the other types whose methods they declare, such as the
-   shared flags. `TestCLIDeclaresNoHelpers` enforces both lists, and fails on an
-   exception nothing uses.
-4. **Code that needs neither `App` nor cobra goes in a package of its concern**
-   under `internal/`. Each package's doc comment says its one concern, and this
-   file names every package. `TestEveryPackageStatesItsConcern` and
-   `TestAgentsNamesEveryPackage` check both.
-5. **Imports go downward.** `cmd/claudes` imports `cli`, `cli` imports the
-   packages, and nothing imports `cli`. `TestImportsGoDownward` checks every
-   import against the `allowed` map, so a new one shows up in review.
-6. **A package's name is one lowercase word.** `TestPackageNamesAreOneWord`
-   checks it, and its `twoWords` list keeps old names such as `safefile` from
-   coming back.
-7. **Side effects stay injectable as `App` fields.** The clock, sleeping,
+   `app_<concern>.go` files, which hold what the commands share; and one file
+   per command, named for its path, such as `session_mv.go` for
+   `claudes session mv`. An `app_` file built for one platform ends in `_unix`
+   or `_windows`. Test files take the same names, and `harness_test.go` holds
+   the harness they share. `TestEveryFileIsACommandAnAppFileOrRoot` checks the
+   names, and `TestEachCommandLivesInItsFile` checks that each command runs from
+   its own file.
+2. **A package's name is one lowercase word, and its doc comment states its
+   concern.** `TestPackageNamesAreOneWord` checks the name, and its `twoWords`
+   list keeps old names such as `safefile` from coming back.
+   `TestEveryPackageStatesItsConcern` checks the doc comment.
+3. **Code that needs neither `App` nor cobra goes in a package of its concern**
+   under `internal/`, when that package holds more than a helper for one
+   command. A small helper stays in `cli`, in its command's file or an `app_`
+   file.
+4. **Side effects stay injectable as `App` fields.** The clock, sleeping,
    Ctrl-C, stopping a process, exec, and the environment go through a field on
-   `App`, and only `app.go` wires the real ones. `TestSideEffectsAreAppFields`
-   fails on any other file that names one, except the uses
-   `sideEffectsElsewhere` lists with why.
-8. **Tests sit with their code.** A function's unit tests move with it. CI
+   `App`, and only `app.go` wires the real ones.
+5. **Tests sit with their code.** A function's unit tests move with it. CI
    counts coverage for each package by its own tests, so code moved without its
    tests pulls the total under the 80% floor
    (`.github/workflows/hack/coverage.sh`).

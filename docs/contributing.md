@@ -4,12 +4,12 @@
 
 1. One package per concern under `internal/`, named with one lowercase word,
    with a doc comment that states its concern. `cli` holds three kinds of file:
-   `root.go`; `app.go` and the `app_<concern>.go` files, which hold the `App`
-   methods the commands share; and one file per command, named for its path,
-   such as `session_mv.go`. Code that needs neither `App` nor cobra goes in the
-   package of its concern. Imports go downward: `cli` imports the other
-   packages, and none of them imports `cli`. `AGENTS.md`, "Package layout",
-   lists each rule and the test that enforces it.
+   `root.go`; `app.go` and the `app_<concern>.go` files, which hold what the
+   commands share; and one file per command, named for its path, such as
+   `session_mv.go`. Code that needs neither `App` nor cobra goes in the package
+   of its concern, when that package is more than a helper for one command.
+   `cli` imports the other packages, and none of them imports `cli`.
+   `AGENTS.md`, "Package layout", lists the rules and the tests that check them.
 2. The `claude` command line is reached only through the `claude.Agents`
    interface, and the terminal handoffs (`logs`, `attach`, passthrough, and
    `session resume`) only through `cli.App.Exec`, so every command can be tested
@@ -28,12 +28,12 @@
    | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |
    | `managed-mcp.json`                                                                                                     | `internal/mcp`         |
    | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts` |
-   | `run.lock`, in claudes' state directory                                                                                | `internal/lock`        |
+   | `run.lock`, in claudes' state directory                                                                                | `internal/files`       |
    | The park file                                                                                                          | `internal/park`        |
    | `config.yaml`                                                                                                          | `internal/config`      |
    | The directories claudes keeps its own files in                                                                         | `internal/paths`       |
    | The cached `claude --version`                                                                                          | `internal/compat`      |
-   | The installed agent skill                                                                                              | `internal/install`     |
+   | The installed agent skill                                                                                              | `internal/cli`         |
 
    Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
    files, plugin files, or `managed-mcp.json`.
@@ -41,7 +41,8 @@
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, exec, and the environment) are fields on `cli.App`, and only
    `cli/app.go` wires the real ones. Each one's real code lives in the package
-   of its concern, such as `procs.Terminate`.
+   of its concern, such as `procs.Terminate`, or in an `app_` file when only
+   `cli` needs it, such as the signals in `app_signals.go`.
 5. Code that differs by platform goes in `_unix.go` and `_windows.go` files with
    build tags, never in runtime checks.
 6. Keep to the README's [goals and non-goals](../README.md#goals-and-non-goals):

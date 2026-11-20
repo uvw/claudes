@@ -1,4 +1,4 @@
-package interrupt
+package cli
 
 import (
 	"context"
@@ -10,16 +10,16 @@ import (
 func TestSleepEndsEarlyWhenCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := Sleep(ctx, time.Hour); !errors.Is(err, context.Canceled) {
+	if err := sleep(ctx, time.Hour); !errors.Is(err, context.Canceled) {
 		t.Fatalf("err %v", err)
 	}
-	if err := Sleep(context.Background(), time.Millisecond); err != nil {
+	if err := sleep(context.Background(), time.Millisecond); err != nil {
 		t.Fatalf("err %v", err)
 	}
 }
 
-func TestStopCancelsTheContext(t *testing.T) {
-	ctx, stop := Context(context.Background())
+func TestStopCancelsTheSignalContext(t *testing.T) {
+	ctx, stop := signalContext(context.Background())
 	stop()
 	if ctx.Err() == nil {
 		t.Fatal("stop left the context running")

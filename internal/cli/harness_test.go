@@ -19,7 +19,6 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
@@ -497,7 +496,7 @@ func (h *harness) ok(t *testing.T, args ...string) {
 // 1 to 5.
 func (h *harness) fails(t *testing.T, args ...string) {
 	t.Helper()
-	if code := h.run(args...); code < exit.Failed || code > exit.Busy {
+	if code := h.run(args...); code < exitFailed || code > exitBusy {
 		t.Fatalf("claudes %q: exit %d, want 1 to 5\n%s%s", args, code, h.out, h.err)
 	}
 }

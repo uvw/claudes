@@ -13,7 +13,6 @@ import (
 
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
-	"github.com/uvw/claudes/internal/interrupt"
 	"github.com/uvw/claudes/internal/jobs"
 	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
@@ -135,7 +134,7 @@ func newApp() *App {
 		Err:            os.Stderr,
 		In:             os.Stdin,
 		Now:            time.Now,
-		Sleep:          interrupt.Sleep,
+		Sleep:          sleep,
 		Terminate:      procs.Terminate,
 		Started:        procs.Started,
 		RunningVersion: procs.RunningVersion,
@@ -143,7 +142,7 @@ func newApp() *App {
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
 		Edit:           config.Edit,
-		Interrupt:      interrupt.Context,
+		Interrupt:      signalContext,
 		Which:          exec.LookPath,
 		Chdir:          os.Chdir,
 		HTTP:           &http.Client{Timeout: 5 * time.Minute},

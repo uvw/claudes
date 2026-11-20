@@ -5,9 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"github.com/uvw/claudes/internal/exit"
-	"github.com/uvw/claudes/internal/lock"
+	"github.com/uvw/claudes/internal/files"
 )
 
 // runsAlone marks a command that changes sessions or pins. One such command
@@ -28,10 +26,10 @@ func (app *App) lock(cmd *cobra.Command) error {
 	if f := cmd.Flags().Lookup("dry-run"); f != nil && f.Value.String() == "true" {
 		return nil
 	}
-	release, err := lock.Run{Path: app.LockPath, Started: app.Started, Alive: app.Alive}.Acquire()
-	if errors.Is(err, lock.ErrHeld) {
+	release, err := files.RunLock{Path: app.LockPath, Started: app.Started, Alive: app.Alive}.Acquire()
+	if errors.Is(err, files.ErrHeld) {
 		return fmt.Errorf("%w, so this one changed nothing. Try again once it ends; "+
-			"a claudes that crashed frees %s within %s", exit.ErrBusy, app.LockPath, lock.Stale)
+			"a claudes that crashed frees %s within %s", errBusy, app.LockPath, files.RunLockStale)
 	}
 	if err != nil {
 		return fmt.Errorf("cannot take the run lock %s: %w", app.LockPath, err)

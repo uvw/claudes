@@ -1,4 +1,4 @@
-package lock
+package files
 
 import (
 	"errors"
@@ -9,43 +9,43 @@ import (
 	"time"
 )
 
-var start = time.Date(2026, 11, 13, 17, 0, 0, 0, time.UTC)
+var runStart = time.Date(2026, 11, 13, 17, 0, 0, 0, time.UTC)
 
-func started(int) (time.Time, bool) { return start, true }
+func runStarted(int) (time.Time, bool) { return runStart, true }
 
 func TestTheRunLockNamesItsProcess(t *testing.T) {
-	r := Run{
-		Started: started,
-		Alive:   func(pid int, at time.Time) bool { return pid == os.Getpid() && at.Equal(start) },
+	r := RunLock{
+		Started: runStarted,
+		Alive:   func(pid int, at time.Time) bool { return pid == os.Getpid() && at.Equal(runStart) },
 	}
 	owner := r.owner()
 	if r.ownerGone(owner) {
 		t.Fatalf("owner %q of this process reads as gone", owner)
 	}
-	for _, bad := range []string{"", "x", "0 " + start.Format(time.RFC3339Nano), "42 yesterday"} {
+	for _, bad := range []string{"", "x", "0 " + runStart.Format(time.RFC3339Nano), "42 yesterday"} {
 		if !r.ownerGone([]byte(bad)) {
 			t.Errorf("owner %q reads as running", bad)
 		}
 	}
-	if !(Run{}).ownerGone(owner) {
+	if !(RunLock{}).ownerGone(owner) {
 		t.Error("an owner reads as running with no way to tell")
 	}
 }
 
 // A claudes suspended mid-run stops refreshing the run lock. The lock stays
 // while its owner runs, and goes once the owner has ended.
-func TestAStaleLockStaysWhileItsOwnerRuns(t *testing.T) {
+func TestAStaleRunLockStaysWhileItsOwnerRuns(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "run.lock")
 	if err := os.Mkdir(path, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	owner := fmt.Sprintf("4242 %s\n", start.Format(time.RFC3339Nano))
+	owner := fmt.Sprintf("4242 %s\n", runStart.Format(time.RFC3339Nano))
 	if err := os.WriteFile(filepath.Join(path, "owner"), []byte(owner), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	alive := true
-	r := Run{Path: path, Started: started, Alive: func(pid int, at time.Time) bool {
-		return alive && pid == 4242 && at.Equal(start)
+	r := RunLock{Path: path, Started: runStarted, Alive: func(pid int, at time.Time) bool {
+		return alive && pid == 4242 && at.Equal(runStart)
 	}}
 	old := time.Now().Add(-time.Hour)
 	if err := os.Chtimes(path, old, old); err != nil {

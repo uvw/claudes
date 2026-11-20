@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/target"
@@ -72,7 +71,7 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			if ofTeammate && err == nil {
 				path, err = app.Transcripts.Teammate(s.SessionID, s.Cwd, mate)
 				if none := (*transcripts.NoTeammateError)(nil); errors.As(err, &none) {
-					err = exit.Unmatched(err)
+					err = unmatched(err)
 				}
 			}
 			if err != nil {

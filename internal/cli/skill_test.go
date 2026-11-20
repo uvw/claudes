@@ -138,3 +138,34 @@ func TestSkillPrintsAndInstalls(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestClaudeSkillsDirIsUnderClaudeHome(t *testing.T) {
+	abs := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", abs)
+	if dir, err := claudeSkillsDir(); err != nil || dir != filepath.Join(abs, "skills") {
+		t.Fatalf("dir %q, err %v", dir, err)
+	}
+	t.Setenv("CLAUDE_CONFIG_DIR", "relative")
+	if dir, err := claudeSkillsDir(); err == nil {
+		t.Fatalf("accepted a relative CLAUDE_CONFIG_DIR: %q", dir)
+	}
+}
+
+func TestInstallSkillWritesAndReplacesSkillMD(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "skills")
+	for _, content := range []string{"first", "second"} {
+		path, err := installSkill(dir, []byte(content))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if path != filepath.Join(dir, "claudes", "SKILL.md") {
+			t.Fatalf("path %q", path)
+		}
+		if got, _ := os.ReadFile(path); string(got) != content {
+			t.Fatalf("SKILL.md %q, want %q", got, content)
+		}
+	}
+	if entries, _ := os.ReadDir(filepath.Join(dir, "claudes")); len(entries) != 1 {
+		t.Fatalf("files left beside SKILL.md: %v", entries)
+	}
+}

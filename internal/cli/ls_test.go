@@ -13,7 +13,6 @@ import (
 	"go.yaml.in/yaml/v4"
 
 	"github.com/uvw/claudes/internal/claude"
-	"github.com/uvw/claudes/internal/exit"
 	"github.com/uvw/claudes/internal/render"
 )
 
@@ -250,7 +249,7 @@ func TestListingsShowNoMatchAsAnEmptyList(t *testing.T) {
 		t.Fatalf("json %q", got)
 	}
 	h.ok(t, "session", "ls", "tour*")
-	h.exits(t, exit.NoMatch, "where", "tour*")
+	h.exits(t, exitNoMatch, "where", "tour*")
 }
 
 func TestLsShowsWhichSessionsLeadATeam(t *testing.T) {
