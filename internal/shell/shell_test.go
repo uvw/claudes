@@ -22,6 +22,15 @@ func TestPowerShellResumeQuotesEveryKindOfSingleQuote(t *testing.T) {
 	}
 }
 
+func TestPowerShellQuoteKeepsTheStopParsingTokenAnArgument(t *testing.T) {
+	if got := powerShellResume("--%", "--resume", "--%"); got != "Set-Location -LiteralPath ('--%') -ErrorAction Stop; claude --resume ('--%')" {
+		t.Fatalf("command %s", got)
+	}
+	if got := PowerShellQuote("--%x"); got != "'--%x'" {
+		t.Fatalf("quoted %s", got)
+	}
+}
+
 func TestPowerShellResumeQuotesAnOddSessionID(t *testing.T) {
 	if got := powerShellResume("C:\\x", "--resume", "a;b"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 'a;b'" {
 		t.Fatalf("command %s", got)
@@ -37,6 +46,17 @@ func TestResumeCommandResumesInTheBackgroundOnlyForBackgroundSessions(t *testing
 	}
 	if got := ResumeCommand("sid", "/x", true); got != resumeCommand("/x", "--resume", "sid") {
 		t.Fatalf("interactive command %q", got)
+	}
+}
+
+// A control character dropped from a value must not leave the quoting of
+// the text before it: --\x01% prints as --%, PowerShell's stop-parsing token.
+func TestCommandsQuoteTheTextTheyPrint(t *testing.T) {
+	if got, want := ResumeCommand("s\x1bid", "--\x01%", true), resumeCommand("--%", "--resume", "sid"); got != want {
+		t.Fatalf("resume %q, want %q", got, want)
+	}
+	if got, want := RemoveCommand([]string{"--\x01%", "/a\nb"}), removeCommand([]string{"--%", "/a b"}); got != want {
+		t.Fatalf("remove %q, want %q", got, want)
 	}
 }
 

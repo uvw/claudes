@@ -56,6 +56,7 @@ adds what an agent needs on top of them.
 | The agent skill and `claudes skill`             | `skills/claudes/SKILL.md`, `internal/cli/skill.go`        |
 | The compiled binary against a fake claude       | `test/e2e`, with the fake in `fakeclaude/`                |
 | CI, security scans, and releases                | `.github/workflows/`, `docs/releasing.md`                 |
+| Fuzz targets and the weekly fuzz run            | `docs/contributing.md`, `.github/workflows/fuzz.yaml`     |
 | The release notes' prompt, tests, and pin       | `.github/release-notes/`                                  |
 | The checks' tools and their pins                | `tools/`, `.github/workflows/hack/tool-pins.sh`           |
 | Scripts the workflows run                       | `.github/workflows/hack/`                                 |

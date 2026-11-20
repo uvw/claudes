@@ -135,8 +135,9 @@ const (
 	userNote
 )
 
-// classifyUser sorts a user record by its blocks. typed is its text with the
-// ends trimmed, and image is whether it holds an image.
+// classifyUser sorts a user record by its blocks. typed is its text blocks,
+// one per line, with the ends trimmed, and image is whether it holds an
+// image.
 func classifyUser(bs []block) (kind userKind, typed string, image bool) {
 	var text strings.Builder
 	for _, b := range bs {
@@ -144,6 +145,9 @@ func classifyUser(bs []block) (kind userKind, typed string, image bool) {
 		case "tool_result":
 			return userToolResult, "", false
 		case "text":
+			if text.Len() > 0 {
+				text.WriteByte('\n')
+			}
 			text.WriteString(b.Text)
 		case "image":
 			image = true

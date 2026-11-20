@@ -11,17 +11,25 @@ import (
 
 // ResumeCommand is the command that resumes a session by hand from its
 // directory: claude --resume for an interactive session, claude --bg --resume
-// for a background one.
+// for a background one. Each value is made Printable before it is quoted, so
+// the quoting fits the text that is printed.
 func ResumeCommand(sessionID, cwd string, interactive bool) string {
 	flags := "--bg --resume"
 	if interactive {
 		flags = "--resume"
 	}
-	return Printable(resumeCommand(cwd, flags, sessionID))
+	return resumeCommand(Printable(cwd), flags, Printable(sessionID))
 }
 
-// RemoveCommand is the command that deletes paths and everything in them.
-func RemoveCommand(paths []string) string { return Printable(removeCommand(paths)) }
+// RemoveCommand is the command that deletes paths and everything in them,
+// made Printable as ResumeCommand is.
+func RemoveCommand(paths []string) string {
+	printable := make([]string, len(paths))
+	for i, p := range paths {
+		printable[i] = Printable(p)
+	}
+	return removeCommand(printable)
+}
 
 func posixResume(cwd, flags, sessionID string) string {
 	return fmt.Sprintf("cd %s && claude %s %s", Quote(cwd), flags, Quote(sessionID))
@@ -72,8 +80,13 @@ func Quote(s string) string {
 
 // PowerShellQuote quotes s as a PowerShell single-quoted string. PowerShell
 // reads the curly single quotes as quotes too, so each of them is doubled,
-// like the straight one.
+// like the straight one. It takes '--%' as its stop-parsing token even in
+// quotes, and passes the rest of the line on as it is, so that one is put in
+// parentheses.
 func PowerShellQuote(s string) string {
+	if s == "--%" {
+		return "('--%')"
+	}
 	var b strings.Builder
 	b.WriteByte('\'')
 	for _, r := range s {

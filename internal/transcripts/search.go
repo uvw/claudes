@@ -189,6 +189,12 @@ func compile(q Query) (*matcher, error) {
 	default:
 		return nil, fmt.Errorf("who is you or claude, not %q", q.Who)
 	}
+	// A literal term compiles to a regular expression, which must be UTF-8.
+	for _, s := range append([]string{q.Ran, q.Touched}, q.Words...) {
+		if !utf8.ValidString(s) {
+			return nil, fmt.Errorf("%q is not valid UTF-8", s)
+		}
+	}
 	var words []string
 	for _, w := range q.Words {
 		if t, ok := literal(strings.Fields(w), anywhere, "", true); ok {
@@ -595,7 +601,9 @@ func (m *matcher) toolCall(f *found, b block) {
 			args = append(args, v)
 		}
 	}
-	call := []field{{anywhere, strings.Join(args, " ")}}
+	// One argument per line, so no needle, which holds no line break, can
+	// match across two of them.
+	call := []field{{anywhere, strings.Join(args, "\n")}}
 	if b.Name == "Bash" {
 		call = append(call, field{ranCommand, in.Command})
 	}

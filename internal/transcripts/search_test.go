@@ -214,6 +214,31 @@ func TestSearchPattern(t *testing.T) {
 	}
 }
 
+func TestSearchRefusesTermsThatAreNotUTF8(t *testing.T) {
+	s := searchSession(t, "s1", "", time.Hour, prompt("lock"))
+	for _, q := range []Query{{Words: []string{"lock", "\x82"}}, {Ran: "\xff"}, {Touched: "a\xc3"}, {Pattern: "\x82"}} {
+		if _, err := Search([]Session{s}, q); err == nil {
+			t.Errorf("%+v: no error", q)
+		}
+	}
+}
+
+// The needles that pick the lines to parse cannot match across two blocks
+// of a prompt, or two arguments of a tool call, so neither can a pattern.
+func TestSearchMatchesNoTextAcrossTwoParts(t *testing.T) {
+	s := searchSession(t, "s1", "", time.Hour,
+		`{"type":"user","message":{"role":"user","content":[{"type":"text","text":"lo"},{"type":"text","text":"ck"}]}}`,
+		toolCall("Grep", `{"pattern":"TODO","path":"src"}`))
+	for _, pattern := range []string{`lo[c]k`, `TODO[ ]src`} {
+		if got := ids(t, []Session{s}, Query{Pattern: pattern}); len(got) != 0 {
+			t.Errorf("%s matched across two parts", pattern)
+		}
+	}
+	if got := ids(t, []Session{s}, Query{Pattern: `lo\s+ck`}); len(got) != 1 {
+		t.Error(`lo\s+ck did not match two blocks`)
+	}
+}
+
 func TestSearchRanksPromptsAboveToolCalls(t *testing.T) {
 	var calls []string
 	for range 50 {
