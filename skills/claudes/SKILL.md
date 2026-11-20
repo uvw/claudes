@@ -6,9 +6,9 @@ description: >-
   or agents ("list claudes", "pin the docs session", "restart my agents
   after the update", "kick the stuck one", "tell X to run the tests", "where is
   the api session", "why did X stop", "pause everything before I reboot"), to
-  find or move past sessions ("find the session where I did X last week",
-  "move this session to the new repo"), to see which MCP servers a session
-  has, or mentions the claudes command or Ctrl+T pins. Not for starting new
+  find, move, or restore past sessions ("find the session where I did X last
+  week", "move this session to the new repo", "undo that clean-up"), to see
+  which MCP servers a session has, or mentions the claudes command or Ctrl+T pins. Not for starting new
   agents.
 compatibility: Needs the claudes binary and Claude Code's claude command on PATH.
 ---
@@ -131,6 +131,7 @@ binary by its full path rather than assuming it is gone.
 | open agent view                      | Ask the user to run `claudes` in their own terminal       |
 | is claudes still compatible          | `claudes doctor`                                          |
 | where does claudes keep its files    | `claudes doctor env`; `moves.json` sits by the park file  |
+| undo a session gc, put X back        | `claudes session restore`; see "Past sessions"            |
 | find a past session about X          | `claudes session search X -o json`; see "Past sessions"   |
 | what takes up disk space             | `claudes session du --top 10`                             |
 | clean up old or empty sessions       | `claudes session gc --dry-run`; see "Past sessions"       |
@@ -201,11 +202,13 @@ are not in a session.
 These commands are read-only. Run them freely:
 
 - `ls`, `where`, `team ls`, and `logs` without `-f`
-- the `session` commands `ls`, `search`, `show`, `where`, `du`, and `triage`
+- the `session` commands `ls`, `search`, `show`, `where`, `du`, and `triage`,
+  and `session restore` without targets
 - `mcp ls` and `mcp profiles`
 - `doctor`, `doctor env`, `config get`, `config path`, `upgrade --check`,
   `skill` without `--install` or `--dir`, `--version`, and `--help`
-- `restart`, `pause`, `resume`, `gc`, and `session gc` with `--dry-run`
+- `restart`, `pause`, `resume`, `gc`, `session gc`, and `session restore` with
+  `--dry-run`
 
 Every other command changes the user's sessions or their computer, such as
 `upgrade`, `skill --install`, `config set`, and `gc --teams`. Run one only as
@@ -371,6 +374,14 @@ plan, since those sessions cannot continue an old subagent. It moves what it
 removes to the system trash. Pass `--purge`, which deletes for good, only when
 the user asked for that. `claudes gc --teams` moves the team directories and
 task lists it removes to the trash too, and takes `--purge` the same way.
+
+`claudes session restore` lists the sessions claudes can put back from the
+trash, and `claudes session restore ID --dry-run` shows the files it would put
+back. Run `claudes session restore ID` only when the user asks to undo a
+removal. It refuses when something is at a file's original path, or a file has
+left the trash: tell the user which file it named, and never move or delete
+files yourself to get past it. On Windows it has nothing to restore: tell the
+user to restore from the Recycle Bin.
 
 ## Triage
 

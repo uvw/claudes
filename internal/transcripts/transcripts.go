@@ -246,15 +246,40 @@ func (st Store) recordMove(path, sessionID string, m move) error {
 }
 
 // ForgetMoves drops the record of each copy at paths, once those copies are
-// gone.
-func (st Store) ForgetMoves(sessionID string, paths ...string) error {
-	return st.updateMoves(func(moves map[string]move) bool {
-		changed := false
+// gone. It returns the records it dropped, or nil for none, for RememberMoves
+// to put back should the copies come back from the trash.
+func (st Store) ForgetMoves(sessionID string, paths ...string) (json.RawMessage, error) {
+	dropped := map[string]move{}
+	err := st.updateMoves(func(moves map[string]move) bool {
 		for _, path := range paths {
 			key := moveKey(path, sessionID)
-			_, ok := moves[key]
-			delete(moves, key)
-			changed = changed || ok
+			if m, ok := moves[key]; ok {
+				dropped[key] = m
+				delete(moves, key)
+			}
+		}
+		return len(dropped) > 0
+	})
+	if err != nil || len(dropped) == 0 {
+		return nil, err
+	}
+	return json.Marshal(dropped)
+}
+
+// RememberMoves puts back the records ForgetMoves dropped. A copy recorded
+// since keeps its newer record.
+func (st Store) RememberMoves(dropped json.RawMessage) error {
+	var back map[string]move
+	if err := json.Unmarshal(dropped, &back); err != nil {
+		return fmt.Errorf("cannot read the moves to put back: %w", err)
+	}
+	return st.updateMoves(func(moves map[string]move) bool {
+		changed := false
+		for key, m := range back {
+			if _, ok := moves[key]; !ok {
+				moves[key] = m
+				changed = true
+			}
 		}
 		return changed
 	})

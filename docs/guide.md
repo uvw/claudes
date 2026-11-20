@@ -213,10 +213,11 @@ their sidecar directory of tool results and subagent transcripts takes.
 `session gc` removes past sessions with everything Claude Code keeps for each:
 transcript, subagent transcripts and tool results, older copies, file history,
 session-env directory, and debug log. They go to the system trash (the macOS
-Trash, the Windows Recycle Bin, or the freedesktop.org trash on Linux), so a
-mistake can be undone; `--purge` deletes them for good. Windows deletes an item
-too big for the Recycle Bin, or on a drive without one, for good, without
-asking. Without flags it removes:
+Trash, the Windows Recycle Bin, or the freedesktop.org trash on Linux), and
+`session restore` puts them back
+([Restoring past sessions](#restoring-past-sessions)). `--purge` deletes them
+for good. Windows deletes an item too big for the Recycle Bin, or on a drive
+without one, for good, without asking. Without flags it removes:
 
 1. Empty sessions, which never got a prompt.
 2. Older copies `session mv` left, keeping the newest.
@@ -324,6 +325,42 @@ directory right away.
 ([decision 20](decisions.md#20-past-sessions-come-from-their-transcripts)).
 claudes also reads the `relocated` entry Claude Code writes in a transcript it
 moved itself, so such a session resumes from its new directory.
+
+### Restoring past sessions
+
+`session restore` puts back what claudes moved to the trash: the sessions
+`session gc` removed, the originals `session mv --rm` removed, and the team
+directories and task lists `gc --teams` removed. Without targets, it lists what
+it can put back: each session's id, when it went to the trash, its size, its
+directory, and its name. `-o json` adds each file, where it went in the trash,
+and the command that moved it. `session restore ID` puts every file of that
+session back where it came from, so the session resumes as before. `--dry-run`
+lists the files it would put back, and `--confirm` asks first.
+
+One session's files come from four places, `projects`, `file-history`,
+`session-env`, and `debug`, and the macOS Trash keeps no record of where a file
+came from. So claudes records each file it moves to the trash, and where it
+went, in `trashed.json`. `--purge` records nothing, since nothing is left to put
+back.
+
+It refuses, and puts nothing back, when:
+
+1. Something is at a file's original path, such as a transcript Claude Code
+   wrote again. claudes never replaces a file.
+2. A file is no longer in the trash, such as after you emptied it. It names the
+   file. Once every file of a session has left the trash, claudes forgets the
+   session.
+
+A file it cannot move back, such as one whose directory is now a file, stays in
+the trash and in `trashed.json`. claudes reports what came back and what did
+not, and running `session restore ID` again tries the rest. A moved session
+comes back with its entry in `moves.json`, so it still resumes from the
+directory it moved to.
+
+On Linux, claudes also removes the `.trashinfo` file of each file it puts back,
+so the file manager stops listing it. Windows does not say where in the Recycle
+Bin a file went, so claudes records nothing there: open the Recycle Bin, select
+the files, and choose Restore, which puts each back where it came from.
 
 ### Searching past sessions
 

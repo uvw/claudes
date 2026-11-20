@@ -12,8 +12,15 @@ import (
 // runs at a time, so two cannot stop the same session twice.
 const runsAlone = "runs-alone"
 
+// listsBare marks a command that runs alone, but only lists when given no
+// arguments, so it then takes no lock and prints no report.
+const listsBare = "lists-bare"
+
 func alone(cmd *cobra.Command) *cobra.Command {
-	cmd.Annotations = map[string]string{runsAlone: "true"}
+	if cmd.Annotations == nil {
+		cmd.Annotations = map[string]string{}
+	}
+	cmd.Annotations[runsAlone] = "true"
 	return cmd
 }
 

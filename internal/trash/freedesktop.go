@@ -16,17 +16,17 @@ import (
 // toFreedesktop moves path into the trash at dir, as the freedesktop.org
 // Trash specification lays it out: the file under files/, and a .trashinfo
 // file under info/ that records where it came from and when, so a file manager
-// can put it back. The info file is created first, and exclusively, to claim
-// the name.
-func toFreedesktop(path, dir string, now time.Time) error {
+// can put it back. It returns where the file went. The info file is created
+// first, and exclusively, to claim the name.
+func toFreedesktop(path, dir string, now time.Time) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	stored, info := filepath.Join(dir, "files"), filepath.Join(dir, "info")
 	for _, d := range []string{stored, info} {
 		if err := os.MkdirAll(d, 0o700); err != nil {
-			return err
+			return "", err
 		}
 	}
 	record := fmt.Sprintf("[Trash Info]\nPath=%s\nDeletionDate=%s\n",
@@ -43,16 +43,17 @@ func toFreedesktop(path, dir string, now time.Time) error {
 			continue
 		}
 		if err != nil {
-			return err
+			return "", err
 		}
 		_, werr := f.WriteString(record)
 		if cerr := f.Close(); werr == nil {
 			werr = cerr
 		}
 		if werr == nil {
-			werr = files.RenameNoReplace(abs, filepath.Join(stored, name))
+			dest := filepath.Join(stored, name)
+			werr = files.RenameNoReplace(abs, dest)
 			if werr == nil {
-				return nil
+				return dest, nil
 			}
 			if errors.Is(werr, fs.ErrExist) {
 				os.Remove(infoPath)
@@ -60,8 +61,18 @@ func toFreedesktop(path, dir string, now time.Time) error {
 			}
 		}
 		os.Remove(infoPath)
-		return werr
+		return "", werr
 	}
+}
+
+// trashInfo is the .trashinfo file that records trashed, a file in a trash's
+// files/ directory, or "" for a file anywhere else.
+func trashInfo(trashed string) string {
+	stored := filepath.Dir(trashed)
+	if filepath.Base(stored) != "files" {
+		return ""
+	}
+	return filepath.Join(filepath.Dir(stored), "info", filepath.Base(trashed)+".trashinfo")
 }
 
 // escapePath percent-encodes a path as the specification asks, keeping the

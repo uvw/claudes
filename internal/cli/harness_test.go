@@ -24,6 +24,7 @@ import (
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
+	"github.com/uvw/claudes/internal/trash"
 )
 
 var jobIDPattern = regexp.MustCompile(`^[0-9a-f]{8}$`)
@@ -372,10 +373,17 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 			h.chdirs = append(h.chdirs, dir)
 			return nil
 		},
-		Trash: func(path string) error {
+		// Trash moves into a directory of the test's own, under a numbered
+		// name, as the macOS Trash does.
+		Trash: func(path string) (string, error) {
 			h.trashed = append(h.trashed, path)
-			return os.RemoveAll(path)
+			to := filepath.Join(h.root, "Trash", fmt.Sprintf("%d %s", len(h.trashed), filepath.Base(path)))
+			if err := os.MkdirAll(filepath.Dir(to), 0o755); err != nil {
+				return "", err
+			}
+			return to, os.Rename(path, to)
 		},
+		Trashed:     trash.Manifest{Path: filepath.Join(h.root, "state", "trashed.json")},
 		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Home: h.root, Moves: filepath.Join(h.root, "state", "moves.json")},
 		Teams:       teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},
 		Executable:  func() (string, error) { return filepath.Join(h.root, "bin", "claudes"), nil },

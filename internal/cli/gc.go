@@ -15,6 +15,7 @@ import (
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/target"
+	"github.com/uvw/claudes/internal/trash"
 )
 
 func (app *App) gcCommand() *cobra.Command {
@@ -198,7 +199,10 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 			notReached(app, folders[i:])
 			break
 		}
-		if err := app.Teams.Remove(l, app.remover(o.purge)); err != nil {
+		rec := trash.Record{SessionID: l.ID(), Name: l.Label(), Cwd: l.Path}
+		err := app.Teams.Remove(l, app.remover(o.purge, &rec))
+		app.keepTrashed("gc --teams", rec)
+		if err != nil {
 			failures = append(failures, render.Failure{Label: l.Label() + " " + l.ID(), Reason: err.Error(), Of: l})
 			app.progressFailed(l)
 			continue

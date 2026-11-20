@@ -11,6 +11,7 @@ import (
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/target"
 	"github.com/uvw/claudes/internal/transcripts"
+	"github.com/uvw/claudes/internal/trash"
 )
 
 type gcFlags struct {
@@ -32,9 +33,10 @@ func (app *App) sessionGcCommand() *cobra.Command {
 		Short: "Remove past sessions that are empty, gone, old, or left over",
 		Long: `Remove past sessions from ~/.claude, with everything Claude Code keeps for each:
 its transcript, subagent transcripts and tool results, older copies, file
-history, session-env directory, and debug log. They go to the system trash, so a
-mistake can be undone; --purge deletes them for good. Windows deletes an item
-too big for the Recycle Bin, or on a drive without one, for good.
+history, session-env directory, and debug log. They go to the system trash, and
+claudes session restore puts them back; --purge deletes them for good. Windows
+deletes an item too big for the Recycle Bin, or on a drive without one, for
+good.
 
 Without flags or targets, removes:
 
@@ -174,15 +176,19 @@ func (app *App) gcRemove(ctx context.Context, items []history.Item, purge bool) 
 			app.progress("skipped", it, " (it changed since the plan)")
 			continue
 		}
-		if err := app.Transcripts.Remove(it.SessionID, it.Paths, app.remover(purge)); err != nil {
+		rec := trash.Record{SessionID: it.SessionID, Name: it.Name, Cwd: it.Dir()}
+		err := app.Transcripts.Remove(it.SessionID, it.Paths, app.remover(purge, &rec))
+		if err == nil && len(it.Copies) > 0 {
+			var ferr error
+			if rec.Moves, ferr = app.Transcripts.ForgetMoves(it.SessionID, it.Copies...); ferr != nil {
+				app.warn("claudes: removed %s, but cannot update moves.json: %v", it.Name, ferr)
+			}
+		}
+		app.keepTrashed("session gc", rec)
+		if err != nil {
 			failures = append(failures, render.Failure{Label: it.Name, Reason: err.Error(), Of: it})
 			app.progressFailed(it)
 			continue
-		}
-		if len(it.Copies) > 0 {
-			if err := app.Transcripts.ForgetMoves(it.SessionID, it.Copies...); err != nil {
-				app.warn("claudes: removed %s, but cannot update moves.json: %v", it.Name, err)
-			}
 		}
 		freed += it.Size
 		app.progress(verb, it, " ("+render.Size(it.Size)+")")

@@ -1,7 +1,8 @@
 // Package trash moves files and directories to the system trash: the macOS Trash,
 // the freedesktop.org trash on Linux and other Unix systems, and the Windows
 // Recycle Bin, so a removal can be undone. Windows deletes an item too big for
-// the Recycle Bin, or on a drive without one, for good.
+// the Recycle Bin, or on a drive without one, for good. It keeps a manifest of
+// where each file went, and puts a session's files back from it.
 package trash
 
 import (

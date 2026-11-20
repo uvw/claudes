@@ -22,8 +22,8 @@ func TestMoveTakesAFileAndADirectoryToTheRecycleBin(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{file, dir} {
-		if err := Move(path); err != nil {
-			t.Fatalf("move %s: %v", path, err)
+		if to, err := Move(path); err != nil || to != "" {
+			t.Fatalf("move %s: went to %q, err %v", path, to, err)
 		}
 		if _, err := os.Lstat(path); !os.IsNotExist(err) {
 			t.Fatalf("%s is still there: %v", path, err)

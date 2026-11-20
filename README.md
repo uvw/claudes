@@ -104,9 +104,10 @@ claudes session gc --dry-run    # empty sessions, old copies, and leftovers
 claudes session gc              # move them to the system trash
 ```
 
-They go to the trash, not the void, so a mistake can be undone. `triage` prints
-the `session gc` command for its remove pile, and the
-[agent skill](#agent-skill) teaches an agent to judge the review pile for you.
+They go to the trash, not the void, and `claudes session restore ID` puts one
+back where it came from. `triage` prints the `session gc` command for its remove
+pile, and the [agent skill](#agent-skill) teaches an agent to judge the review
+pile for you.
 
 ## Quick start
 
@@ -222,6 +223,7 @@ Every session with a transcript, past or running (`claudes s` and
 | `session du`                     | Disk space by directory; `--top N` for the biggest       |
 | `session triage`                 | Sort them into remove, review, and keep                  |
 | `session gc [TARGET...]`         | Move empty, copied, and leftover sessions to the trash   |
+| `session restore [TARGET...]`    | Put back what claudes moved to the trash                 |
 | `cd TARGET`                      | Change to a session's directory (needs `init`)           |
 
 Setup and diagnostics:

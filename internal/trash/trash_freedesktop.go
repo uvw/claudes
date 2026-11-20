@@ -8,14 +8,28 @@ import (
 	"time"
 )
 
+// SystemRestore is how the system puts back what claudes moved to the trash,
+// or "" when only Manifest can. A file manager can, but Manifest restores a
+// session's files together.
+const SystemRestore = ""
+
 // Move moves path to the home trash of the freedesktop.org Trash
-// specification, which file managers on Linux list and can restore from.
-func Move(path string) error {
+// specification, which file managers on Linux list and can restore from, and
+// returns where it went.
+func Move(path string) (string, error) {
 	dir, err := freedesktopDir()
 	if err != nil {
-		return err
+		return "", err
 	}
 	return toFreedesktop(path, dir, time.Now())
+}
+
+// forget removes the .trashinfo file of trashed once it is out of the trash,
+// so file managers stop listing it.
+func forget(trashed string) {
+	if info := trashInfo(trashed); info != "" {
+		os.Remove(info)
+	}
 }
 
 // freedesktopDir is the home trash of the freedesktop.org Trash

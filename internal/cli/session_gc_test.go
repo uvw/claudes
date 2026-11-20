@@ -556,13 +556,14 @@ func TestSessionGcForgetsTheMovesOfASessionItRemoves(t *testing.T) {
 		t.Fatalf("moves.json after two moves:\n%s", moves())
 	}
 
-	h.app.Trash = func(string) error { return errors.New("the trash is full") }
+	fake := h.app.Trash
+	h.app.Trash = func(string) (string, error) { return "", errors.New("the trash is full") }
 	h.fails(t, "session", "gc", id[:8])
 	if strings.Count(moves(), id) != 2 {
 		t.Fatalf("a failed removal changed moves.json:\n%s", moves())
 	}
 
-	h.app.Trash = os.RemoveAll
+	h.app.Trash = fake
 	h.ok(t, "session", "gc", id[:8])
 	if left := moves(); strings.Contains(left, id) || !strings.Contains(left, other) {
 		t.Fatalf("moves.json after session gc %s:\n%s", id[:8], left)

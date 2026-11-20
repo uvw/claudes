@@ -41,11 +41,18 @@ func TestFreedesktopRecordsWhereItCameFrom(t *testing.T) {
 		t.Fatal(err)
 	}
 	at := time.Date(2026, 11, 16, 9, 30, 0, 0, time.Local)
-	if err := toFreedesktop(src, trash, at); err != nil {
-		t.Fatal(err)
+	to, err := toFreedesktop(src, trash, at)
+	if err != nil || to != filepath.Join(trash, "files", "s") {
+		t.Fatalf("went to %s, err %v", to, err)
 	}
-	if _, err := os.Stat(filepath.Join(trash, "files", "s", "tool-results")); err != nil {
+	if _, err := os.Stat(filepath.Join(to, "tool-results")); err != nil {
 		t.Fatalf("not in files/: %v", err)
+	}
+	if got := trashInfo(to); got != filepath.Join(trash, "info", "s.trashinfo") {
+		t.Fatalf("trashInfo %q", got)
+	}
+	if got := trashInfo(filepath.Join(root, "elsewhere", "s")); got != "" {
+		t.Fatalf("trashInfo of a file outside a trash: %q", got)
 	}
 	info, err := os.ReadFile(filepath.Join(trash, "info", "s.trashinfo"))
 	if err != nil {
@@ -59,8 +66,8 @@ func TestFreedesktopRecordsWhereItCameFrom(t *testing.T) {
 	if err := os.MkdirAll(src, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := toFreedesktop(src, trash, at); err != nil {
-		t.Fatal(err)
+	if to, err := toFreedesktop(src, trash, at); err != nil || filepath.Base(to) != "s.2" {
+		t.Fatalf("went to %s, err %v", to, err)
 	}
 	if _, err := os.Stat(filepath.Join(trash, "info", "s.2.trashinfo")); err != nil {
 		t.Fatalf("second copy not numbered: %v", err)
@@ -69,7 +76,7 @@ func TestFreedesktopRecordsWhereItCameFrom(t *testing.T) {
 
 func TestFreedesktopLeavesNoInfoWhenTheMoveFails(t *testing.T) {
 	trash := filepath.Join(t.TempDir(), "Trash")
-	if err := toFreedesktop(filepath.Join(t.TempDir(), "missing"), trash, time.Now()); err == nil {
+	if _, err := toFreedesktop(filepath.Join(t.TempDir(), "missing"), trash, time.Now()); err == nil {
 		t.Fatal("moved a file that does not exist")
 	}
 	if entries, _ := os.ReadDir(filepath.Join(trash, "info")); len(entries) != 0 {
