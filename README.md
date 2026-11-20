@@ -117,7 +117,7 @@ claudes ls plan                  # sessions with "plan" in the name
 claudes ls -a                    # finished background sessions too
 claudes restart --outdated --ping --dry-run   # see what an update restart does
 claudes restart --outdated --ping             # then do it
-claudes ping api "run the tests" # send one session a message
+claudes ping api docs -m "go on" # send two sessions a message
 claudes logs -f api              # follow a session's prompts, replies, and tools
 claudes stop api                 # stop one session
 claudes session ls --since 2d    # every session from the last two days, past too
@@ -194,20 +194,20 @@ how they act and keep work safe.
 Running sessions, as agent view lists them, plus finished background ones with
 `-a`:
 
-| Command               | What it does                                                   |
-| --------------------- | -------------------------------------------------------------- |
-| `ls [TARGET...]`      | List them: pinned first, then busy, then newest                |
-| `where TARGET...`     | Print the directories of the sessions that match               |
-| `pin`, `unpin`        | Pin or unpin background sessions, as Ctrl+T does in agent view |
-| `restart [TARGET...]` | Restart named sessions, or all but pinned ones                 |
-| `pause [TARGET...]`   | Stop sessions and park them for `resume`                       |
-| `resume [TARGET...]`  | Bring back parked sessions, or a stopped one                   |
-| `ping TARGET [MSG]`   | Stop a background session and resume it with MSG               |
-| `stop TARGET...`      | Stop sessions; `claudes resume` brings a background one back   |
-| `logs TARGET[/MATE]`  | Recent output; `-f` follows the transcript                     |
-| `attach TARGET`       | `claude attach`, by name                                       |
-| `gc [TARGET...]`      | Take sessions finished over 7 days ago off the list            |
-| `team ls [LEAD...]`   | Agent teams at work, with teammates and tasks                  |
+| Command                   | What it does                                                   |
+| ------------------------- | -------------------------------------------------------------- |
+| `ls [TARGET...]`          | List them: pinned first, then busy, then newest                |
+| `where TARGET...`         | Print the directories of the sessions that match               |
+| `pin`, `unpin`            | Pin or unpin background sessions, as Ctrl+T does in agent view |
+| `restart [TARGET...]`     | Restart named sessions, or all but pinned ones                 |
+| `pause [TARGET...]`       | Stop sessions and park them for `resume`                       |
+| `resume [TARGET...]`      | Bring back parked sessions, or a stopped one                   |
+| `ping TARGET... [-m MSG]` | Stop background sessions and resume them with MSG              |
+| `stop TARGET...`          | Stop sessions; `claudes resume` brings a background one back   |
+| `logs TARGET[/MATE]`      | Recent output; `-f` follows the transcript                     |
+| `attach TARGET`           | `claude attach`, by name                                       |
+| `gc [TARGET...]`          | Take sessions finished over 7 days ago off the list            |
+| `team ls [LEAD...]`       | Agent teams at work, with teammates and tasks                  |
 
 Every session with a transcript, past or running (`claudes s` and
 `claudes sessions` are short for `claudes session`):
