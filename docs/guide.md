@@ -33,14 +33,16 @@ stays correct if claudes adds a command of the same name. In PowerShell with
 never receives a bare `--`. `claudes COMMAND --help` describes each command and
 its flags.
 
-A ping cuts off a turn in progress, and the session takes MSG as its next
-prompt. With no MSG, `ping` sends "Pick up where you left off.".
-`restart --ping` and `resume --ping` send "Claude Code was restarted while you
-were working. Pick up where you left off." to the sessions that were mid-turn;
-`ping.text` in [Configuration](reference.md#configuration) or `--ping-text`
-changes both. `gc` removes through `claude rm`, which keeps each conversation,
-so `session resume` still finds it, and deletes the session's worktree only when
-that is safe.
+A ping cuts off a turn in progress, and each session takes the `-m` message as
+its next prompt. Without `-m`, `ping` sends "Pick up where you left off.". Every
+argument to `ping` is a target. One that names no session stops `ping` before it
+pings any, so a message typed without `-m` pings nothing. A message that starts
+with `-` is refused, since `claude` would read it as an option. `restart --ping`
+and `resume --ping` send "Claude Code was restarted while you were working. Pick
+up where you left off." to the sessions that were mid-turn; `ping.text` in
+[Configuration](reference.md#configuration) or `--ping-text` changes both. `gc`
+removes through `claude rm`, which keeps each conversation, so `session resume`
+still finds it, and deletes the session's worktree only when that is safe.
 
 ### Listing sessions
 

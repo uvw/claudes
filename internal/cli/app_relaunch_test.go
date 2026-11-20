@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -293,16 +292,22 @@ func TestAPromptThatLooksLikeAnOptionStopsNothing(t *testing.T) {
 	busy := h.bg("busy", "busy")
 	h.agents.snapshots = [][]claude.Session{{busy}}
 
+	// pflag gives -m and --message the next argument even when it starts with
+	// a dash, so each form reaches the prompt check as the message.
 	for _, args := range [][]string{
 		{"restart", "--ping-text", "--dangerously-skip-permissions"},
-		{"ping", "busy", "--", "--dangerously-skip-permissions"},
+		{"ping", "busy", "-m", "--dangerously-skip-permissions"},
+		{"ping", "busy", "-m=--dangerously-skip-permissions"},
+		{"ping", "busy", "--message", "--dangerously-skip-permissions"},
+		{"ping", "busy", "--message=--dangerously-skip-permissions"},
 	} {
+		h.err.Reset()
 		h.fails(t, args...)
+		assertContains(t, h.err.String(), `"--dangerously-skip-permissions" starts with -`)
 	}
+	// After --, it is a target, and it names no session.
+	h.exits(t, exitNoMatch, "ping", "busy", "--", "--dangerously-skip-permissions")
 	assertCalls(t, h)
-	if !strings.Contains(h.err.String(), "starts with -") {
-		t.Fatalf("stderr %s", h.err)
-	}
 }
 
 func TestPauseCountsAFailedStopThatStillTookEffect(t *testing.T) {

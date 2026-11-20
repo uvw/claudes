@@ -54,6 +54,8 @@ func TestCompletionSkipsNamesAlreadyGivenAndStopsAfterOneForSingleTargets(t *tes
 	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle"), h.bg("bravo", "idle")}}
 
 	assertOffers(t, h.complete(t, "stop", "alpha", ""), "bravo")
+	assertOffers(t, h.complete(t, "ping", "alpha", ""), "bravo")
+	assertOffers(t, h.complete(t, "ping", "alpha", "-m", "go on", ""), "bravo")
 	assertOffers(t, h.complete(t, "attach", "alpha", ""))
 }
 

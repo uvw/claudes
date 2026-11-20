@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 
@@ -16,27 +18,28 @@ import (
 const pingShort = "Pick up where you left off."
 
 func (app *App) pingCommand() *cobra.Command {
+	var message string
 	cmd := &cobra.Command{
-		Use:   "ping TARGET [MESSAGE]",
-		Short: "Send a background session a message, or a prompt to carry on",
-		Long: `Send a background session MESSAGE, or without one a prompt to carry on
-(ping.text in the config). A running session is stopped and resumed with it,
+		Use:   "ping TARGET...",
+		Short: "Send background sessions a message, or a prompt to carry on",
+		Long: `Send background sessions a message with -m, or without one a prompt to carry
+on (ping.text in the config). A running session is stopped and resumed with it,
 because the claude command line has no way to send a message to a running
 session, so a turn in progress is cut off. A stopped session is resumed with it.
 
-restart --ping prompts every session that was mid-turn, for more than one.`,
-		Args: cobra.RangeArgs(1, 2),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]cobra.Completion, cobra.ShellCompDirective) {
-			if len(args) > 0 {
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			return app.completeSessions(backgroundSession, false)(cmd, args, toComplete)
-		},
+Every argument is a target, so a message goes in -m:
+
+  claudes ping api docs -m "run the tests"
+
+A target that names no session stops the command before anything is pinged. A
+message that starts with - is refused, since claude would read it as an option.`,
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: app.completeSessions(backgroundSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			text := app.pingPrompt(pingShort)
-			if len(args) == 2 {
-				text = args[1]
+			if message != "" {
+				text = message
 			}
 			if err := app.Agents.CheckPrompt(text); err != nil {
 				return err
@@ -45,9 +48,9 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 			if err != nil {
 				return err
 			}
-			picked, err := target.Resolve(args[:1], sessions)
+			picked, err := target.Resolve(args, sessions)
 			if err != nil {
-				return err
+				return messageHint(err)
 			}
 			for _, s := range picked {
 				switch {
@@ -84,6 +87,17 @@ restart --ping prompts every session that was mid-turn, for more than one.`,
 			return app.reportFailures(failures)
 		},
 	}
+	cmd.Flags().StringVarP(&message, "message", "m", "", "the message to send, rather than ping.text")
 	app.addForce(cmd, forceUsage)
 	return cmd
+}
+
+// messageHint adds a hint when a target with a space named no session, since
+// it is most likely a message typed without -m.
+func messageHint(err error) error {
+	var miss *target.MatchError
+	if errors.As(err, &miss) && miss.NoMatch && strings.ContainsFunc(miss.Missed, unicode.IsSpace) {
+		return fmt.Errorf("%w. To send a message, use -m", err)
+	}
+	return err
 }

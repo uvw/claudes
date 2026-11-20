@@ -1,6 +1,7 @@
 package target
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -59,6 +60,22 @@ func TestResolveErrors(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("%s: err %v; want %q", tc.token, err, tc.want)
 		}
+	}
+}
+
+func TestAMissNamesTheTargetThatMatchedNothing(t *testing.T) {
+	var miss *MatchError
+	_, err := Resolve([]string{"db", "carry on"}, sessions)
+	if !errors.As(err, &miss) || !miss.NoMatch || miss.Missed != "carry on" {
+		t.Fatalf("err %#v", err)
+	}
+	_, err = Match([]string{"nothing"}, sessions)
+	if !errors.As(err, &miss) || !miss.NoMatch || miss.Missed != "nothing" {
+		t.Fatalf("err %#v", err)
+	}
+	_, err = Resolve([]string{"view"}, sessions)
+	if !errors.As(err, &miss) || miss.NoMatch || miss.Missed != "" {
+		t.Fatalf("an ambiguous target is a miss: %#v", err)
 	}
 }
 
