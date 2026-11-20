@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/uvw/claudes/compare/v0.7.0...v0.8.0) (2026-11-20)
+
+### ⚠ BREAKING CHANGES
+
+- **cli:** `claudes ping TARGET MESSAGE` no longer sends MESSAGE. Use
+  `claudes ping TARGET -m MESSAGE`.
+
+### Features
+
+- **cli:** ping several sessions, with the message in -m
+  ([#120](https://github.com/uvw/claudes/issues/120))
+  ([3954ce2](https://github.com/uvw/claudes/commit/3954ce292bcb855e53a8dda23843ae0def1a9a18))
+
 ## [0.7.0](https://github.com/uvw/claudes/compare/v0.6.0...v0.7.0) (2026-11-20)
 
 ### Features
