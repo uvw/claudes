@@ -1,0 +1,61 @@
+name: Compatibility
+
+# claudes reads parts of Claude Code that are not a stable interface. This
+# checks the newest Claude Code each week, and opens an issue when a command or
+# flag claudes calls is gone, the version left the tested range, or what
+# `claude agents --json` or a background job's state.json holds changed.
+on:
+  schedule:
+    - cron: "41 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  doctor:
+    name: claudes against the latest Claude Code
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      # The newest release is what this job tests, so it cannot come from a
+      # lockfile. The job holds no secrets beyond an issues token.
+      - name: Install the latest Claude Code
+        id: install
+        run: npm install --global @anthropic-ai/claude-code@latest # zizmor: ignore[adhoc-packages]
+      - name: Run claudes doctor
+        id: doctor
+        # An explicit bash shell runs with pipefail, so the step fails when
+        # doctor does, not only when tee does.
+        shell: bash
+        run: |
+          go build -o claudes ./cmd/claudes
+          ./claudes doctor --cli-only --strict 2>&1 | tee report.txt
+      # Claude Code starts a background job without a login, and the job waits
+      # for one, so the real formats need no API key.
+      - name: Read claude agents --json and a job's state.json
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        shell: bash
+        run: bash .github/workflows/hack/compat-live.sh 2>&1 | tee -a report.txt
+      # Any failed step opens the issue, such as an install that broke.
+      - name: Open or update the compatibility issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/workflows/hack/compat-issue.sh report.txt "$RUN_URL"

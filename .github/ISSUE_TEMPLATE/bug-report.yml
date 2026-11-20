@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in claudes did the wrong thing.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran, what it printed, and what you expected.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: claudes-version
+    attributes:
+      label: claudes --version
+      placeholder: claudes version 0.1.0 (abc1234)
+    validations:
+      required: true
+  - type: input
+    id: claude-version
+    attributes:
+      label: claude --version
+      placeholder: 2.1.325 (Claude Code)
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows]
+    validations:
+      required: true
+  - type: input
+    id: shell
+    attributes:
+      label: Shell
+      description: Matters for printed resume commands and completion.
+      placeholder: zsh, bash, PowerShell 7, ...
+  - type: textarea
+    id: sessions
+    attributes:
+      label: claudes ls -a -o json
+      description: Optional. Remove anything private, such as directory names.
+      render: json

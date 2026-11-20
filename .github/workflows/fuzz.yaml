@@ -1,0 +1,53 @@
+name: Fuzz
+
+# go test runs only each fuzz target's seeds. This fuzzes every target for a
+# few minutes each week, and opens an issue labeled fuzz when one fails, with
+# the failing inputs as an artifact.
+on:
+  schedule:
+    - cron: "53 6 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: Fuzz each target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write # to open the issue when a target fails
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      # The shell quoting targets run the printed commands in sh, bash, and
+      # zsh, the default on macOS, and in pwsh, which the runner has.
+      - name: Install zsh
+        run: sudo apt-get update -q && sudo apt-get install -y -q zsh
+      - name: Fuzz
+        run: bash .github/workflows/hack/fuzz.sh 4m report.md
+      - name: Upload the failing inputs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-inputs
+          path: "**/testdata/fuzz/"
+          if-no-files-found: ignore
+      - name: Open or update the fuzz issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/workflows/hack/fuzz-issue.sh report.md "$RUN_URL"

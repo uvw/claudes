@@ -1,0 +1,81 @@
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    # A week for a bad release to be noticed and yanked before it is proposed.
+    # Security updates are not delayed.
+    cooldown:
+      default-days: 7
+    # A dependency changes the shipped binary, so its update is a fix that
+    # makes a release.
+    commit-message:
+      prefix: fix
+      include: scope
+    groups:
+      # golang.org/x modules move together and are tested together.
+      golang-x:
+        patterns: ["golang.org/x/*"]
+      gomod:
+        patterns: ["*"]
+
+  # The tools the checks run. They never reach the shipped binary, so their
+  # updates make no release. Each prefix holds the deps scope itself, so their
+  # titles start ci(deps): as the ones above start fix(deps):.
+  - package-ecosystem: gomod
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    # go.mod marks a tool's module indirect, and Dependabot skips indirect
+    # modules unless they are named. A tool's own dependencies move only as far
+    # as its update requires.
+    allow:
+      - dependency-name: github.com/google/go-licenses/v2
+      - dependency-name: golang.org/x/vuln
+      - dependency-name: honnef.co/go/tools
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      go-tools:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /tools
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      npm-tools:
+        patterns: ["*"]
+
+  # Copilot CLI, which writes the release notes (docs/releasing.md).
+  - package-ecosystem: npm
+    directory: /.github/release-notes
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      release-notes:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,12 @@
+{
+  "name": "claudes-tools",
+  "private": true,
+  "description": "The Markdown formatter and linter the checks run, pinned for Dependabot",
+  "devDependencies": {
+    "markdownlint-cli2": "0.24.1",
+    "prettier": "3.10.0"
+  },
+  "overrides": {
+    "katex": "0.18.4"
+  }
+}

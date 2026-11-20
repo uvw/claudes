@@ -1,0 +1,41 @@
+# golangci-lint configuration: https://golangci-lint.run/usage/configuration/
+# The default linters (errcheck, govet, ineffassign, and unused), plus
+# copyloopvar, errorlint, misspell with US spelling, nilerr, unparam, and
+# usestdlibvars, with the exclusions below. staticcheck is left to its own step
+# in CI and in the checks, which runs the version tools/go.mod pins, on each
+# platform's runner.
+version: "2"
+
+linters:
+  enable:
+    - copyloopvar
+    - errorlint
+    - misspell
+    - nilerr
+    - unparam
+    - usestdlibvars
+  disable:
+    - staticcheck
+  settings:
+    misspell:
+      locale: US
+    errcheck:
+      exclude-functions:
+        # Prints a table to the terminal, which has nothing to do when the write
+        # fails, like the fmt.Fprint calls the preset below allows.
+        - github.com/uvw/claudes/internal/render.Table
+        # Fails only for a flag that does not exist, which the completion tests
+        # would show.
+        - (*github.com/spf13/cobra.Command).RegisterFlagCompletionFunc
+        # Closes a handle opened to read a process's details, as Close does for
+        # the files the preset below allows.
+        - golang.org/x/sys/windows.CloseHandle
+  exclusions:
+    presets:
+      # Unchecked Close, Flush, Remove, and print calls. CodeQL checks the one
+      # that loses data: closing a file that was written.
+      - std-error-handling
+    rules:
+      # Test setup that fails shows up in the next assertion.
+      - path: _test\.go
+        linters: [errcheck]

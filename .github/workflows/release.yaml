@@ -1,0 +1,301 @@
+name: Release
+
+# release-please calls this once its release pull request merges and the draft
+# release and tag exist. Running it by hand (re)publishes an existing tag.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to release, such as v0.1.0.
+        required: true
+        type: string
+    # Both optional: without one, its package manager is skipped. A secret of
+    # the release environment takes the place of the one passed here.
+    secrets:
+      HOMEBREW_TAP_TOKEN:
+        required: false
+      WINGET_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An existing tag to release, such as v0.1.0.
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  GORELEASER_VERSION: v2.20.2
+
+jobs:
+  eligibility:
+    name: Release eligibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    # Later jobs check out this commit, not the tag, so a tag moved mid-run
+    # cannot slip an unchecked commit into the build.
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The tag is a version on main
+        id: check
+        env:
+          TAG: ${{ inputs.tag }}
+        # Prereleases are refused: publish marks the release as latest.
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            { echo "::error::$TAG is not a vMAJOR.MINOR.PATCH tag"; exit 1; }
+          git merge-base --is-ancestor "refs/tags/$TAG" origin/main ||
+            { echo "::error::$TAG is not on main"; exit 1; }
+          echo "sha=$(git rev-parse "refs/tags/$TAG^{commit}")" >> "$GITHUB_OUTPUT"
+
+  ci:
+    name: CI
+    needs: eligibility
+    # actionlint 1.7.12 rejects the $/ form zizmor suggests.
+    uses: ./.github/workflows/ci.yaml # zizmor: ignore[self-repository]
+    with:
+      ref: ${{ needs.eligibility.outputs.sha }}
+    permissions:
+      contents: read
+
+  # Builds every archive, checksums.txt, and an SBOM per archive, but publishes
+  # nothing. This job holds no token that can write or sign.
+  build:
+    name: Build
+    needs: [eligibility, ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          # goreleaser reads the tags for the version, and fails when the tag
+          # no longer points at this commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # Release binaries build from a clean module cache, so a poisoned
+          # cache from another run cannot reach them.
+          cache: false
+      - id: syft
+        uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          syft-version: v1.57.1
+      - name: Put syft on PATH for goreleaser
+        env:
+          SYFT: ${{ steps.syft.outputs.cmd }}
+        run: dirname "$SYFT" >> "$GITHUB_PATH"
+      - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
+        with:
+          version: ${{ env.GORELEASER_VERSION }}
+          args: release --clean --skip=publish
+      # checksums.txt lists the install scripts (.goreleaser.yaml), so they are
+      # attested and published with the archives.
+      - name: Add the install scripts
+        run: cp install/install.sh install/install.ps1 dist/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.sbom.json
+            dist/checksums.txt
+            dist/install.sh
+            dist/install.ps1
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke (${{ matrix.os }})
+    needs: [eligibility, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every archive the release ships, each on a runner that runs it.
+        include:
+          - { os: ubuntu-24.04, archive: linux_amd64.tar.gz }
+          - { os: ubuntu-24.04-arm, archive: linux_arm64.tar.gz }
+          - { os: macos-15, archive: darwin_arm64.tar.gz }
+          - { os: macos-15-intel, archive: darwin_amd64.tar.gz }
+          - { os: windows-2025, archive: windows_amd64.zip }
+          - { os: windows-11-arm, archive: windows_arm64.zip }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Unpack and run the archive this platform downloads
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+          ARCHIVE: ${{ matrix.archive }}
+        run: bash .github/workflows/hack/smoke.sh dist/claudes_*_"$ARCHIVE" "$TAG"
+      - name: Install it with the install script
+        if: runner.os != 'Windows'
+        env:
+          TAG: ${{ inputs.tag }}
+        run: bash .github/workflows/hack/install-test.sh --release dist "$TAG"
+      - name: Install it with the install script
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: .github/workflows/hack/install-test.ps1 -Release dist -Version $env:TAG
+
+  attest:
+    name: Attest provenance
+    needs: [build, smoke]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: The archives match checksums.txt
+        working-directory: dist
+        run: sha256sum --check --strict checksums.txt
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: dist/checksums.txt
+
+  # Runs last, so an immutable release is only ever published complete, with
+  # every asset already attested.
+  # The release environment admits only main and v* tags (docs/releasing.md),
+  # so a dispatch from another branch cannot publish or read the package
+  # managers' tokens. It holds those tokens as its own secrets.
+  publish:
+    name: Publish
+    needs: [eligibility, attest]
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # For the release notes and the script that checks them.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Upload the assets to the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --verify-tag --generate-notes
+          fi
+          gh release upload "$TAG" dist/* --clobber
+      # Copilot wrote the notes in the release pull request (release-please.yaml).
+      # Without them, or when they fail their check, the release keeps
+      # release-please's list alone, so the notes never hold up a release.
+      - name: Put the release notes above the changelog list
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          notes=docs/release-notes/$TAG.md
+          if [[ ! -f $notes ]]; then
+            echo "No $notes, so the release keeps the changelog list alone"
+            exit 0
+          fi
+          gh release view "$TAG" --json body -q .body >"$RUNNER_TEMP/current.md"
+          if bash .github/workflows/hack/release-notes.sh body "$notes" "$RUNNER_TEMP/current.md" >"$RUNNER_TEMP/body.md"; then
+            gh release edit "$TAG" --notes-file "$RUNNER_TEMP/body.md"
+          else
+            echo "::warning::$notes failed its check, so the release keeps the changelog list alone"
+          fi
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          SHA: ${{ needs.eligibility.outputs.sha }}
+        # A release belongs to the tag's name, so the tag must still name the
+        # commit every job built and tested. Once published, an immutable
+        # release locks the tag.
+        run: |
+          tagged=$(gh api "repos/$GH_REPO/commits/refs/tags/$TAG" --jq .sha)
+          [[ $tagged == "$SHA" ]] ||
+            { echo "::error::$TAG moved to $tagged after the build of $SHA"; exit 1; }
+          gh release edit "$TAG" --draft=false --latest
+
+  # The package managers point at the published release, so they come after it.
+  homebrew:
+    name: Homebrew tap
+    needs: [eligibility, publish]
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      - name: Push the formula to uvw/homebrew-tap
+        env:
+          TAG: ${{ inputs.tag }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: bash .github/workflows/hack/homebrew.sh "$TAG" dist/checksums.txt
+
+  winget:
+    name: winget
+    needs: [eligibility, publish]
+    environment: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.eligibility.outputs.sha }}
+          persist-credentials: false
+      - name: Open the winget-pkgs pull request
+        env:
+          TAG: ${{ inputs.tag }}
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: bash .github/workflows/hack/winget.sh "$TAG"
