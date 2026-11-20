@@ -601,7 +601,9 @@ func (m *matcher) toolCall(f *found, b block) {
 			args = append(args, v)
 		}
 	}
-	call := []field{{anywhere, strings.Join(args, " ")}}
+	// One argument per line, so no needle, which holds no line break, can
+	// match across two of them.
+	call := []field{{anywhere, strings.Join(args, "\n")}}
 	if b.Name == "Bash" {
 		call = append(call, field{ranCommand, in.Command})
 	}
