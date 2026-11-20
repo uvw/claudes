@@ -66,7 +66,7 @@ func TestSafetyRefusalsExitFour(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{host, live}}
 	h.transcriptAs(t, live.SessionID, "live", live.Cwd, time.Minute)
 	for _, args := range [][]string{
-		{"ping", "host", "hi"},
+		{"ping", "host", "-m", "hi"},
 		{"session", "resume", "live"},
 		{"session", "mv", "live", h.folder("other")},
 		{"gc", "live"},

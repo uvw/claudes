@@ -118,7 +118,7 @@ func TestEveryReportNamesItsCommand(t *testing.T) {
 		{"restart", []string{"restart", "--dry-run"}},
 		{"pause", []string{"pause", "--dry-run"}},
 		{"resume", []string{"resume"}},
-		{"ping", []string{"ping", "api", "go"}},
+		{"ping", []string{"ping", "api", "-m", "go"}},
 		{"stop", []string{"stop", "api"}},
 		{"gc", []string{"gc", "--dry-run"}},
 		{"pin", []string{"pin", "api"}},

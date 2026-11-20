@@ -343,7 +343,7 @@ optional, and a flag always wins.
 
 ```yaml
 ping:
-  text: Carry on where you stopped. # what --ping and ping send
+  text: Carry on where you stopped. # what --ping and ping without -m send
 wait:
   timeout: 45m # how long --wait waits; 30m by default
 output:

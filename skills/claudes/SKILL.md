@@ -116,7 +116,7 @@ binary by its full path rather than assuming it is gone.
 | restart my agents after an update    | `claudes restart --outdated --ping`, planned first        |
 | restart X                            | find X, then `claudes restart --ping ID`                  |
 | X is stuck, kick it                  | see "A stuck session"                                     |
-| tell X to do something               | find X, check `status`, then `claudes ping ID "MSG"`      |
+| tell X to do something               | find X, check `status`, then `claudes ping ID -m "MSG"`   |
 | why did X stop                       | `claudes ls -a X -o json` for `state`, then `logs`        |
 | what is X doing, what's running      | `claudes ls --wide X`, or `-o json` for `doing`           |
 | pause everything, I'm rebooting      | see "Pausing for a reboot"                                |

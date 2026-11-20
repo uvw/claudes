@@ -17,7 +17,7 @@ func TestAReusedPIDDoesNotBlockThePing(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{s}}
 	newer := start.Add(time.Minute)
 	h.app.Alive = func(pid int, started time.Time) bool { return pid == s.PID && started.Equal(newer) }
-	code := h.run("ping", "api", "carry on")
+	code := h.run("ping", "api", "-m", "carry on")
 	if code != 0 {
 		t.Fatalf("exit %d: the session was stopped and not resumed:\n%s\n%s", code, h.out, h.err)
 	}
@@ -37,7 +37,7 @@ func TestASlowStartIsNotReportedAsNotResumed(t *testing.T) {
 	s := h.bg("api", "busy")
 	h.agents.snapshots = [][]claude.Session{{s}}
 	h.app.Agents = slowStart{h.agents}
-	h.run("ping", "api", "carry on")
+	h.run("ping", "api", "-m", "carry on")
 	msg := h.err.String()
 	if strings.Contains(msg, "not resumed") || strings.Contains(msg, "claude --resume") {
 		t.Fatalf("a resume that was issued is reported as not done:\n%s", msg)
@@ -50,8 +50,8 @@ func TestPingStopsAndResumesWithTheText(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{running}}
 	h.agents.finished = []claude.Session{gone}
 
-	h.ok(t, "ping", "running", "go on")
-	h.ok(t, "ping", "gone", "go on")
+	h.ok(t, "ping", "running", "-m", "go on")
+	h.ok(t, "ping", "gone", "--message", "go on")
 
 	assertCalls(t, h,
 		"stop "+running.JobID,
@@ -76,7 +76,7 @@ func TestAPingWaitsForTheStoppedProcessToExitBeforeResuming(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{s}}
 	h.lingers = map[int]int{s.PID: 2}
 
-	h.ok(t, "ping", "slow", "go on")
+	h.ok(t, "ping", "slow", "-m", "go on")
 	if h.lingers[s.PID] != 0 {
 		t.Fatalf("resumed while the process was still alive: %d checks left", h.lingers[s.PID])
 	}
@@ -86,14 +86,60 @@ func TestAPingWaitsForTheStoppedProcessToExitBeforeResuming(t *testing.T) {
 	assertCalls(t, h, "stop "+s.JobID, "resume "+s.SessionID+" in slow prompt=go on")
 }
 
-func TestPingTakesOneSessionAndAMessage(t *testing.T) {
+func TestPingTakesSeveralSessions(t *testing.T) {
 	h := newHarness(t)
 	a, b := h.bg("alpha", "idle"), h.bg("beta", "idle")
 	h.agents.snapshots = [][]claude.Session{{a, b}}
 
-	h.fails(t, "ping", "alpha", "beta", "sup")
-	h.ok(t, "ping", "alpha", "sup dude")
-	assertCalls(t, h, "stop "+a.JobID, "resume "+a.SessionID+" in alpha prompt=sup dude")
+	h.ok(t, "ping", "alpha", "beta", "-m", "sup dude")
+	assertCalls(t, h,
+		"stop "+a.JobID, "resume "+a.SessionID+" in alpha prompt=sup dude",
+		"stop "+b.JobID, "resume "+b.SessionID+" in beta prompt=sup dude",
+	)
+	assertContains(t, h.out.String(), "pinged     alpha")
+	assertContains(t, h.out.String(), "pinged     beta")
+}
+
+// A message typed without -m is a target that names no session, so it stops
+// nothing and the error says how to send it.
+func TestAMessageTypedAsATargetPingsNothing(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "busy")}}
+
+	h.exits(t, exitNoMatch, "ping", "api", "carry on")
+	assertCalls(t, h)
+	assertContains(t, h.err.String(), `no session matches "carry on"`)
+	assertContains(t, h.err.String(), "To send a message, use -m")
+
+	h.err.Reset()
+	h.exits(t, exitNoMatch, "ping", "api", "nobody")
+	if strings.Contains(h.err.String(), "-m") {
+		t.Fatalf("a target without a space got the hint: %s", h.err)
+	}
+}
+
+func TestPingChecksEverySessionBeforeItStopsAny(t *testing.T) {
+	h := newHarness(t)
+	api, host, term := h.bg("api", "busy"), h.bg("host", "busy"), h.tty("terminal", "busy")
+	h.app.HostID = host.SessionID
+	h.agents.snapshots = [][]claude.Session{{api, host, term}}
+
+	h.exits(t, exitRefused, "ping", "api", "terminal")
+	h.exits(t, exitRefused, "ping", "api", "host")
+	assertCalls(t, h)
+}
+
+func TestPingNamesTheSessionsCtrlCLeftAlone(t *testing.T) {
+	h := newHarness(t)
+	a, b, c := h.bg("alpha", "idle"), h.bg("beta", "idle"), h.bg("gamma", "idle")
+	h.agents.snapshots = [][]claude.Session{{a, b, c}}
+	h.agents.beforeStop = func(string) { h.interrupt() }
+
+	if code := h.run("ping", "alpha", "beta", "gamma"); code != exitInterrupted {
+		t.Fatalf("exit %d", code)
+	}
+	assertCalls(t, h, "stop "+a.JobID, "resume "+a.SessionID+" in alpha prompt="+pingShort)
+	assertContains(t, h.err.String(), "Not reached after Ctrl-C, left as they were: beta, gamma")
 }
 
 func TestPingReturnsOnlyOnceTheSessionShowsAsRunning(t *testing.T) {
@@ -104,7 +150,7 @@ func TestPingReturnsOnlyOnceTheSessionShowsAsRunning(t *testing.T) {
 	// Stopped, then listed without a PID while it starts, then running.
 	h.agents.snapshots = [][]claude.Session{{s}, {s}, {stopped(s)}, {starting}, {s}}
 
-	h.ok(t, "ping", "api", "go on")
+	h.ok(t, "ping", "api", "-m", "go on")
 	if len(h.sleeps) == 0 {
 		t.Fatal("ping returned before the session showed as running")
 	}

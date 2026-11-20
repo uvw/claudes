@@ -484,7 +484,7 @@ func TestAPromptThatLooksLikeAnOptionIsRefusedBeforeClaudeRuns(t *testing.T) {
 	for _, args := range [][]string{
 		{"restart", "alpha", "--ping-text=--dangerously-skip-permissions"},
 		{"resume", "old", "--ping-text=-p"},
-		{"ping", "old", "--", "--help"},
+		{"ping", "old", "-m", "--help"},
 	} {
 		r := w.run(args...)
 		if r.code != 1 || !strings.Contains(r.stderr, "claude would read it as an option") {

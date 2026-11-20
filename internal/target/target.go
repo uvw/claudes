@@ -50,7 +50,7 @@ func Resolve[T Ref](tokens []string, candidates []T) ([]T, error) {
 func Match[T Ref](tokens []string, candidates []T) ([]T, error) {
 	out, missed, err := Filter(tokens, candidates)
 	if err == nil && len(missed) > 0 {
-		return nil, &MatchError{msg: fmt.Sprintf("no session matches %q. Sessions: %s", missed[0], describe(candidates, nil)), NoMatch: true}
+		return nil, noMatch(missed[0], candidates)
 	}
 	return out, err
 }
@@ -114,7 +114,7 @@ func matchWord[T Ref](word string, candidates []T) []int {
 func match[T Ref](token string, candidates []T) (int, error) {
 	matches := firstStep(token, candidates)
 	if len(matches) == 0 {
-		return 0, &MatchError{msg: fmt.Sprintf("no session matches %q. Sessions: %s", token, describe(candidates, nil))}
+		return 0, noMatch(token, candidates)
 	}
 	return one(token, candidates, matches)
 }
@@ -166,9 +166,18 @@ func one[T Ref](token string, candidates []T, matches []int) (int, error) {
 // needed.
 type MatchError struct {
 	msg string
-	// NoMatch is set when Match found nothing for a target, which a listing
-	// can show as an empty list.
+	// NoMatch is set when a target named no session, rather than several.
 	NoMatch bool
+	// Missed is the target that named no session, when NoMatch is set.
+	Missed string
+}
+
+func noMatch[T Ref](token string, candidates []T) *MatchError {
+	return &MatchError{
+		msg:     fmt.Sprintf("no session matches %q. Sessions: %s", token, describe(candidates, nil)),
+		NoMatch: true,
+		Missed:  token,
+	}
 }
 
 func (e *MatchError) Error() string { return e.msg }
