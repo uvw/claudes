@@ -192,7 +192,7 @@ func TestItemsNameTheirDirectoryAndOnlyWholeSessionsAnID(t *testing.T) {
 	if e := render.EntryOf(whole); e.ID != "11111111" || e.Name != "s1" || e.Cwd != p.Cwd {
 		t.Errorf("whole session: %+v", e)
 	}
-	if whole.Transcript != p.Path || whole.Changed.IsZero() || !slices.Contains(whole.Paths, p.Path) {
+	if whole.Transcript != p.Path || whole.Changed.IsZero() || !slices.Contains(whole.Paths, p.Path) || !slices.Equal(whole.Copies, []string{p.Path}) {
 		t.Errorf("whole session: %+v", whole)
 	}
 	for _, why := range []Kind{KindCopy, KindSidecar, KindLeftover} {

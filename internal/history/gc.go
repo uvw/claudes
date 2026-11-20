@@ -41,7 +41,10 @@ type Item struct {
 	// left alone. A leftover has neither.
 	Transcript string
 	Changed    time.Time
-	dir        string
+	// Copies are the transcripts the item removes, whose records session mv
+	// may have kept: every copy of a whole session, or the one older copy.
+	Copies []string
+	dir    string
 }
 
 // ID is the session's short id for a whole session, and "" for a part of one:
@@ -128,7 +131,7 @@ func Collect(st transcripts.Store, list []Session, keep map[string]string, kinds
 				if changed := transcripts.Changed(c); !changed.IsZero() && changed.Before(recent) {
 					paths := transcripts.CopyFiles(c)
 					items = append(items, Item{SessionID: p.SessionID, Name: p.Label() + " (older copy)", Why: KindCopy,
-						dir: filepath.Dir(c), Paths: paths, Size: transcripts.Size(paths), Transcript: c, Changed: changed})
+						dir: filepath.Dir(c), Paths: paths, Size: transcripts.Size(paths), Transcript: c, Changed: changed, Copies: []string{c}})
 				}
 			}
 		}
@@ -166,7 +169,7 @@ func Collect(st transcripts.Store, list []Session, keep map[string]string, kinds
 func Whole(st transcripts.Store, p Session, why Kind) Item {
 	return Item{SessionID: p.SessionID, Name: p.Label(), Why: why, dir: cmp.Or(p.Cwd, filepath.Dir(p.Path)),
 		Paths: st.SessionFiles(p.Session), Size: p.Disk.Total + st.ExtraSize(p.Session),
-		Transcript: p.Path, Changed: transcripts.Changed(p.Path)}
+		Transcript: p.Path, Changed: transcripts.Changed(p.Path), Copies: append([]string{p.Path}, p.Copies...)}
 }
 
 // sidecarItem is the part of p's sidecar directory --sidecars trims: its saved

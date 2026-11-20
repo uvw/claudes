@@ -179,9 +179,9 @@ func (app *App) gcRemove(ctx context.Context, items []history.Item, purge bool) 
 			app.progressFailed(it)
 			continue
 		}
-		if it.Why == history.KindCopy {
-			if err := app.Transcripts.ForgetMove(it.Transcript, it.SessionID); err != nil {
-				app.warn("claudes: removed %s, but cannot update moves.json: %v", it.Transcript, err)
+		if len(it.Copies) > 0 {
+			if err := app.Transcripts.ForgetMoves(it.SessionID, it.Copies...); err != nil {
+				app.warn("claudes: removed %s, but cannot update moves.json: %v", it.Name, err)
 			}
 		}
 		freed += it.Size
