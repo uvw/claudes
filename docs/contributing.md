@@ -196,8 +196,9 @@ macOS does that inside its Go job, on Intel; `.github/workflows/ci.yaml` says
 why. The "CI (all green)" job is the one required check, and a finding from
 zizmor or gitleaks fails it. The weekly Security workflow
 (`.github/workflows/security.yaml`) runs CodeQL, and runs zizmor and govulncheck
-again for what arrives between pushes. Workflow steps longer than a few lines
-live in `.github/workflows/hack/`, so they run the same way locally.
+again for what arrives between pushes. The weekly Fuzz workflow fuzzes the
+targets [Tests](#tests) lists. Workflow steps longer than a few lines live in
+`.github/workflows/hack/`, so they run the same way locally.
 
 ## Tests
 
@@ -224,7 +225,30 @@ fails without it, and CI keeps total coverage at 80% or more.
    reaches your own Claude Code. The weekly Compatibility workflow sets it
    through `.github/workflows/hack/compat-live.sh`, which starts a background
    job and so runs only in CI.
-6. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
+6. Fuzz targets check what must hold for any input:
+   1. `internal/shell`: every word claudes quotes, and every command it prints,
+      reaches sh, bash, zsh, and pwsh unchanged. Each target runs the shells
+      installed, and skips when there are none.
+   2. `internal/transcripts`: no transcript bytes panic the readers, a session
+      is empty or its tally complete only when every line earns it, and search's
+      needles skip no line its query matches.
+   3. `internal/target`: no typed target panics, each picks only the sessions
+      its rules name, and an ambiguous one is an error.
+
+   `go test` runs only each target's seeds. To fuzz one, give its package and
+   name:
+
+   ```sh
+   go test ./internal/shell -run '^$' -fuzz '^FuzzPOSIXCommands$' -fuzztime 1m
+   ```
+
+   A failing input lands in the package's `testdata/fuzz/<target>`. Commit it
+   with the fix, and `go test` runs it from then on. The weekly Fuzz workflow
+   (`.github/workflows/fuzz.yaml`) fuzzes every target for four minutes through
+   `.github/workflows/hack/fuzz.sh`. When one fails, it uploads the failing
+   inputs and opens an issue labeled `fuzz`.
+
+7. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
    hand in a terminal, on each platform it changes.
 
 ## Pull requests
