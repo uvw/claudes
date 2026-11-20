@@ -49,6 +49,17 @@ func TestResumeCommandResumesInTheBackgroundOnlyForBackgroundSessions(t *testing
 	}
 }
 
+// A control character dropped from a value must not leave the quoting of
+// the text before it: --\x01% prints as --%, PowerShell's stop-parsing token.
+func TestCommandsQuoteTheTextTheyPrint(t *testing.T) {
+	if got, want := ResumeCommand("s\x1bid", "--\x01%", true), resumeCommand("--%", "--resume", "sid"); got != want {
+		t.Fatalf("resume %q, want %q", got, want)
+	}
+	if got, want := RemoveCommand([]string{"--\x01%", "/a\nb"}), removeCommand([]string{"--%", "/a b"}); got != want {
+		t.Fatalf("remove %q, want %q", got, want)
+	}
+}
+
 func TestRemoveCommands(t *testing.T) {
 	paths := []string{"/a b/x.jsonl", "/a b/x"}
 	if got := posixRemove(paths); got != "rm -r '/a b/x.jsonl' '/a b/x'" {
