@@ -1,0 +1,280 @@
+package cli
+
+import (
+	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"go.yaml.in/yaml/v4"
+
+	"github.com/uvw/claudes/internal/claude"
+	"github.com/uvw/claudes/internal/park"
+	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/teams"
+)
+
+func readReport(t *testing.T, h *harness) render.Report {
+	t.Helper()
+	var r render.Report
+	if err := json.Unmarshal(h.out.Bytes(), &r); err != nil {
+		t.Fatalf("stdout is not one JSON report: %v\n%s", err, h.out)
+	}
+	return r
+}
+
+func results(entries []render.Entry) []string {
+	out := []string{}
+	for _, e := range entries {
+		out = append(out, e.Name+" "+e.Result)
+	}
+	return out
+}
+
+func TestRestartPrintsOneJSONReport(t *testing.T) {
+	h := newHarness(t)
+	good, bad, pinned := h.bg("good", "busy"), h.bg("bad", "idle"), h.bg("kept", "idle")
+	h.agents.snapshots = [][]claude.Session{{good, bad, pinned}}
+	h.pin(t, pinned)
+	h.agents.failures = map[string]string{"respawn " + bad.JobID: "boom"}
+
+	h.exits(t, exitSomeFailed, "restart", "--ping", "-o", "json")
+	r := readReport(t, h)
+	if r.Command != "restart" || r.DryRun || len(r.Plan) != 2 {
+		t.Fatalf("report %+v", r)
+	}
+	if diff := cmp.Diff([]string{"good restarted", "bad failed"}, results(r.Results)); diff != "" {
+		t.Fatalf("results (-want +got):\n%s", diff)
+	}
+	if r.Results[0].ID != good.JobID || r.Results[0].Note != "and pinged" {
+		t.Fatalf("first result %+v", r.Results[0])
+	}
+	if len(r.Failures) != 1 || r.Failures[0].Name != "bad" || r.Failures[0].ID != bad.JobID || r.Failures[0].Cwd != bad.Cwd || !strings.Contains(r.Failures[0].Error, "boom") {
+		t.Fatalf("failures %+v", r.Failures)
+	}
+	if diff := cmp.Diff([]string{"kept pinned"}, results(r.LeftOut)); diff != "" {
+		t.Fatalf("left out (-want +got):\n%s", diff)
+	}
+	assertContains(t, h.err.String(), "need attention")
+}
+
+func TestADryRunReportHasThePlanAndEveryKey(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+
+	h.ok(t, "pause", "--dry-run", "-o", "yaml")
+	var r map[string]any
+	if err := yaml.Unmarshal(h.out.Bytes(), &r); err != nil {
+		t.Fatalf("%v\n%s", err, h.out)
+	}
+	for _, key := range []string{"command", "dryRun", "plan", "results", "leftOut", "manual", "failures", "notReached", "warnings", "error"} {
+		if _, ok := r[key]; !ok {
+			t.Errorf("no %q in\n%s", key, h.out)
+		}
+	}
+	if r["dryRun"] != true || len(r["plan"].([]any)) != 1 || len(r["results"].([]any)) != 0 {
+		t.Fatalf("report %v", r)
+	}
+	if len(h.agents.calls) != 0 {
+		t.Fatalf("a dry run acted: %q", h.agents.calls)
+	}
+}
+
+func TestTheReportIsOutBeforeTheHostStops(t *testing.T) {
+	h := newHarness(t)
+	other, host := h.bg("other", "idle"), h.bg("host", "idle")
+	h.agents.snapshots = [][]claude.Session{{other, host}}
+	h.host(host)
+
+	h.ok(t, "stop", "other", "host", "-o", "json")
+	r := readReport(t, h)
+	if diff := cmp.Diff([]string{"other stopped", "host stopping"}, results(r.Results)); diff != "" {
+		t.Fatalf("results (-want +got):\n%s", diff)
+	}
+}
+
+func TestPinReportsEachSession(t *testing.T) {
+	h := newHarness(t)
+	a := h.bg("api", "idle")
+	h.agents.snapshots = [][]claude.Session{{a}}
+
+	h.ok(t, "pin", "api", "-o", "json")
+	if diff := cmp.Diff([]string{"api pinned"}, results(readReport(t, h).Results)); diff != "" {
+		t.Fatalf("results (-want +got):\n%s", diff)
+	}
+}
+
+// claudes gc and claudes session gc both have the name gc, so a report names
+// its command by the path under claudes.
+func TestEveryReportNamesItsCommand(t *testing.T) {
+	for _, c := range []struct {
+		want string
+		args []string
+	}{
+		{"restart", []string{"restart", "--dry-run"}},
+		{"pause", []string{"pause", "--dry-run"}},
+		{"resume", []string{"resume"}},
+		{"ping", []string{"ping", "api", "go"}},
+		{"stop", []string{"stop", "api"}},
+		{"gc", []string{"gc", "--dry-run"}},
+		{"pin", []string{"pin", "api"}},
+		{"unpin", []string{"unpin", "api"}},
+		{"session gc", []string{"session", "gc", "--dry-run"}},
+	} {
+		h := newHarness(t)
+		h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+		h.run(append(c.args, "-o", "json")...)
+		if got := readReport(t, h).Command; got != c.want {
+			t.Errorf("claudes %s: command %q, want %q", strings.Join(c.args, " "), got, c.want)
+		}
+	}
+}
+
+func TestResultsCarryTheFolder(t *testing.T) {
+	h := newHarness(t)
+	s := h.bg("api", "idle")
+	h.agents.snapshots = [][]claude.Session{{s}}
+
+	h.ok(t, "stop", "api", "-o", "json")
+	if r := readReport(t, h); len(r.Results) != 1 || r.Results[0].Cwd != s.Cwd {
+		t.Fatalf("results %+v, want cwd %s", r.Results, s.Cwd)
+	}
+}
+
+func TestOutdatedWithNothingOutdatedSaysSo(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("api", "idle")}}
+
+	h.ok(t, "restart", "--outdated", "--dry-run")
+	assertContains(t, h.out.String(), "No running session is on an older Claude Code")
+}
+
+func TestTheReportListsLeftAloneTerminalsWarningsAndTheError(t *testing.T) {
+	h := newHarness(t)
+	api, term := h.bg("api", "idle"), h.tty("terminal", "idle")
+	h.agents.snapshots = [][]claude.Session{{api, term}}
+
+	h.ok(t, "restart", "-o", "json")
+	r := readReport(t, h)
+	if len(r.Manual) != 0 || len(r.LeftOut) != 1 || r.LeftOut[0].Name != "terminal" ||
+		r.LeftOut[0].Result != "interactive" || !strings.Contains(r.LeftOut[0].Command, term.SessionID) {
+		t.Fatalf("manual %+v, left out %+v", r.Manual, r.LeftOut)
+	}
+	if r.Error != "" || r.Warnings == nil {
+		t.Fatalf("error %q, warnings %v", r.Error, r.Warnings)
+	}
+
+	h.out.Reset()
+	lead := h.bg("lead", "busy")
+	h.agents.snapshots = [][]claude.Session{{lead}}
+	h.team(t, lead, "tester")
+	h.ok(t, "stop", "lead", "-o", "json")
+	r = readReport(t, h)
+	if len(r.Warnings) != 1 || !strings.Contains(r.Warnings[0], "leads 1 teammate(s): tester") {
+		t.Fatalf("warnings %q", r.Warnings)
+	}
+
+	h.out.Reset()
+	h.exits(t, exitNoMatch, "stop", "nobody", "-o", "json")
+	if r = readReport(t, h); !strings.Contains(r.Error, "nobody") {
+		t.Fatalf("error %q", r.Error)
+	}
+}
+
+func TestForgetReportsWhatItDropped(t *testing.T) {
+	h := newHarness(t)
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
+	h.ok(t, "pause", "alpha")
+	h.out.Reset()
+
+	h.ok(t, "resume", "--forget", "alpha", "-o", "json")
+	r := readReport(t, h)
+	if diff := cmp.Diff([]string{"alpha forgotten"}, results(r.Results)); diff != "" {
+		t.Fatalf("results (-want +got):\n%s", diff)
+	}
+}
+
+func TestProgressFailuresAndErrorsAreColoredAndKeepTheirColumn(t *testing.T) {
+	h := newHarness(t)
+	bad, good := stopped(h.bg("bad", "")), stopped(h.bg("good", ""))
+	h.agents.finished = []claude.Session{bad, good}
+	h.agents.failures = map[string]string{"rm " + bad.JobID: "worktree has changes"}
+	h.env("CLICOLOR_FORCE=1")
+
+	h.fails(t, "gc", "bad", "good")
+
+	assertContains(t, h.out.String(), "  "+h.app.colors.Green("removed")+"    good")
+	assertContains(t, h.err.String(), "  "+h.app.errColors.Red("FAILED")+"     bad")
+	assertContains(t, h.err.String(), h.app.errColors.Red("1 session(s) need attention:"))
+	assertContains(t, h.err.String(), h.app.errColors.Red("  bad: worktree has changes"))
+
+	h.err.Reset()
+	h.exits(t, exitNoMatch, "where", "nobody")
+	if !strings.HasPrefix(h.err.String(), "\x1b[31mclaudes: ") {
+		t.Fatalf("the error is not red:\n%q", h.err)
+	}
+}
+
+// TestEverySubjectCarriesItsDirectory checks that every type a report lists
+// gives its cwd. A type in this package with a Dir method must be listed here.
+func TestEverySubjectCarriesItsDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "work")
+	subjects := map[string]render.Subject{
+		"claude.Session": claude.Session{SessionID: "11111111-aaaa", Cwd: dir},
+		"park.Entry":     park.Entry{SessionID: "22222222-bbbb", Name: "api", Cwd: dir},
+		"resumable":      resumable{Entry: park.Entry{SessionID: "33333333-cccc", Name: "api", Cwd: dir}},
+		"teams.Leftover": teams.Leftover{Path: dir, Name: "session-44444444"},
+	}
+	for name, s := range subjects {
+		if e := render.EntryOf(s); e.Cwd != dir || e.ID == "" || e.Name == "" {
+			t.Errorf("%s: entry %+v, want cwd %s, an id, and a name", name, e, dir)
+		}
+	}
+
+	for name, f := range parsed(t) {
+		for _, decl := range f.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Name.Name == "Dir" {
+				if _, ok := subjects[recvType(fn)]; !ok {
+					t.Errorf("%s: %s has a Dir method: add it to this test's subjects", name, recvType(fn))
+				}
+			}
+		}
+	}
+}
+
+// parsed is this package's files, without its tests, by name.
+func parsed(t *testing.T) map[string]*ast.File {
+	t.Helper()
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]*ast.File{}
+	fset := token.NewFileSet()
+	for _, name := range names {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, parser.SkipObjectResolution)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[name] = f
+	}
+	return files
+}
+
+func recvType(fn *ast.FuncDecl) string {
+	expr := fn.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if idx, ok := expr.(*ast.IndexExpr); ok {
+		expr = idx.X
+	}
+	return expr.(*ast.Ident).Name
+}
