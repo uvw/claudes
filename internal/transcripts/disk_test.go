@@ -197,14 +197,26 @@ func TestForgetMovesDropsOnlyThoseCopies(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := st.ForgetMoves(sid, a, c); err != nil {
+	dropped, err := st.ForgetMoves(sid, a, c)
+	if err != nil {
 		t.Fatal(err)
 	}
 	moves, err := st.loadMoves()
 	if err != nil || len(moves) != 1 || moves[moveKey(b, sid)].Dir != b {
 		t.Fatalf("moves %v, err %v", moves, err)
 	}
-	if err := st.ForgetMoves(sid, a); err != nil {
-		t.Fatalf("forgetting twice: %v", err)
+	if again, err := st.ForgetMoves(sid, a); err != nil || again != nil {
+		t.Fatalf("forgetting twice: %s, %v", again, err)
+	}
+
+	if err := st.recordMove(c, sid, move{Dir: "/since"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.RememberMoves(dropped); err != nil {
+		t.Fatal(err)
+	}
+	moves, err = st.loadMoves()
+	if err != nil || len(moves) != 3 || moves[moveKey(a, sid)].Dir != a || moves[moveKey(c, sid)].Dir != "/since" {
+		t.Fatalf("moves after RememberMoves %v, err %v", moves, err)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/transcripts"
+	"github.com/uvw/claudes/internal/trash"
 )
 
 func (app *App) sessionMvCommand() *cobra.Command {
@@ -123,7 +124,10 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 	}
 	remove := shell.RemoveCommand(transcripts.Files(p.Session))
 	if rm {
-		if err := app.Transcripts.RemoveOriginal(p.Session, dest, app.remover(purge)); err != nil {
+		rec := trash.Record{SessionID: p.SessionID, Name: p.Label(), Cwd: p.Cwd}
+		err := app.Transcripts.RemoveOriginal(p.Session, dest, app.remover(purge, &rec))
+		app.keepTrashed("session mv --rm", rec)
+		if err != nil {
 			return fmt.Errorf("copied, but %w. Remove it by hand with: %s", err, remove)
 		}
 		if purge {

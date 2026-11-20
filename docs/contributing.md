@@ -28,6 +28,7 @@
    | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |
    | `managed-mcp.json`                                                                                                     | `internal/mcp`         |
    | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts` |
+   | `trashed.json`, in claudes' state directory, and the system trash                                                      | `internal/trash`       |
    | `run.lock`, in claudes' state directory                                                                                | `internal/files`       |
    | The park file                                                                                                          | `internal/park`        |
    | `config.yaml`                                                                                                          | `internal/config`      |

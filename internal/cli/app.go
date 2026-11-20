@@ -52,8 +52,15 @@ type App struct {
 	Exec  func(binary string, args ...string) error
 	// Transcripts is ~/.claude/projects, read by claudes session.
 	Transcripts transcripts.Store
-	// Trash moves a file or directory to the system trash.
-	Trash func(path string) error
+	// Trash moves a file or directory to the system trash, and returns where
+	// it went, or "" when the system does not say.
+	Trash func(path string) (string, error)
+	// Trashed records where each file Trash moved came from, for session
+	// restore; one with no Path records nothing.
+	Trashed trash.Manifest
+	// trashedAt is when this run first moved something to the trash, which
+	// groups what it moved in Trashed.
+	trashedAt time.Time
 	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
 	Teams teams.Store
 	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads. Its
@@ -170,6 +177,8 @@ func newApp() *App {
 	app.Transcripts, _ = transcripts.DefaultStore()
 	app.Teams, _ = teams.DefaultStore()
 	app.MCP, _ = mcp.DefaultStore()
+	// Without a state directory, the park file's error stops every command.
+	app.Trashed, _ = trash.DefaultManifest()
 	// Without a cache directory, claudes asks claude for its version each time.
 	app.CacheDir, _ = paths.Cache()
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
@@ -179,12 +188,34 @@ func newApp() *App {
 }
 
 // remover is how a command removes a file or directory: it moves it to the
-// system trash, or with --purge deletes it for good.
-func (app *App) remover(purge bool) func(string) error {
+// system trash and adds where it went to rec, or with --purge deletes it for
+// good.
+func (app *App) remover(purge bool, rec *trash.Record) func(string) error {
 	if purge {
 		return os.RemoveAll
 	}
-	return app.Trash
+	return func(path string) error {
+		to, err := app.Trash(path)
+		if err == nil {
+			rec.Files = append(rec.Files, trash.File{From: path, To: to})
+		}
+		return err
+	}
+}
+
+// keepTrashed records what command moved to the trash for one session, so
+// session restore can put it back. It records even after a removal failed
+// partway, since what moved before the failure is in the trash.
+func (app *App) keepTrashed(command string, rec trash.Record) {
+	if len(rec.Files) == 0 {
+		return
+	}
+	if app.trashedAt.IsZero() {
+		app.trashedAt = app.Now()
+	}
+	if err := app.Trashed.Add(app.trashedAt, command, rec); err != nil {
+		app.warn("claudes: moved %s to the trash, but cannot record where, so session restore cannot put it back: %v", rec.Name, err)
+	}
 }
 
 // configPathErr is the error when claudes cannot even tell where config.yaml

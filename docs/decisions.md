@@ -35,6 +35,7 @@ it.
 | [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
 | [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
 | [35](#35-session-search-masks-secrets-in-what-it-prints)                            | session search masks secrets in what it prints                             |
+| [36](#36-claudes-records-what-it-trashes-and-restores-without-replacing)            | claudes records what it trashes, and restores without replacing            |
 
 ## 3. Anything else goes to `claude agents`
 
@@ -479,3 +480,30 @@ only with a flag, which agents would not pass; masking only the snippet after
 the cut, which misses a secret whose start the cut drops; and a generic
 high-entropy rule, which would also mask git hashes and UUIDs. A secret of a
 shape the rules do not know still prints.
+
+## 36. claudes records what it trashes, and restores without replacing
+
+claudes records each file it moves to the trash, and `session restore` puts a
+session's files back from that record, refusing outright when any file's place
+is taken or the file has left the trash
+([Restoring past sessions](guide.md#restoring-past-sessions)).
+
+Why: decision 27 sends removals to the trash so a mistake can be undone, but on
+macOS that undo was guesswork. Finder cannot put back what another program
+trashed, the Trash holds numbered copies of UUID-named files, and one session
+comes from four directories. Linux uses the same record rather than its
+`.trashinfo` files, so every platform that says where a file went takes one code
+path. `gc --teams` and `session mv --rm` record too, since a team directory or
+an original transcript is as hard to find in the Trash. A taken path may hold
+newer work, so restore never replaces a file, and it checks every file before it
+moves any, so a refusal leaves nothing half restored. The record keeps the
+`moves.json` entries `session gc` drops, so a moved session still resumes where
+it moved. Restore is its own command because it lists without a target, writes
+where `gc` deletes, and shares none of `session gc`'s flags.
+
+Weighed: `session gc --restore`, as first proposed, a flag that would turn off
+every other `session gc` flag and hide what `gc --teams` and `session mv --rm`
+trashed; reading `.trashinfo` on Linux and searching the Recycle Bin's `$I`
+files on Windows, which are two more code paths; restoring what it can when a
+file is missing or a path is taken, which leaves a session half back; and a
+trash directory of claudes' own, which decision 27 turned down.

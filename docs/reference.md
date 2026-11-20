@@ -14,7 +14,7 @@ Pick a format with `-o`:
 | `doctor`, `doctor env`                                      | text, json, yaml | `output.format`, or text |
 | `mcp ls`, `mcp profiles`                                    | text, json, yaml | `output.format`, or text |
 | `restart`, `pause`, `resume`, `ping`, and `stop`            | text, json, yaml | text                     |
-| `gc`, `pin`, `unpin`, `session gc`                          | text, json, yaml | text                     |
+| `gc`, `pin`, `unpin`, `session gc`, `session restore`       | text, json, yaml | text                     |
 | `logs`                                                      | text, json       | text                     |
 
 A few cases differ:
@@ -25,6 +25,8 @@ A few cases differ:
    another format; `claudes init` does that itself. With several, it prints a
    table of id, directory, and name.
 3. `logs -o json` prints the transcript records themselves, one per line.
+4. `session restore` without targets prints the list in [Restoring](#restoring),
+   and with targets a [report](#reports).
 
 Text tables and plans cut a name longer than 40 characters, and
 `session ls --wide` a git branch longer than 24, with `…`. A branch loses its
@@ -140,6 +142,26 @@ Each entry in `dirs` has `dir`, `project`, `sessions`, and `disk`. Each session
 in `top` has `id`, `sessionId`, `name`, `cwd`, `running`, and `disk`. Each
 leftover has `path`, `sessionId`, `kind`, `size`, and `modified`.
 
+#### Restoring
+
+`session restore` without targets prints a list of the sessions it can put back,
+the latest trashed first:
+
+| Field             | Meaning                                                   |
+| ----------------- | --------------------------------------------------------- |
+| `id`, `sessionId` | The short and the full session id                         |
+| `name`, `cwd`     | Its name, and the directory it ran in                     |
+| `trashed`         | When the latest of its files went to the trash            |
+| `size`            | The bytes its files in the trash hold                     |
+| `missing`         | How many of its files are no longer in the trash          |
+| `files`           | Each file: `from`, `to`, `size`, `command`, and `trashed` |
+
+`from` is where a file was, and `to` where it is in the trash. `command` is the
+command that moved it: `session gc`, `session mv --rm`, or `gc --teams`. Each
+file also has `inTrash`, false once it has left the trash. A team directory
+holds only the short id, so its `sessionId` is the short id unless the session's
+own files went to the trash too.
+
 #### Search
 
 `session search` prints a list of the sessions that match, best first:
@@ -226,8 +248,9 @@ Each server has:
 
 #### Reports
 
-`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, `unpin`, and
-`session gc` print one report when they finish:
+`restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, `unpin`,
+`session gc`, and `session restore` with targets print one report when they
+finish:
 
 | Field        | Meaning                                                           |
 | ------------ | ----------------------------------------------------------------- |
@@ -248,8 +271,10 @@ Each session in those lists has `id`, `name`, `cwd`, `result`, `note` (such as
 was left out: `pinned`, `interactive`, `leads a team`, `skipped`, or
 `no job id`. `resume --forget` reports each dropped session as `forgotten`. In
 `session gc`'s plan, `result` is the kind, such as `empty` or `copy`, and `note`
-the size; each result is `trashed`, `deleted`, `skipped`, or `failed`. Warnings
-and errors go to stderr as well.
+the size; each result is `trashed`, `deleted`, `skipped`, or `failed`. In
+`session restore`'s plan, `result` is when the session went to the trash, such
+as `2d ago`, and `note` the size; each result is `restored` or `failed`.
+Warnings and errors go to stderr as well.
 
 ### Colors
 
@@ -382,6 +407,7 @@ as usual. `--version` prints the version.
 | `config.yaml`         | `$XDG_CONFIG_HOME/claudes`, or `~/.config/claudes`     | `%APPDATA%\claudes`            |
 | `parked.json`         | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `moves.json`          | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
+| `trashed.json`        | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `run.lock`            | `$XDG_STATE_HOME/claudes`, or `~/.local/state/claudes` | `%LOCALAPPDATA%\claudes\state` |
 | `claude-version.json` | `$XDG_CACHE_HOME/claudes`, or `~/.cache/claudes`       | `%LOCALAPPDATA%\claudes\cache` |
 
@@ -393,7 +419,14 @@ as usual. `--version` prints the version.
   an object, `{"dir": DIR, "options": [...]}`, with the options Claude Code had
   saved for the job. `session resume --bg` passes them to the new job.
   `session gc` drops a copy's entry once it removes that copy, alone or with its
-  whole session.
+  whole session, and `session restore` puts the entry back with the copy.
+- `trashed.json` records each file `session gc`, `session mv --rm`, and
+  `gc --teams` moved to the trash: where it was, where it went, its size, and
+  the session it belongs to, grouped by the run that moved it. `session restore`
+  reads it. claudes writes it atomically under a `trashed.json.lock` directory,
+  drops a session once every file of it has left the trash, and deletes the file
+  when nothing is left. Windows does not say where the Recycle Bin put a file,
+  so nothing is recorded there.
 - `run.lock` is a directory that exists only while a command changes sessions.
   Its `owner` file holds the PID and start time of the claudes that holds it. A
   lock that has not been refreshed for 30 seconds is broken only once that
@@ -408,6 +441,7 @@ as usual. `--version` prints the version.
 - claudes itself writes under `~/.claude` only for these: pinning and unpinning,
   as agent view does; `session mv`, which adds a copy, and its `--rm`, which
   moves the original to the system trash; `session gc`, which moves past
-  sessions there; `skill --install`; and `gc --teams`, which moves leftover team
-  and task directories there. Unpinning also deletes the job's `order` file, as
-  agent view does. Everything else it changes goes through the `claude` command.
+  sessions there; `gc --teams`, which moves leftover team and task directories
+  there; `session restore`, which moves them back; and `skill --install`.
+  Unpinning also deletes the job's `order` file, as agent view does. Everything
+  else it changes goes through the `claude` command.

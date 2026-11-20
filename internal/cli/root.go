@@ -159,13 +159,16 @@ same as Ctrl+T in agent view.`,
 		Version:       version.Build(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if verbose, _ := cmd.Flags().GetBool("verbose"); verbose {
 				if err := app.setLogLevel("debug"); err != nil {
 					return err
 				}
 			}
 			app.log().Debug("config", "path", app.ConfigPath)
+			if len(args) == 0 && cmd.Annotations[listsBare] != "" {
+				return nil
+			}
 			app.startReport(cmd)
 			return app.lock(cmd)
 		},

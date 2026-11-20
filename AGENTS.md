@@ -41,6 +41,7 @@ adds what an agent needs on top of them.
 | Reading and copying transcripts                 | `internal/transcripts`                                    |
 | How `session search` matches and ranks          | `internal/transcripts/search.go`                          |
 | Moving files to the system trash                | `internal/trash`, one file per platform                   |
+| Putting them back, and `trashed.json`           | `internal/trash/manifest.go`                              |
 | Agent teams, task lists, and `team ls` rows     | `internal/teams`                                          |
 | MCP servers and profiles                        | `internal/mcp`                                            |
 | Where claudes keeps its own files               | `internal/paths`, one file per platform                   |
