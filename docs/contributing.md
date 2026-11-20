@@ -219,9 +219,10 @@ fails without it, and CI keeps total coverage at 80% or more.
    session.
 5. `internal/compat` parses samples of the real `claude agents --json` and
    `state.json` in its `testdata`. `TestLiveClaude` reads the real ones, and
-   runs only with `CLAUDES_LIVE_CLAUDE` set. The weekly Compatibility workflow
-   sets it through `.github/workflows/hack/compat-live.sh`, which starts a
-   background job and so runs only in CI.
+   runs only in CI with `CLAUDES_LIVE_CLAUDE` set, so a local `go test` never
+   reaches your own Claude Code. The weekly Compatibility workflow sets it
+   through `.github/workflows/hack/compat-live.sh`, which starts a background
+   job and so runs only in CI.
 6. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
    hand in a terminal, on each platform it changes.
 
