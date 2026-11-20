@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.0](https://github.com/uvw/claudes/compare/v0.6.0...v0.7.0) (2026-11-20)
+
+### Features
+
+- **cli:** restore what session gc moved to the trash
+  ([#117](https://github.com/uvw/claudes/issues/117))
+  ([b709a31](https://github.com/uvw/claudes/commit/b709a3159a69ce95f2cbf1d933a683ccdb9b394f))
+
+### Bug fixes
+
+- **cli:** forget a moved session's records when session gc removes it
+  ([#116](https://github.com/uvw/claudes/issues/116))
+  ([712ad1a](https://github.com/uvw/claudes/commit/712ad1a796816185491969b01aecc6fa43920c10))
+- four bugs fuzzing found in search and printed commands, and weekly fuzz tests
+  ([#119](https://github.com/uvw/claudes/issues/119))
+  ([99cdffd](https://github.com/uvw/claudes/commit/99cdffd02692d6f2ec98aa14028c561b82027791))
+
 ## [0.6.0](https://github.com/uvw/claudes/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 ### Features
