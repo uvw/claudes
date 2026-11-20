@@ -22,6 +22,15 @@ func TestPowerShellResumeQuotesEveryKindOfSingleQuote(t *testing.T) {
 	}
 }
 
+func TestPowerShellQuoteKeepsTheStopParsingTokenAnArgument(t *testing.T) {
+	if got := powerShellResume("--%", "--resume", "--%"); got != "Set-Location -LiteralPath ('--%') -ErrorAction Stop; claude --resume ('--%')" {
+		t.Fatalf("command %s", got)
+	}
+	if got := PowerShellQuote("--%x"); got != "'--%x'" {
+		t.Fatalf("quoted %s", got)
+	}
+}
+
 func TestPowerShellResumeQuotesAnOddSessionID(t *testing.T) {
 	if got := powerShellResume("C:\\x", "--resume", "a;b"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 'a;b'" {
 		t.Fatalf("command %s", got)

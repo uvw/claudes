@@ -72,8 +72,13 @@ func Quote(s string) string {
 
 // PowerShellQuote quotes s as a PowerShell single-quoted string. PowerShell
 // reads the curly single quotes as quotes too, so each of them is doubled,
-// like the straight one.
+// like the straight one. It takes '--%' as its stop-parsing token even in
+// quotes, and passes the rest of the line on as it is, so that one is put in
+// parentheses.
 func PowerShellQuote(s string) string {
+	if s == "--%" {
+		return "('--%')"
+	}
 	var b strings.Builder
 	b.WriteByte('\'')
 	for _, r := range s {
