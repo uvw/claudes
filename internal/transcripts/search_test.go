@@ -214,6 +214,15 @@ func TestSearchPattern(t *testing.T) {
 	}
 }
 
+func TestSearchRefusesTermsThatAreNotUTF8(t *testing.T) {
+	s := searchSession(t, "s1", "", time.Hour, prompt("lock"))
+	for _, q := range []Query{{Words: []string{"lock", "\x82"}}, {Ran: "\xff"}, {Touched: "a\xc3"}, {Pattern: "\x82"}} {
+		if _, err := Search([]Session{s}, q); err == nil {
+			t.Errorf("%+v: no error", q)
+		}
+	}
+}
+
 func TestSearchRanksPromptsAboveToolCalls(t *testing.T) {
 	var calls []string
 	for range 50 {
