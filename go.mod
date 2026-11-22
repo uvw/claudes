@@ -3,7 +3,7 @@ module github.com/uvw/claudes
 go 1.27.4
 
 require (
-	charm.land/lipgloss/v2 v2.1.0
+	charm.land/lipgloss/v2 v2.1.1
 	github.com/charmbracelet/colorprofile v0.4.3
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/google/go-cmp v0.7.0
