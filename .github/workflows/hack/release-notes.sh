@@ -119,8 +119,14 @@ gather() {
     git -C "$root" show FETCH_HEAD:docs/changelog.md |
       awk '/^## / { n++ } n == 1' >"$out/in/changelog.txt"
     [[ -s $out/in/changelog.txt ]] || die "no changelog entry in $branch"
-    # The last release is the version the manifest on main names.
+    # The last release is the version the manifest on main names. A repository
+    # without that tag starts from release-please's bootstrap-sha, as the
+    # changelog does.
     last=v$(jq -r '."."' "$root/.github/release-please-manifest.json")
+    if ! gh api "repos/$repo/git/ref/tags/$last" >/dev/null 2>&1; then
+      last=$(jq -r '."bootstrap-sha" // empty' "$root/.github/release-please-config.json")
+      [[ -n $last ]] || die "no release tag on $repo and no bootstrap-sha in release-please-config.json"
+    fi
     numbers=$(gh api "repos/$repo/compare/$last...$(<"$out/sha")" \
       --jq '.commits[].commit.message | split("\n")[0] | capture("\\(#(?<n>[0-9]+)\\)$").n' | sort -un)
     for n in $numbers; do
