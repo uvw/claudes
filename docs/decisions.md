@@ -187,7 +187,7 @@ that started a group of its own. On Windows, where claudes reads the command
 line through `NtQueryInformationProcess`: reading it from the process's memory,
 which needs more access, and asking WMI, which is slow to start. Ctrl-Break
 first and a kill after a grace period is untested against Claude Code, and stays
-open in uvw/claudes#9.
+open in uvw/claudes#2.
 
 ## 16. Resume commands use the platform's shell
 
