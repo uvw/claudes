@@ -569,3 +569,59 @@ func TestSessionGcForgetsTheMovesOfASessionItRemoves(t *testing.T) {
 		t.Fatalf("moves.json after session gc %s:\n%s", id[:8], left)
 	}
 }
+
+func headlessPrompt(text string) string {
+	return fmt.Sprintf(`{"type":"user","entrypoint":"sdk-cli","message":{"content":%q}}`, text)
+}
+
+func TestSessionGcJunkTakesHeadlessAndTrivialSessionsAndPlainGcSaysSo(t *testing.T) {
+	h := newHarness(t)
+	work := h.folder("work")
+	week := 7 * 24 * time.Hour
+	empty := h.sessionOf(t, "empty", work, week)
+	trivialID := h.sessionOf(t, "ping", work, week, prompt("ping"), reply)
+	commit := h.sessionOf(t, "commit", work, week, headlessPrompt("Generate commit message for staged changes."), toolCall, reply)
+	kept := map[string]string{
+		"a headless run that edited a file": h.sessionOf(t, "fixer", work, week, headlessPrompt("fix the test"), editCall),
+		"a headless run with two prompts": h.sessionOf(t, "chat", work, week, headlessPrompt("hi"), reply,
+			headlessPrompt("and?"), reply),
+		"a terminal session with a tool call": h.sessionOf(t, "tool", work, week, prompt("what branch?"), toolCall),
+		"a headless run from today":           h.sessionOf(t, "fresh", work, time.Hour, headlessPrompt("ping"), toolCall),
+	}
+	h.agents.snapshots = [][]claude.Session{{}}
+	trashed := func(id string) bool {
+		return slices.ContainsFunc(h.trashed, func(p string) bool { return strings.Contains(p, id) })
+	}
+
+	h.ok(t, "session", "gc", "--dry-run")
+	assertContains(t, h.out.String(), "Also 1 trivial and 1 headless session(s)")
+	assertContains(t, h.out.String(), "add --junk")
+
+	h.out.Reset()
+	h.ok(t, "session", "gc", "--headless")
+	if !trashed(commit) || trashed(trivialID) || trashed(empty) {
+		t.Fatalf("--headless trashed %q", h.trashed)
+	}
+	if strings.Contains(h.out.String(), "add --junk") {
+		t.Errorf("gc with a kind named still gives the hint:\n%s", h.out)
+	}
+
+	h.ok(t, "session", "gc", "--junk")
+	if !trashed(trivialID) || !trashed(empty) {
+		t.Fatalf("--junk left the trivial or the empty session: %q", h.trashed)
+	}
+	for what, id := range kept {
+		if trashed(id) {
+			t.Errorf("%s was trashed", what)
+		}
+	}
+
+	h.out.Reset()
+	h.ok(t, "session", "gc")
+	if strings.Contains(h.out.String(), "add --junk") {
+		t.Errorf("the hint stays when nothing is left for --junk:\n%s", h.out)
+	}
+	if code := h.run("session", "gc", "--junk", commit[:8]); code == 0 {
+		t.Error("--junk with targets ran")
+	}
+}

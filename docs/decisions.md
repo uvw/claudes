@@ -63,10 +63,12 @@ naming every session to get past the pins.
 ## 6. Safeguards are opt-in
 
 Waiting, confirming, and dry runs are flags, never defaults
-([Common flags](guide.md#common-flags)).
+([Common flags](guide.md#common-flags)). This covers the safeguards on commands
+that change sessions; it does not rule out an interactive interface, such as the
+terminal UI (uvw/claudes#5), which a user opens on purpose.
 
-Why: claudes is an emergency tool, used when Claude Code has to restart now.
-Default prompts and waits slow down the case it exists for.
+Why: claudes is an emergency tool, used when Claude Code has to restart now. A
+safeguard that waits or asks by default slows down the case it exists for.
 
 Weighed: waiting and confirming by default.
 
@@ -332,8 +334,18 @@ directory can be a detached disk, and age says nothing about value, so those
 wait for a flag. So does `--trivial`: a one-prompt answer can be worth keeping,
 though one with no tool call holds only what the model already knew. Which
 one-prompt sessions with tool calls to keep takes reading the prompt, so claudes
-leaves that to the user or their agent (decision 28). A session that changed in
-the last day may be starting, before its transcript says what it is.
+leaves that to the user or their agent (decision 28). `--headless` is the
+exception: a session whose records name only an `sdk-` entry point was run by a
+program, with `claude -p` or the Agent SDK, and its answer went to that program,
+so the transcript is a copy of output already delivered. One that edited a file,
+or got a second prompt, is real work and stays. A session that changed in the
+last day may be starting, before its transcript says what it is.
+
+`--junk` names the kinds that hold nothing to resume, since typing five flags is
+the common case. It leaves out `--gone`, `--older-than`, and `--sidecars`, which
+need the judgment above, so a habit of `--junk` never trashes the sessions of an
+unplugged disk. Without flags, `session gc` says what `--junk` would add rather
+than asking, so the plain command still acts and scripts still run.
 
 `--sidecars` trims instead. A test resumed sessions with each part of the
 sidecar moved away: both kept their context, since the transcript keeps a

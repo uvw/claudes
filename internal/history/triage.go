@@ -29,7 +29,8 @@ type TriageItem struct {
 
 // TriageReport is every past session sorted into remove, review, and keep.
 type TriageReport struct {
-	// Remove is what session gc removes by default, and trivial sessions.
+	// Remove is what session gc --junk removes: what it removes by default,
+	// and trivial and headless sessions.
 	Remove []TriageItem `json:"remove"`
 	// Review is the sessions only someone who reads their prompts can judge.
 	Review []TriageItem `json:"review"`
@@ -47,7 +48,7 @@ func Triage(list []Session, items []Item, keep map[string]string, now time.Time)
 	removed := map[string]bool{}
 	for _, it := range items {
 		t := TriageItem{Ref: Ref{ID: it.ID(), SessionID: it.SessionID, Name: it.Name}, Cwd: it.dir, Size: it.Size, Why: string(it.Why)}
-		if p, ok := byID[it.SessionID]; ok && (it.Why == KindEmpty || it.Why == KindTrivial) {
+		if p, ok := byID[it.SessionID]; ok && (it.Why == KindEmpty || it.Why == KindTrivial || it.Why == KindHeadless) {
 			removed[it.SessionID] = true
 			p.ReadTally(false)
 			t = itemOf(p, string(it.Why))
@@ -119,21 +120,22 @@ func TriageSize(items []TriageItem) int64 {
 }
 
 // gcCommandFor is the session gc command that removes exactly the kinds in
-// items. Without trivial sessions, that is session gc's default.
+// items. Without trivial or headless sessions, that is session gc's default.
 func gcCommandFor(items []TriageItem) string {
 	kinds := map[Kind]bool{}
 	for _, t := range items {
 		kinds[Kind(t.Why)] = true
 	}
 	cmd := "claudes session gc"
-	if !kinds[KindTrivial] {
+	if !kinds[KindTrivial] && !kinds[KindHeadless] {
 		return cmd
 	}
 	for _, k := range []struct {
 		why  Kind
 		flag string
 	}{
-		{KindEmpty, "--empty"}, {KindTrivial, "--trivial"}, {KindCopy, "--copies"}, {KindLeftover, "--leftovers"},
+		{KindEmpty, "--empty"}, {KindTrivial, "--trivial"}, {KindHeadless, "--headless"}, {KindCopy, "--copies"},
+		{KindLeftover, "--leftovers"},
 	} {
 		if kinds[k.why] {
 			cmd += " " + k.flag

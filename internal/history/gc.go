@@ -21,6 +21,7 @@ type Kind string
 const (
 	KindEmpty    Kind = "empty"
 	KindTrivial  Kind = "trivial"
+	KindHeadless Kind = "headless"
 	KindGone     Kind = "gone"
 	KindOld      Kind = "old"
 	KindCopy     Kind = "copy"
@@ -65,7 +66,7 @@ func (g Item) Dir() string { return g.dir }
 
 // Kinds are the kinds of item session gc picks without targets.
 type Kinds struct {
-	Empty, Trivial, Gone, Copies, Leftovers, Sidecars bool
+	Empty, Trivial, Headless, Gone, Copies, Leftovers, Sidecars bool
 	// OlderThan takes sessions last active longer ago than this, or trims
 	// their subagent transcripts with Sidecars; 0 takes none.
 	OlderThan time.Duration
@@ -103,8 +104,8 @@ func Keep(list []Session, listed []claude.Session, parked []string, isHost func(
 
 // Collect finds what session gc removes without targets: the items of kinds
 // in list, except the sessions in keep and anything that changed since Floor
-// before now. With Trivial, it reads the activity of the sessions it weighs
-// into list.
+// before now. With Trivial or Headless, it reads the activity of the sessions
+// it weighs into list.
 func Collect(st transcripts.Store, list []Session, keep map[string]string, kinds Kinds, now time.Time) ([]Item, error) {
 	recent := now.Add(-Floor)
 	var items []Item
@@ -113,7 +114,7 @@ func Collect(st transcripts.Store, list []Session, keep map[string]string, kinds
 		if _, kept := keep[p.SessionID]; kept || p.LastActive.After(recent) {
 			continue
 		}
-		if kinds.Trivial && !p.Empty {
+		if (kinds.Trivial || kinds.Headless) && !p.Empty {
 			p.ReadTally(false)
 		}
 		whole := len(items)
@@ -122,6 +123,8 @@ func Collect(st transcripts.Store, list []Session, keep map[string]string, kinds
 			items = append(items, Whole(st, *p, KindEmpty))
 		case kinds.Trivial && trivial(*p):
 			items = append(items, Whole(st, *p, KindTrivial))
+		case kinds.Headless && headless(*p):
+			items = append(items, Whole(st, *p, KindHeadless))
 		case kinds.Gone && paths.Gone(p.Cwd):
 			items = append(items, Whole(st, *p, KindGone))
 		case kinds.OlderThan > 0 && !kinds.Sidecars && p.LastActive.Before(now.Add(-kinds.OlderThan)):
@@ -199,4 +202,17 @@ func trivial(p Session) bool {
 		return false
 	}
 	return a.Prompts == 1 || a.Prompts == 0 && a.Commands > 0
+}
+
+// headless reports whether p is a one-shot a program ran: claude -p or the
+// Agent SDK, never opened in a terminal, with one prompt and no file changed.
+// Its answer went to the program that asked, so the transcript holds nothing
+// to resume. Tool calls are allowed, such as the git diff a commit message
+// tool runs; edits, a name from /rename, and an agent team are not.
+func headless(p Session) bool {
+	a := p.Activity
+	if a == nil || !a.Complete() || p.Empty || !a.Headless || a.Edits > 0 || a.Teammate || p.NameSource == transcripts.NameCustom || p.Disk.FileHistory > 0 {
+		return false
+	}
+	return a.Prompts == 1
 }

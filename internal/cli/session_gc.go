@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,15 +16,22 @@ import (
 )
 
 type gcFlags struct {
-	olderThan                                         days
-	empty, trivial, gone, copies, leftovers, sidecars bool
+	olderThan                                                   days
+	empty, trivial, headless, gone, copies, leftovers, sidecars bool
+	// junk takes the default kinds, trivial sessions, and headless ones.
+	junk bool
 	planFlags
 	purge bool
 }
 
 func (f gcFlags) kinds() history.Kinds {
-	return history.Kinds{Empty: f.empty, Trivial: f.trivial, Gone: f.gone, Copies: f.copies, Leftovers: f.leftovers,
-		Sidecars: f.sidecars, OlderThan: f.olderThan.d}
+	return history.Kinds{Empty: f.empty, Trivial: f.trivial, Headless: f.headless, Gone: f.gone, Copies: f.copies,
+		Leftovers: f.leftovers, Sidecars: f.sidecars, OlderThan: f.olderThan.d}
+}
+
+// anyKind reports whether a flag names a kind to remove.
+func (f gcFlags) anyKind() bool {
+	return f.empty || f.trivial || f.headless || f.junk || f.gone || f.copies || f.leftovers || f.sidecars || f.olderThan.d > 0
 }
 
 func (app *App) sessionGcCommand() *cobra.Command {
@@ -44,13 +52,20 @@ Without flags or targets, removes:
   copies     older copies session mv left, keeping the newest
   leftovers  subagent and file-history directories whose transcript is gone
 
---empty, --trivial, --gone, --copies, --leftovers, and --older-than pick exactly
-the kinds they name instead. --trivial takes sessions that changed no file and
-made no tool call, and either only ran slash commands or got one prompt, such as
-a quick health check; a session renamed with /rename or started by an agent team
-is never trivial. --gone takes sessions whose directory no longer exists, which
+--empty, --trivial, --headless, --gone, --copies, --leftovers, and --older-than
+pick exactly the kinds they name instead. --trivial takes sessions that changed
+no file and made no tool call, and either only ran slash commands or got one
+prompt, such as a quick health check. --headless takes one-shots a program ran
+with claude -p or the Agent SDK and nobody opened in a terminal, such as a tool
+that writes commit messages: one prompt, any tool calls, and no file changed.
+A session renamed with /rename or started by an agent team is never trivial or
+headless. --gone takes sessions whose directory no longer exists, which
 includes a directory on a disk that is not attached, so read the plan first.
 --older-than takes sessions last active longer ago than that.
+
+--junk takes everything that holds nothing to resume: the kinds above that
+session gc takes without flags, and --trivial and --headless. Without flags,
+session gc says what --junk would add.
 
 --sidecars keeps each session and trims its sidecar directory instead: the big
 command outputs Claude Code saved to tool-results, which the transcript keeps a
@@ -70,6 +85,8 @@ Targets remove exactly those sessions, whatever kind they are.`,
 	}
 	cmd.Flags().BoolVar(&f.empty, "empty", false, "sessions that never got a prompt")
 	cmd.Flags().BoolVar(&f.trivial, "trivial", false, "sessions that only ran slash commands, or got one prompt and made no tool call")
+	cmd.Flags().BoolVar(&f.headless, "headless", false, "one-prompt sessions claude -p or the Agent SDK ran, that changed no file")
+	cmd.Flags().BoolVar(&f.junk, "junk", false, "everything that holds nothing to resume: the default kinds, --trivial, and --headless")
 	cmd.Flags().BoolVar(&f.gone, "gone", false, "sessions whose directory no longer exists")
 	cmd.Flags().BoolVar(&f.copies, "copies", false, "older copies session mv left")
 	cmd.Flags().BoolVar(&f.sidecars, "sidecars", false, "saved command outputs, and with --older-than subagent transcripts, keeping the sessions")
@@ -82,11 +99,16 @@ Targets remove exactly those sessions, whatever kind they are.`,
 }
 
 func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) error {
-	if len(targets) > 0 && (f.empty || f.trivial || f.gone || f.copies || f.leftovers || f.sidecars || f.olderThan.d > 0) {
+	if len(targets) > 0 && f.anyKind() {
 		return errors.New("session gc takes targets or kinds to remove, not both")
 	}
-	if !f.empty && !f.trivial && !f.gone && !f.copies && !f.leftovers && !f.sidecars && f.olderThan.d == 0 {
+	// Without flags, it also counts what --junk would add, to say so.
+	plain := len(targets) == 0 && !f.anyKind()
+	if plain || f.junk {
 		f.empty, f.copies, f.leftovers = true, true, true
+	}
+	if f.junk {
+		f.trivial, f.headless = true, true
 	}
 	list, err := app.pastSessions(ctx)
 	if err != nil {
@@ -117,8 +139,17 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 			return err
 		}
 	}
+	hint := ""
+	if plain {
+		if hint, err = app.junkHint(list, keep); err != nil {
+			return err
+		}
+	}
 	if len(items) == 0 {
 		app.say("Nothing to clean up.")
+		if hint != "" {
+			app.say("%s", hint)
+		}
 		return nil
 	}
 
@@ -134,6 +165,9 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		where = "Deletes them for good."
 	}
 	app.say("\nFrees %s. %s", render.Size(total), where)
+	if hint != "" {
+		app.say("%s", hint)
+	}
 	question := "Move these to the trash?"
 	if f.purge {
 		question = "Delete these for good?"
@@ -142,6 +176,29 @@ func (app *App) sessionGc(ctx context.Context, targets []string, f gcFlags) erro
 		return err
 	}
 	return app.gcRemove(ctx, items, f.purge)
+}
+
+// junkHint is the line plain session gc adds about what --junk would take
+// besides, or "" when that is nothing.
+func (app *App) junkHint(list []history.Session, keep map[string]string) (string, error) {
+	extra, err := history.Collect(app.Transcripts, list, keep, history.Kinds{Trivial: true, Headless: true}, app.Now())
+	if err != nil || len(extra) == 0 {
+		return "", err
+	}
+	count := map[history.Kind]int{}
+	var size int64
+	for _, it := range extra {
+		count[it.Why]++
+		size += it.Size
+	}
+	var parts []string
+	for _, k := range []history.Kind{history.KindTrivial, history.KindHeadless} {
+		if count[k] > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", count[k], k))
+		}
+	}
+	return fmt.Sprintf("Also %s session(s) (%s): add --junk to take them too.",
+		strings.Join(parts, " and "), render.Size(size)), nil
 }
 
 // gcRemove removes items, after checking once more that none of them runs

@@ -31,9 +31,15 @@ type Tally struct {
 	// Teammate is a session an agent team's lead started: its first message
 	// came from the lead, not the user.
 	Teammate bool `json:"teammate"`
+	// Headless is a session a program ran, with claude -p or the Agent SDK,
+	// that nobody ever opened in a terminal: its records name an sdk- entry
+	// point and none names cli.
+	Headless bool `json:"headless"`
 	// unsure is whether a line did not parse or had a type claudes does not
 	// know, either of which could hide a prompt or a tool call.
 	unsure bool
+	// sdk and cli are whether any record named an sdk- or the cli entry point.
+	sdk, cli bool
 }
 
 // Complete reports whether claudes read every line of the transcript and
@@ -51,6 +57,9 @@ type activityRecord struct {
 	// wrote into the main transcript.
 	IsSidechain bool            `json:"isSidechain"`
 	Message     json.RawMessage `json:"message"`
+	// Entrypoint is how the session was started: cli in a terminal, sdk-cli
+	// for claude -p, and sdk-ts or sdk-py for the Agent SDK.
+	Entrypoint string `json:"entrypoint"`
 }
 
 // ReadTally reads the transcript at path in full and counts what happened
@@ -70,6 +79,7 @@ func ReadTally(path string) (Tally, error) {
 			a.take(line, &spoke)
 		}
 		if err == io.EOF {
+			a.Headless = a.sdk && !a.cli
 			return a, nil
 		}
 		if err != nil {
@@ -85,6 +95,12 @@ func (a *Tally) take(line []byte, spoke *bool) {
 	if json.Unmarshal(line, &r) != nil {
 		a.unsure = a.unsure || len(bytes.TrimSpace(line)) > 0
 		return
+	}
+	switch {
+	case r.Entrypoint == "cli":
+		a.cli = true
+	case strings.HasPrefix(r.Entrypoint, "sdk-"):
+		a.sdk = true
 	}
 	if r.IsMeta || r.IsCompactSummary || r.IsSidechain {
 		return

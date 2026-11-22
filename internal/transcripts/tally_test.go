@@ -114,3 +114,28 @@ func TestSummarizeSaysWhereTheNameCameFrom(t *testing.T) {
 		}
 	}
 }
+
+func TestReadTallyTellsHeadlessSessionsByTheirEntryPoint(t *testing.T) {
+	for _, tc := range []struct {
+		what    string
+		entries []string
+		want    bool
+	}{
+		{"claude -p", []string{"sdk-cli"}, true},
+		{"the Agent SDK", []string{"sdk-ts", "sdk-ts"}, true},
+		{"a terminal", []string{"cli"}, false},
+		{"a terminal the Agent SDK drove later", []string{"cli", "sdk-ts"}, false},
+		{"no entry point at all", nil, false},
+	} {
+		var lines []string
+		for _, e := range tc.entries {
+			lines = append(lines, `{"type":"user","entrypoint":"`+e+`","message":{"role":"user","content":"ping"}}`)
+		}
+		if len(lines) == 0 {
+			lines = []string{`{"type":"user","message":{"role":"user","content":"ping"}}`}
+		}
+		if got := activityOf(t, lines).Headless; got != tc.want {
+			t.Errorf("%s: headless %v, want %v", tc.what, got, tc.want)
+		}
+	}
+}

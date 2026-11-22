@@ -178,8 +178,8 @@ heredoc, and never run it through Prettier.
     `TestTablesPutPathsThroughDirCell` or
     `TestTablesPutBranchesThroughBranchCell` fails.
 11. **A transcript record type claudes does not know keeps the session out of
-    `session gc`'s empty and trivial kinds.** When Claude Code adds a type that
-    holds no conversation, add it to `bookkeeping` in
+    `session gc`'s empty, trivial, and headless kinds.** When Claude Code adds a
+    type that holds no conversation, add it to `bookkeeping` in
     `internal/transcripts/transcripts.go`, or such sessions pile up.
 
 ## Maintaining this file
