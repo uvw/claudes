@@ -31,6 +31,11 @@ open_url() {
   say "  $1"
   if command -v open >/dev/null 2>&1; then
     open "$1"
+  elif command -v explorer.exe >/dev/null 2>&1; then
+    # Git Bash and WSL: explorer.exe hands the URL to the default browser, and
+    # unlike cmd's start it takes the & in a query as it is. It exits 1 even
+    # when it worked.
+    explorer.exe "$1" || true
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$1" >/dev/null 2>&1
   fi
