@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.8.0](https://github.com/uvw/claudes/compare/v0.7.0...v0.8.0) (2026-11-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** `claudes ping TARGET MESSAGE` no longer sends MESSAGE. Use `claudes ping TARGET -m MESSAGE`.
+
+### Features
+
+* **cli:** add session gc --headless and --junk, and say what --junk would add ([#9](https://github.com/uvw/claudes/issues/9)) ([e5c3ca2](https://github.com/uvw/claudes/commit/e5c3ca27e32d54c251ea3e55e7b87bc169488d48))
+* **cli:** ping several sessions, with the message in -m ([a1a150a](https://github.com/uvw/claudes/commit/a1a150a9f4c30eb8ca7efa13ed9f6bd4cbac13c0))
+
+
+### Bug fixes
+
+* **deps:** Bump charm.land/lipgloss/v2 from 2.1.0 to 2.1.1 in the gomod group ([5fbc13e](https://github.com/uvw/claudes/commit/5fbc13eb0761981eb0a4b5fa9f27fb39d9da5e67))
+* **hack:** open the token pages on Windows from Git Bash and WSL ([#11](https://github.com/uvw/claudes/issues/11)) ([03a1f42](https://github.com/uvw/claudes/commit/03a1f42db28d6e96b71e31db14e1a985f3d31ee5))
+
 ## 0.7.0 (2026-11-20)
 
 ### Features
