@@ -4,6 +4,7 @@
   "include-v-in-tag": true,
   "include-component-in-tag": false,
   "initial-version": "0.1.0",
+  "bootstrap-sha": "53104698cb5be4b324c8b0535ab1391fe504b4ed",
   "bump-minor-pre-major": true,
   "draft": true,
   "force-tag-creation": true,
