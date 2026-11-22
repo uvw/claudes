@@ -31,6 +31,11 @@ open_url() {
   say "  $1"
   if command -v open >/dev/null 2>&1; then
     open "$1"
+  elif command -v rundll32.exe >/dev/null 2>&1; then
+    # Git Bash and WSL: Windows' URL handler opens the default browser, and no
+    # shell sits between, so the & in a query stays. cmd's start cuts the URL
+    # at the first &, and explorer.exe opens a folder window for a query.
+    rundll32.exe url.dll,FileProtocolHandler "$1"
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$1" >/dev/null 2>&1
   fi
