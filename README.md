@@ -102,6 +102,7 @@ claudes session du --top 10     # disk use by directory, and the 10 biggest
 claudes session triage          # sort sessions into remove, review, and keep
 claudes session gc --dry-run    # empty sessions, old copies, and leftovers
 claudes session gc              # move them to the system trash
+claudes session gc --junk       # also one-prompt and claude -p one-shots
 ```
 
 They go to the trash, not the void, and `claudes session restore ID` puts one

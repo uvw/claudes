@@ -366,14 +366,18 @@ tell the user, and run the `claudes gc` command it prints only when they say so.
 `claudes session gc` removes past sessions. Run it with `--dry-run` first and
 show the user the plan; run it for real only when they say so. A kind flag
 replaces the defaults: `--trivial` takes only trivial sessions, those that only
-ran slash commands or got one prompt and made no tool call. Add
-`--empty --copies --leftovers` to take the default kinds too. `--sidecars` keeps
-the sessions and trims their saved command outputs, and with `--older-than 30d`
-the subagent transcripts of sessions idle that long; say so when you show the
-plan, since those sessions cannot continue an old subagent. It moves what it
-removes to the system trash. Pass `--purge`, which deletes for good, only when
-the user asked for that. `claudes gc --teams` moves the team directories and
-task lists it removes to the trash too, and takes `--purge` the same way.
+ran slash commands or got one prompt and made no tool call, and `--headless`
+only one-shots that `claude -p` or the Agent SDK ran and that changed no file.
+Add `--empty --copies --leftovers` to take the default kinds too, or use
+`--junk`, which takes the default kinds, trivial sessions, and headless ones.
+Without flags, `session gc` ends its plan with what `--junk` would add: mention
+it to the user, and run `--junk` only when they say so. `--sidecars` keeps the
+sessions and trims their saved command outputs, and with `--older-than 30d` the
+subagent transcripts of sessions idle that long; say so when you show the plan,
+since those sessions cannot continue an old subagent. It moves what it removes
+to the system trash. Pass `--purge`, which deletes for good, only when the user
+asked for that. `claudes gc --teams` moves the team directories and task lists
+it removes to the trash too, and takes `--purge` the same way.
 
 `claudes session restore` lists the sessions claudes can put back from the
 trash, and `claudes session restore ID --dry-run` shows the files it would put

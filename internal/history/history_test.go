@@ -137,6 +137,8 @@ func TestCollectPicksEachKind(t *testing.T) {
 	empty.Empty = true
 	trivial := past(t, st, "2", old)
 	trivial.Activity = &transcripts.Tally{Prompts: 1}
+	headless := past(t, st, "a", old)
+	headless.Activity = &transcripts.Tally{Prompts: 1, ToolCalls: 2, Headless: true}
 	gone := past(t, st, "3", old)
 	gone.Cwd = filepath.Join(gone.Cwd, "gone")
 	stale := past(t, st, "4", old)
@@ -155,7 +157,7 @@ func TestCollectPicksEachKind(t *testing.T) {
 	if err := os.Chtimes(leftover, old, old); err != nil {
 		t.Fatal(err)
 	}
-	list := []Session{empty, trivial, gone, stale, recent, kept, copied, sidecar}
+	list := []Session{empty, trivial, gone, stale, recent, kept, copied, sidecar, headless}
 	keep := map[string]string{id("6"): "is parked"}
 
 	for _, tc := range []struct {
@@ -164,8 +166,10 @@ func TestCollectPicksEachKind(t *testing.T) {
 	}{
 		{Kinds{Empty: true}, []string{"empty s1"}},
 		{Kinds{Trivial: true}, []string{"trivial s2"}},
+		{Kinds{Headless: true}, []string{"headless sa"}},
+		{Kinds{Trivial: true, Headless: true}, []string{"trivial s2", "headless sa"}},
 		{Kinds{Gone: true}, []string{"gone s3"}},
-		{Kinds{OlderThan: week}, []string{"old s1", "old s2", "old s3", "old s4", "old s7", "old s8"}},
+		{Kinds{OlderThan: week}, []string{"old s1", "old s2", "old s3", "old s4", "old s7", "old s8", "old sa"}},
 		{Kinds{Copies: true}, []string{"copy s7 (older copy)"}},
 		{Kinds{Sidecars: true}, []string{"sidecar s8 (saved outputs)"}},
 		{Kinds{Leftovers: true}, []string{"leftover sidecar " + id("9")[:8]}},
@@ -217,6 +221,28 @@ func TestTrivialNeedsAWholeTranscriptWithOnePromptAndNoWork(t *testing.T) {
 	} {
 		if got := trivial(tc.p); got != tc.want {
 			t.Errorf("%+v: trivial %v", tc.p.Activity, got)
+		}
+	}
+}
+
+func TestHeadlessNeedsAOneShotThatChangedNothing(t *testing.T) {
+	for _, tc := range []struct {
+		p    Session
+		want bool
+	}{
+		{Session{Activity: &transcripts.Tally{Prompts: 1, Headless: true}}, true},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, ToolCalls: 5, Headless: true}}, true},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, ToolCalls: 1}}, false},
+		{Session{}, false},
+		{Session{Activity: &transcripts.Tally{Prompts: 2, Headless: true}}, false},
+		{Session{Activity: &transcripts.Tally{Commands: 1, Headless: true}}, false},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, Edits: 1, ToolCalls: 1, Headless: true}}, false},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, Headless: true, Teammate: true}}, false},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, Headless: true}, Session: transcripts.Session{NameSource: transcripts.NameCustom}}, false},
+		{Session{Activity: &transcripts.Tally{Prompts: 1, Headless: true}, Disk: transcripts.Disk{FileHistory: 1}}, false},
+	} {
+		if got := headless(tc.p); got != tc.want {
+			t.Errorf("%+v: headless %v", tc.p.Activity, got)
 		}
 	}
 }
@@ -292,6 +318,8 @@ func TestGcCommandForNamesTheKindsOnlyWhenTheDefaultWouldNotDo(t *testing.T) {
 		{[]string{"empty", "copy"}, "claudes session gc"},
 		{[]string{"trivial"}, "claudes session gc --trivial"},
 		{[]string{"leftover", "trivial", "empty"}, "claudes session gc --empty --trivial --leftovers"},
+		{[]string{"headless"}, "claudes session gc --headless"},
+		{[]string{"empty", "headless", "trivial"}, "claudes session gc --empty --trivial --headless"},
 	} {
 		if got := gcCommandFor(items(tc.whys...)); got != tc.want {
 			t.Errorf("%v: got %q, want %q", tc.whys, got, tc.want)

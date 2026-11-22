@@ -26,7 +26,8 @@ func (app *App) sessionTriageCommand() *cobra.Command {
 		Long: `Read every past session and sort it into one of three groups. It changes
 nothing.
 
-  remove  what session gc takes without flags, and trivial sessions
+  remove  what session gc --junk takes: the default kinds, and trivial and
+          headless sessions
   review  one prompt or only slash commands, no file changed, at most ` + strconv.Itoa(history.ReviewToolCalls) + ` tool
           calls, and not named with /rename: whether to keep one takes reading
           its prompts
@@ -75,7 +76,7 @@ func (app *App) triage(ctx context.Context, in string, since time.Duration) (his
 	if list, err = app.filterPast(list, nil, in, since); err != nil {
 		return history.TriageReport{}, err
 	}
-	items, err := history.Collect(app.Transcripts, list, keep, history.Kinds{Empty: true, Trivial: true, Copies: true, Leftovers: !narrowed}, app.Now())
+	items, err := history.Collect(app.Transcripts, list, keep, history.Kinds{Empty: true, Trivial: true, Headless: true, Copies: true, Leftovers: !narrowed}, app.Now())
 	if err != nil {
 		return history.TriageReport{}, err
 	}

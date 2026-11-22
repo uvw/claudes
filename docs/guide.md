@@ -230,16 +230,30 @@ knows Claude Code writes about a session, such as its mode and title. A record
 type claudes does not know, a record with a message, or a line that does not
 parse keeps the session, since Claude Code adds and renames record types.
 
-`--empty`, `--copies`, `--leftovers`, `--trivial`, `--gone` (the session's
-directory no longer exists), and `--older-than 90d` pick exactly those kinds
-instead. A trivial session changed no file and made no tool call, and either
-only ran slash commands, such as `/login`, or got one prompt, such as a quick
-health check. A session named with `/rename`, one an agent team's lead started,
-and one with file history are never trivial. To tell, claudes reads each
-transcript up to 2 MB in full; a bigger one is never trivial, and neither is one
-with a record type claudes does not know or a line that does not parse. Targets
-remove exactly the sessions named. `--dry-run` shows the plan and what it frees,
-and `--confirm` asks y/N before it removes anything.
+`--empty`, `--copies`, `--leftovers`, `--trivial`, `--headless`, `--gone` (the
+session's directory no longer exists), and `--older-than 90d` pick exactly those
+kinds instead. A trivial session changed no file and made no tool call, and
+either only ran slash commands, such as `/login`, or got one prompt, such as a
+quick health check. A headless session is a one-shot a program ran with
+`claude -p` or the Agent SDK, which nobody opened in a terminal: one prompt, any
+tool calls, and no file changed, such as a tool that runs `git diff` to write a
+commit message. Its answer went to the program that asked, so the transcript
+holds nothing to resume. A session named with `/rename`, one an agent team's
+lead started, and one with file history are never trivial or headless. To tell,
+claudes reads each transcript up to 2 MB in full; a bigger one is neither, and
+neither is one with a record type claudes does not know or a line that does not
+parse. Targets remove exactly the sessions named.
+
+`--junk` takes everything that holds nothing to resume: the three default kinds,
+trivial sessions, and headless ones. It leaves out `--gone`, which also matches
+a disk that is only unplugged, `--older-than`, since age says nothing about
+value, and `--sidecars`, which trims rather than removes. Without flags,
+`session gc` ends its plan with what `--junk` would take besides, so
+`session gc --dry-run` is enough to see everything there is to clean up.
+
+A program that runs `claude -p` can leave no session behind at all by passing
+`--no-session-persistence`. `--dry-run` shows the plan and what it frees, and
+`--confirm` asks y/N before it removes anything.
 
 `--sidecars` keeps every session and trims its sidecar directory instead, which
 is often most of a big session (`session du --top 10` shows how much). It takes
@@ -258,9 +272,9 @@ removes paths under `~/.claude` named by the session's id.
 
 `session triage` sorts past sessions into three groups and changes nothing:
 
-1. **Remove:** what `session gc` takes without flags, and trivial sessions. It
-   prints the `session gc` command that removes them, which names each session
-   when `-i` or `-l` narrows the sort.
+1. **Remove:** what `session gc --junk` takes: the default kinds, and trivial
+   and headless sessions. It prints the `session gc` command that removes them,
+   which names each session when `-i` or `-l` narrows the sort.
 2. **Review:** sessions with one prompt, or only slash commands, that changed no
    file and made at most 20 tool calls, and that were neither named with
    `/rename` nor started by an agent team. Whether to keep one takes reading its

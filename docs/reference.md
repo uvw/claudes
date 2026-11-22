@@ -124,8 +124,9 @@ keeps growing over the session's life, so it is not the size of the context.
 name, and `ai` for Claude Code's own title. `disk` has `transcript`, `sidecar`,
 `copies`, `fileHistory`, and `total`. `activity` comes from reading the whole
 transcript, and has `prompts`, `commands` (slash and `!` commands), `toolCalls`,
-`edits`, `firstPrompt`, and `teammate`, which is true when an agent team's lead
-started the session.
+`edits`, `firstPrompt`, `teammate`, which is true when an agent team's lead
+started the session, and `headless`, which is true when a program ran it with
+`claude -p` or the Agent SDK and nobody opened it in a terminal.
 
 #### Disk use
 
