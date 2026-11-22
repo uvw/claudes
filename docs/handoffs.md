@@ -27,41 +27,6 @@ Next, in order:
 3. Ask the owner before any command that changes their live sessions.
 ```
 
-## Windows only
-
-1. **`claudes stop` on an interactive session listed by agent view.**
-   - **What:** `claudes stop` finds an interactive session through
-     `claude agents --json`, then kills its process tree. The tree kill works on
-     a real `claude.exe`, but a session started in a console with no window was
-     never listed, so the lookup has only run in tests.
-   - **Verify:** start `claude -n stop-test` in a Windows Terminal tab and send
-     it one prompt. Run `claudes ls`: it shows `stop-test` as `tty`. Run
-     `claudes stop stop-test`: the tab's session ends, with its shells.
-   - **Added:** 2026-11-14, Windows session.
-
-2. **`claudes session gc` moving to the Recycle Bin.**
-   - **What:** `internal/trash/trash_windows.go` calls `SHFileOperationW` with
-     `FOF_ALLOWUNDO`. CI checks that it takes a file and a directory away, but
-     nobody has checked that the Recycle Bin holds them and puts them back.
-   - **Verify:** in any project directory under
-     `%USERPROFILE%\.claude\projects`, make a scratch directory named by a
-     session id that has no transcript, such as
-     `00000000-0000-0000-0000-000000000000`, with a file inside. Set the times
-     of both back two days. Run `claudes session gc --leftovers --dry-run`: the
-     plan lists it. Run it without `--dry-run`: the directory is gone and the
-     Recycle Bin holds it, and "Restore" puts it back.
-   - **Added:** 2026-11-16, macOS session.
-
-3. **`claudes stop` on an npm-installed Claude Code.**
-   - **What:** `checkClaude` in `internal/procs/procs_windows.go` accepts
-     `node.exe` when its command line runs `@anthropic-ai/claude-code`. CI tests
-     it on a stand-in `node.exe`; no real npm install has been stopped.
-   - **Verify:** install Claude Code with
-     `npm install -g @anthropic-ai/claude-code`, start `claude -n npm-test` in a
-     Windows Terminal tab, and send it one prompt. Run `claudes stop npm-test`:
-     the tab's session ends, with its shells.
-   - **Added:** 2026-11-17, macOS session.
-
 ## Linux only
 
 1. **`claudes session gc` moving to the freedesktop.org trash.**
