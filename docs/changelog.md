@@ -2,11 +2,14 @@
 
 ## [0.8.1](https://github.com/uvw/claudes/compare/v0.8.0...v0.8.1) (2026-11-23)
 
-
 ### Bug fixes
 
-* **claude:** end claude agents with claudes on Windows, as exec does on Unix ([#13](https://github.com/uvw/claudes/issues/13)) ([9b2a87d](https://github.com/uvw/claudes/commit/9b2a87d21d60a486db953370a7da0851e639bc53))
-* **procs:** send Ctrl-Break before killing an interactive session on Windows ([#15](https://github.com/uvw/claudes/issues/15)) ([1e05ce4](https://github.com/uvw/claudes/commit/1e05ce46a26e5152e2abb2878f32dfd56904c210))
+- **claude:** end claude agents with claudes on Windows, as exec does on Unix
+  ([#13](https://github.com/uvw/claudes/issues/13))
+  ([9b2a87d](https://github.com/uvw/claudes/commit/9b2a87d21d60a486db953370a7da0851e639bc53))
+- **procs:** send Ctrl-Break before killing an interactive session on Windows
+  ([#15](https://github.com/uvw/claudes/issues/15))
+  ([1e05ce4](https://github.com/uvw/claudes/commit/1e05ce46a26e5152e2abb2878f32dfd56904c210))
 
 ## 0.8.0 (2026-11-22)
 
