@@ -179,9 +179,11 @@ background instead. `ping` and `pin` take background sessions only.
 `stop` and `--interactive` end an interactive session with SIGTERM, then SIGKILL
 after ten seconds, and then do the same to any process it started that outlived
 it, such as a shell or an MCP server. Windows has no SIGTERM for console
-programs, so there the session and every process it started are killed. A parked
-interactive session stays parked until it is seen running, so `claudes resume`
-prints its command until then; `claudes resume --forget NAME` drops it.
+programs, so there the session gets Ctrl-Break, which lets Claude Code save its
+state, when nothing but the shell that started it shares its console. Whatever
+is left after five seconds is killed. A parked interactive session stays parked
+until it is seen running, so `claudes resume` prints its command until then;
+`claudes resume --forget NAME` drops it.
 
 ## Past sessions
 

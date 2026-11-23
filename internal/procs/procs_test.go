@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	ossignal "os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -18,7 +19,30 @@ import (
 const helperEnv = "CLAUDES_PROCS_HELPER"
 
 func TestMain(m *testing.M) {
+	RunHelper()
 	switch os.Getenv(helperEnv) {
+	case "breakable":
+		// A session that saves its state on Ctrl-Break, which Go reports as
+		// os.Interrupt, then exits.
+		stop := make(chan os.Signal, 1)
+		ossignal.Notify(stop, os.Interrupt)
+		fmt.Println(os.Getpid())
+		select {
+		case <-stop:
+			os.WriteFile(os.Getenv("CLAUDES_PROCS_MARKER"), []byte("stopped"), 0o644)
+		case <-time.After(30 * time.Second):
+		}
+		os.Exit(0)
+	case "launch":
+		// A program that is not a shell, running a session on its console.
+		child := exec.Command(os.Getenv("CLAUDES_PROCS_CHILD"))
+		child.Env = append(os.Environ(), helperEnv+"=breakable")
+		child.Stdout = os.Stdout
+		if err := child.Start(); err != nil {
+			os.Exit(2)
+		}
+		time.Sleep(30 * time.Second)
+		os.Exit(0)
 	case "sleep":
 		time.Sleep(30 * time.Second)
 		os.Exit(0)
