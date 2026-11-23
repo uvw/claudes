@@ -18,7 +18,8 @@ func (app *App) stopCommand() *cobra.Command {
 		Long: `Stop sessions. A background session is stopped with claude stop and its
 conversation is kept: claudes resume brings it back. An interactive session is
 ended, with every process it started: they get SIGTERM, then SIGKILL after ten
-seconds, and on Windows they are killed at once. claude --resume brings it back.`,
+seconds. On Windows they get Ctrl-Break when nothing else shares the session's
+console, then a kill after five seconds. claude --resume brings it back.`,
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: app.completeSessions(runningSession, false),
 		RunE: func(cmd *cobra.Command, args []string) error {

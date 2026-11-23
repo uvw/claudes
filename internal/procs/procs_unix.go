@@ -88,6 +88,10 @@ func Started(pid int) (time.Time, bool) {
 	return started, err == nil && command != ""
 }
 
+// RunHelper does nothing on macOS and Linux, where claudes asks a session to
+// stop with SIGTERM and needs no helper.
+func RunHelper() {}
+
 // Alive reports whether a process with this PID is still running.
 func Alive(pid int) bool {
 	err := syscall.Kill(pid, 0)

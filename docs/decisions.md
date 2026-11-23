@@ -184,12 +184,26 @@ starts, and a background session runs in a spare process started minutes or
 hours ahead. So the check refuses only a process that started after the session,
 and never needs the gap to be small.
 
+On Windows, Ctrl-Break stands in for SIGTERM. Measured against Claude Code
+2.1.330, a session that gets it saves its last prompt and cost state and exits
+within a second, while a kill writes nothing. Windows delivers it to every
+process on the session's console, so claudes sends it only when the console
+holds nothing but the session's own processes and the shell that started it,
+which goes back to its prompt. A `cmd` running a batch file, such as npm's
+`claude.cmd`, would instead ask whether to end the batch job, so that session
+gets the kill. So does the session claudes runs in, since claudes shares its
+console and would take Ctrl-Break for its own Ctrl-C. A helper, claudes started
+again without a console, sends it, since claudes would lose its own output by
+leaving its console. What is left after five seconds is killed.
+
 Weighed: signaling the process group on macOS and Linux, which misses a child
 that started a group of its own. On Windows, where claudes reads the command
 line through `NtQueryInformationProcess`: reading it from the process's memory,
-which needs more access, and asking WMI, which is slow to start. Ctrl-Break
-first and a kill after a grace period is untested against Claude Code, and stays
-open in uvw/claudes#2.
+which needs more access, and asking WMI, which is slow to start. For the
+Ctrl-Break: Ctrl-C, which Claude Code also saves its state on, but which never
+reaches a process started in a new process group or one that turned Ctrl-C off;
+and sending the event to one process group, which reaches only a group's leader,
+while a shell starts claude in the shell's own group.
 
 ## 16. Resume commands use the platform's shell
 
