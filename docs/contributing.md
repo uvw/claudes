@@ -248,8 +248,10 @@ fails without it, and CI keeps total coverage at 80% or more.
    `.github/workflows/hack/fuzz.sh`. When one fails, it uploads the failing
    inputs and opens an issue labeled `fuzz`.
 
-7. Untested on purpose: the interactive handoff in `claude.Exec`. Check it by
-   hand in a terminal, on each platform it changes.
+7. Untested on purpose: the terminal `claude.Exec` hands over. Check it by hand
+   in a terminal, on each platform it changes. On Windows, where claudes waits
+   for the child instead of becoming it, a test checks that the child ends with
+   claudes while what the child started does not.
 
 ## Pull requests
 

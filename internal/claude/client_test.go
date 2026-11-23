@@ -35,6 +35,22 @@ func TestMain(m *testing.M) {
 	case "child":
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
+	case "exec":
+		// Exec stands in for claudes handing the console to claude agents.
+		os.Setenv(helperEnv, "exec-child")
+		fmt.Fprintln(os.Stderr, Exec(os.Args[0]))
+		os.Exit(2)
+	case "exec-child":
+		// The child starts a process of its own, as claude agents starts the
+		// background service, then waits.
+		grand := exec.Command(os.Args[0])
+		grand.Env = append(os.Environ(), helperEnv+"=child")
+		if err := grand.Start(); err != nil {
+			os.Exit(2)
+		}
+		fmt.Println(os.Getpid(), grand.Process.Pid)
+		time.Sleep(30 * time.Second)
+		os.Exit(0)
 	case "env":
 		fmt.Printf("CLAUDECODE=%s JOB=%s PATH-set=%v", os.Getenv("CLAUDECODE"), os.Getenv("CLAUDE_JOB_DIR"), os.Getenv("PATH") != "")
 		os.Exit(0)
