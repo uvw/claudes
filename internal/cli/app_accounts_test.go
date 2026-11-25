@@ -267,6 +267,10 @@ func TestTheHostGoesLastAcrossAccounts(t *testing.T) {
 func TestSessionResumeRunsUnderClaudesOwnAccountOrTheNamedOne(t *testing.T) {
 	h := newHarness(t)
 	acct, _ := h.account("work")
+	// Windows makes a file link to a target that does not exist yet.
+	if err := os.MkdirAll(h.app.Transcripts.Dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Symlink(h.app.Transcripts.Dir, filepath.Join(acct.Dir, "projects")); err != nil {
 		t.Skip("cannot make a link:", err)
 	}
@@ -288,6 +292,10 @@ func TestSessionResumeRunsUnderClaudesOwnAccountOrTheNamedOne(t *testing.T) {
 func TestSessionLsListsASharedProjectsDirectoryOnce(t *testing.T) {
 	h := newHarness(t)
 	acct, _ := h.account("work")
+	// Windows makes a file link to a target that does not exist yet.
+	if err := os.MkdirAll(h.app.Transcripts.Dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Symlink(h.app.Transcripts.Dir, filepath.Join(acct.Dir, "projects")); err != nil {
 		t.Skip("cannot make a link:", err)
 	}
