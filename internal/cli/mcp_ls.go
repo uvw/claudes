@@ -52,15 +52,34 @@ keeps on only the servers it lists. It changes nothing.`,
 					return err
 				}
 			}
-			servers, problems := app.MCP.Servers(dir)
-			for _, err := range problems {
-				app.warn("claudes: cannot read every MCP setting: %v", err)
+			// Each account keeps its own MCP settings, so each gets a listing.
+			var lists []mcp.Listing
+			for _, a := range app.selected() {
+				servers, problems := a.MCP.Servers(dir)
+				for _, err := range problems {
+					app.warn("claudes: cannot read every MCP setting: %v", err)
+				}
+				list := mcp.NewListing(dir, profile, servers, profiles)
+				if app.multi() {
+					list.Account = app.accountLabel(a)
+				}
+				lists = append(lists, list)
 			}
-			list := mcp.NewListing(dir, profile, servers, profiles)
 			if out != render.Text {
-				return out.Encode(app.Out, list)
+				if !app.multi() {
+					return out.Encode(app.Out, lists[0])
+				}
+				return out.Encode(app.Out, lists)
 			}
-			return app.printMCP(list)
+			for i, list := range lists {
+				if i > 0 {
+					fmt.Fprintln(app.Out)
+				}
+				if err := app.printMCP(list); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&in, "in", "i", "", "list the servers of this directory, rather than the current one")
@@ -79,6 +98,9 @@ func (app *App) printMCP(list mcp.Listing) error {
 		before, after = "No MCP servers in ", "."
 	case list.Profile != "":
 		after = ", and under profile " + list.Profile + ":"
+	}
+	if list.Account != "" {
+		after = ", under account " + shell.Printable(list.Account) + after
 	}
 	fmt.Fprintln(app.Out, before+app.dirIn(list.Dir, render.Width(before+after))+after)
 	if len(list.Servers) == 0 {

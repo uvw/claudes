@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/selection"
@@ -14,10 +15,17 @@ import (
 )
 
 // resumable is a session resume can bring back: a parked entry, or a stopped
-// session named as a target.
+// session named as a target. dir is how claude reaches its account.
 type resumable struct {
 	park.Entry
 	parked bool
+	dir    claude.ConfigDir
+}
+
+// ManualCommand is the shell command that brings the session back by hand,
+// under its own account.
+func (r resumable) ManualCommand() string {
+	return r.dir.ResumeCommand(r.SessionID, r.Cwd, r.Interactive())
 }
 
 func (app *App) resumeCommand() *cobra.Command {
@@ -59,7 +67,7 @@ func (app *App) forget(targets []string, dryRun bool) error {
 		if err != nil {
 			return err
 		}
-		picked, err := target.Resolve(targets, entries)
+		picked, err := target.Resolve(targets, slices.DeleteFunc(entries, func(e park.Entry) bool { return !app.parkedSelected(e) }))
 		if err != nil {
 			return err
 		}
@@ -73,7 +81,8 @@ func (app *App) forget(targets []string, dryRun bool) error {
 	var dropped []park.Entry
 	var resolveErr error
 	err := app.Park.Update(func(entries []park.Entry) []park.Entry {
-		if dropped, resolveErr = target.Resolve(targets, entries); resolveErr != nil {
+		mine := slices.DeleteFunc(slices.Clone(entries), func(e park.Entry) bool { return !app.parkedSelected(e) })
+		if dropped, resolveErr = target.Resolve(targets, mine); resolveErr != nil {
 			return entries
 		}
 		return slices.DeleteFunc(entries, func(e park.Entry) bool {
@@ -103,11 +112,13 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 	if err != nil {
 		return err
 	}
-	if len(targets) == 0 && len(entries) == 0 {
+	if len(targets) == 0 && !slices.ContainsFunc(entries, app.parkedSelected) {
 		app.say("Nothing is parked.")
 		return nil
 	}
-	listed, err := app.listed(ctx, true)
+	// A session that runs under any account counts as running, since
+	// resuming it would start a copy.
+	listed, err := app.listedIn(ctx, app.Accounts, true)
 	if err != nil {
 		return err
 	}
@@ -121,15 +132,18 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 	candidates := make([]resumable, 0, len(entries))
 	parkedIDs := map[string]bool{}
 	for _, e := range entries {
-		candidates = append(candidates, resumable{Entry: e, parked: true})
+		if !app.parkedSelected(e) {
+			continue
+		}
+		candidates = append(candidates, resumable{Entry: e, parked: true, dir: app.parkedConfigDir(e)})
 		parkedIDs[e.SessionID] = true
 	}
 	picked := candidates
 	if len(targets) > 0 {
 		for _, s := range listed {
-			if !parkedIDs[s.SessionID] {
-				e := park.FromSession(s, true, "")
-				candidates = append(candidates, resumable{Entry: e})
+			if !parkedIDs[s.SessionID] && slices.Contains(app.selected(), app.accountOf(s)) {
+				e := app.parkEntry(s, true, "")
+				candidates = append(candidates, resumable{Entry: e, dir: s.ConfigDir})
 			}
 		}
 		if picked, err = target.Resolve(targets, candidates); err != nil {
@@ -176,6 +190,9 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			case promptFor(r) != "":
 				note = "will be pinged"
 			}
+			if app.multi() {
+				note = render.JoinNotes(note, "account "+app.accountAt(r.dir).Name)
+			}
 			rows = append(rows, render.PlanRow{ID: r.ShortID(), Name: r.Label(), Label: label, Cwd: r.Cwd, Note: note})
 		}
 		app.printPlan("Resuming", rows)
@@ -216,7 +233,7 @@ func (app *App) resume(ctx context.Context, targets []string, f *lifecycleFlags)
 			continue
 		}
 		prompt := promptFor(r)
-		err := app.resumeSession(hand, r.SessionID, r.Cwd, prompt)
+		err := app.resumeSession(hand, r.dir, r.SessionID, r.Cwd, prompt)
 		switch {
 		case errors.Is(err, errNotYetRunning):
 			// Kept parked, so a second claudes resume finds it if it never

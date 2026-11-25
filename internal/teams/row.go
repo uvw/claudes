@@ -19,6 +19,9 @@ type Row struct {
 	Running   bool     `json:"running"`
 	Teammates []string `json:"teammates"`
 	Tasks     []Task   `json:"tasks"`
+	// Account names the account whose directory holds the team, when claudes
+	// manages more than one.
+	Account string `json:"account,omitempty"`
 }
 
 // RowOf is team t joined with lead, the session that leads it. known is

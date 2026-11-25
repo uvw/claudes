@@ -50,7 +50,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 		if app.host().Is(s) {
 			note = "this session: paused last"
 		}
-		note = render.JoinNotes(note, app.teamNote(s))
+		note = render.JoinNotes(note, app.teamNote(s), app.accountNote(s))
 		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Pausing", rows)
@@ -64,7 +64,7 @@ func (app *App) pause(ctx context.Context, targets []string, f *lifecycleFlags) 
 	stamp := app.Now().UTC().Format(time.RFC3339)
 	added := make([]park.Entry, 0, len(sel.Chosen))
 	for _, s := range sel.Chosen {
-		added = append(added, park.FromSession(s, app.midTurn(s), stamp))
+		added = append(added, app.parkEntry(s, app.midTurn(s), stamp))
 	}
 	// The list goes to disk before anything stops, so a crash cannot lose it.
 	if err := app.Park.Update(func(existing []park.Entry) []park.Entry { return park.Merge(existing, added) }); err != nil {

@@ -204,7 +204,7 @@ func (app *App) junkHint(list []history.Session, keep map[string]string) (string
 // gcRemove removes items, after checking once more that none of them runs
 // and that none changed since the plan.
 func (app *App) gcRemove(ctx context.Context, items []history.Item, purge bool) error {
-	running, err := app.Agents.Sessions(ctx, false)
+	running, err := app.listIn(ctx, app.Accounts, false)
 	if err != nil {
 		return refusal(fmt.Errorf("cannot tell which sessions are running, so session gc removes nothing: %w", err))
 	}

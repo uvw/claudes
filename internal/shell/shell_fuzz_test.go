@@ -64,8 +64,8 @@ func addSeeds(f *testing.F) {
 
 // FuzzPOSIXCommands checks that every word claudes quotes for a POSIX shell
 // reaches a real one unchanged: a word alone, and the cd, claude, and rm
-// commands, as they are built and as ResumeCommand and RemoveCommand print
-// them.
+// commands, as they are built and as ResumeCommand, ResumeCommandIn, and
+// RemoveCommand print them.
 func FuzzPOSIXCommands(f *testing.F) {
 	shells := posixShells()
 	if len(shells) == 0 {
@@ -78,15 +78,27 @@ func FuzzPOSIXCommands(f *testing.F) {
 		var script strings.Builder
 		script.WriteString(`args() { printf '%s\0' args "$#" "$@"; }
 cd() { printf '%s\0' cd "$#" "$@"; }
-claude() { printf '%s\0' claude "$#" "$@"; }
+claude() {
+  if [ -n "${CLAUDE_CONFIG_DIR+x}" ]; then printf '%s\0' config 1 "$CLAUDE_CONFIG_DIR"; fi
+  printf '%s\0' claude "$#" "$@"
+}
+env() { printf '%s\0' env "$#" "$@"; }
 rm() { printf '%s\0' rm "$#" "$@"; }
 args ` + joinQuoted(words, Quote, " ") + "\n")
 		want := [][]string{append([]string{"args"}, words...)}
 		for i, w := range words {
 			id := words[(i+1)%len(words)]
-			script.WriteString(posixResume(w, "--bg --resume", id) + "\n" + ResumeCommand(id, w, true) + "\n")
+			script.WriteString(posixResume(w, "claude --bg --resume", id) + "\n" + ResumeCommand(id, w, true) + "\n")
 			want = append(want, []string{"cd", w}, []string{"claude", "--bg", "--resume", id},
 				[]string{"cd", Printable(w)}, []string{"claude", "--resume", Printable(id)})
+			// A shell may keep a variable set for a function after it returns.
+			script.WriteString(ResumeCommandIn(w, id, w, false) + "\nunset CLAUDE_CONFIG_DIR\n")
+			want = append(want, []string{"cd", Printable(w)})
+			if Printable(w) == "" {
+				want = append(want, []string{"env", "-u", "CLAUDE_CONFIG_DIR", "claude", "--bg", "--resume", Printable(id)})
+			} else {
+				want = append(want, []string{"config", Printable(w)}, []string{"claude", "--bg", "--resume", Printable(id)})
+			}
 		}
 		script.WriteString(posixRemove(words) + "\n" + RemoveCommand(words) + "\n")
 		want = append(want, append([]string{"rm", "-r"}, words...), []string{"rm", "-r"})
@@ -171,8 +183,19 @@ func FuzzPowerShellCommands(f *testing.F) {
 		for i, w := range words[:min(len(words), 4)] {
 			id := ids[i%len(ids)]
 			flags := [][]string{{"--resume"}, {"--bg", "--resume"}}[i%2]
-			script.WriteString(powerShellResume(Printable(w), strings.Join(flags, " "), Printable(id)) + "\n")
+			script.WriteString(powerShellResume(Printable(w), "claude "+strings.Join(flags, " "), Printable(id)) + "\n")
 			want = append(want, call("Set-Location", []string{Printable(w)}), call("claude", append(flags, Printable(id))))
+			// The command sets the variable for the rest of the session, so
+			// the script removes it again.
+			if i < 2 {
+				dir := []string{Printable(w), ""}[i]
+				script.WriteString(powerShellResume(Printable(w), powerShellConfig(dir)+"claude --resume", Printable(id)) + "; $env:CLAUDE_CONFIG_DIR = $null\n")
+				want = append(want, call("Set-Location", []string{Printable(w)}))
+				if dir != "" {
+					want = append(want, call("config", []string{dir}))
+				}
+				want = append(want, call("claude", []string{"--resume", Printable(id)}))
+			}
 		}
 		script.WriteString(powerShellRemove(words) + "\n")
 		want = append(want, call("Remove-Item", append([]string{"True"}, words...)))

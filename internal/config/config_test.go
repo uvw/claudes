@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -273,6 +274,57 @@ func TestMCPProfilesRefuseWhatIsNotANameList(t *testing.T) {
 		"mcp:\n  profiles:\n    \"-dash\": [a]\n":     "not a profile name",
 		"mcp:\n  profiles: [a]\n":                     "cannot construct",
 		"mcp:\n  profile:\n    safe: [a]\n":           "field profile not found",
+	} {
+		if _, err := Load(write(t, data)); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: err %v, want %q", data, err, want)
+		}
+	}
+}
+
+func TestAccounts(t *testing.T) {
+	lab := filepath.Join(t.TempDir(), "claude")
+	path := write(t, "accounts:\n  cswap: false\n  dirs:\n    work: ~/claude-work\n    lab: '"+lab+"'\n")
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.Accounts.Cswap.Off() {
+		t.Errorf("cswap %+v", c.Accounts.Cswap)
+	}
+	want := map[string]string{"work": filepath.Join("/home/me", "claude-work"), "lab": lab}
+	if diff := cmp.Diff(want, c.AccountDirs("/home/me")); diff != "" {
+		t.Errorf("dirs (-want +got):\n%s", diff)
+	}
+	if v, _ := Get(c, "accounts.dirs"); v != `{"lab":`+strconv.Quote(lab)+`,"work":"~/claude-work"}` {
+		t.Errorf("get dirs: %s", v)
+	}
+	if err := Set(path, "accounts.cswap", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if c, err = Load(path); err != nil || c.Accounts.Cswap.Off() || !c.Accounts.Cswap.Set {
+		t.Fatalf("after set: %+v, %v", c.Accounts, err)
+	}
+	if v, _ := Get(c, "accounts.cswap"); v != "true" {
+		t.Errorf("get cswap: %q", v)
+	}
+	if v, _ := Get(Config{}, "accounts.cswap"); v != "" {
+		t.Errorf("get unset cswap: %q", v)
+	}
+	if err := Set(path, "accounts.dirs", "x"); err == nil || !strings.Contains(err.Error(), "config edit") {
+		t.Fatalf("set dirs: %v", err)
+	}
+}
+
+func TestAccountsRefuseWhatClaudesCannotUse(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "x")
+	for data, want := range map[string]string{
+		"accounts:\n  cswap: maybe\n":                                                                   "not true or false",
+		"accounts:\n  dirs:\n    work: claude-work\n":                                                   "not an absolute path",
+		"accounts:\n  dirs:\n    \"two words\": /a\n":                                                   "not an account name",
+		"accounts:\n  dirs:\n    \"2\": /a\n":                                                           "cswap account number",
+		"accounts:\n  dirs:\n    a: '" + dir + "'\n    b: '" + dir + string(filepath.Separator) + "'\n": "a and b name the same directory",
+		"accounts:\n  dir:\n    a: /x\n":                                                                "field dir not found",
+		"accounts:\n  dirs: [/x]\n":                                                                     "cannot construct",
 	} {
 		if _, err := Load(write(t, data)); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%q: err %v, want %q", data, err, want)

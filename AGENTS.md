@@ -23,6 +23,9 @@ adds what an agent needs on top of them.
 | Listing sessions, past sessions, and team leads | `internal/cli/app_sessions.go`                            |
 | Which sessions a bulk command picks             | `internal/selection`, `internal/cli/app_selection.go`     |
 | The session running claudes                     | `internal/selection/host.go`                              |
+| Accounts, `--account`, and per-account stores   | `internal/accounts`, `internal/cli/app_accounts.go`       |
+| cswap's accounts and profiles                   | `internal/cswap`                                          |
+| The `CLAUDE_CONFIG_DIR` each `claude` call gets | `internal/claude/configdir.go`                            |
 | Stopping, parking, and relaunching              | `internal/cli/app_relaunch.go`                            |
 | Handing the terminal to `claude`                | `internal/cli/app_handoff.go`                             |
 | The compatibility gate and installed version    | `internal/cli/app_compat.go`, `internal/compat`           |
@@ -177,7 +180,14 @@ heredoc, and never run it through Prettier.
     path or branch that skips them wraps every row, and
     `TestTablesPutPathsThroughDirCell` or
     `TestTablesPutBranchesThroughBranchCell` fails.
-11. **A transcript record type claudes does not know keeps the session out of
+11. **Every `claude` call for a session passes its `ConfigDir`, and `~/.claude`
+    is reached with `CLAUDE_CONFIG_DIR` unset.** A call without it reaches the
+    account claudes runs as, so it misses the session or acts on another
+    account's job. Claude Code names its keychain entry after the variable's
+    exact value, so setting it to `~/.claude` spelled out logs the call out. The
+    fake in `harness_test.go` gives each account of `h.account` its own fake,
+    which knows no job of another.
+12. **A transcript record type claudes does not know keeps the session out of
     `session gc`'s empty, trivial, and headless kinds.** When Claude Code adds a
     type that holds no conversation, add it to `bookkeeping` in
     `internal/transcripts/transcripts.go`, or such sessions pile up.

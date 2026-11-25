@@ -6,16 +6,16 @@ import (
 )
 
 func TestPOSIXResumeQuotesTheFolder(t *testing.T) {
-	if got := posixResume("/a b/it's", "--bg --resume", "sid"); got != `cd '/a b/it'\''s' && claude --bg --resume sid` {
+	if got := posixResume("/a b/it's", "claude --bg --resume", "sid"); got != `cd '/a b/it'\''s' && claude --bg --resume sid` {
 		t.Fatalf("command %q", got)
 	}
-	if got := posixResume("/plain/path", "--resume", "sid"); got != "cd /plain/path && claude --resume sid" {
+	if got := posixResume("/plain/path", "claude --resume", "sid"); got != "cd /plain/path && claude --resume sid" {
 		t.Fatalf("command %q", got)
 	}
 }
 
 func TestPowerShellResumeQuotesEveryKindOfSingleQuote(t *testing.T) {
-	got := powerShellResume("C:\\it's\u2019; echo x; \u2018", "--resume", "sid")
+	got := powerShellResume("C:\\it's\u2019; echo x; \u2018", "claude --resume", "sid")
 	want := "Set-Location -LiteralPath 'C:\\it''s\u2019\u2019; echo x; \u2018\u2018' -ErrorAction Stop; claude --resume sid"
 	if got != want {
 		t.Fatalf("command\n got: %s\nwant: %s", got, want)
@@ -23,7 +23,7 @@ func TestPowerShellResumeQuotesEveryKindOfSingleQuote(t *testing.T) {
 }
 
 func TestPowerShellQuoteKeepsTheStopParsingTokenAnArgument(t *testing.T) {
-	if got := powerShellResume("--%", "--resume", "--%"); got != "Set-Location -LiteralPath ('--%') -ErrorAction Stop; claude --resume ('--%')" {
+	if got := powerShellResume("--%", "claude --resume", "--%"); got != "Set-Location -LiteralPath ('--%') -ErrorAction Stop; claude --resume ('--%')" {
 		t.Fatalf("command %s", got)
 	}
 	if got := PowerShellQuote("--%x"); got != "'--%x'" {
@@ -32,27 +32,45 @@ func TestPowerShellQuoteKeepsTheStopParsingTokenAnArgument(t *testing.T) {
 }
 
 func TestPowerShellResumeQuotesAnOddSessionID(t *testing.T) {
-	if got := powerShellResume("C:\\x", "--resume", "a;b"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 'a;b'" {
+	if got := powerShellResume("C:\\x", "claude --resume", "a;b"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 'a;b'" {
 		t.Fatalf("command %s", got)
 	}
-	if got := powerShellResume("C:\\x", "--resume", "16cf5295-0000"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 16cf5295-0000" {
+	if got := powerShellResume("C:\\x", "claude --resume", "16cf5295-0000"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; claude --resume 16cf5295-0000" {
 		t.Fatalf("a plain id was quoted: %s", got)
 	}
 }
 
 func TestResumeCommandResumesInTheBackgroundOnlyForBackgroundSessions(t *testing.T) {
-	if got := ResumeCommand("sid", "/x", false); got != resumeCommand("/x", "--bg --resume", "sid") {
+	if got := ResumeCommand("sid", "/x", false); got != resumeCommand("/x", "claude --bg --resume", "sid") {
 		t.Fatalf("background command %q", got)
 	}
-	if got := ResumeCommand("sid", "/x", true); got != resumeCommand("/x", "--resume", "sid") {
+	if got := ResumeCommand("sid", "/x", true); got != resumeCommand("/x", "claude --resume", "sid") {
 		t.Fatalf("interactive command %q", got)
+	}
+}
+
+func TestResumeCommandInSetsOrUnsetsTheConfigDir(t *testing.T) {
+	if got := posixResume("/x", posixConfig("/p q")+"claude --resume", "sid"); got != "cd /x && CLAUDE_CONFIG_DIR='/p q' claude --resume sid" {
+		t.Fatalf("POSIX command %q", got)
+	}
+	if got := posixResume("/x", posixConfig("")+"claude --resume", "sid"); got != "cd /x && env -u CLAUDE_CONFIG_DIR claude --resume sid" {
+		t.Fatalf("POSIX command %q", got)
+	}
+	if got := powerShellResume("C:\\x", powerShellConfig("C:\\p")+"claude --resume", "sid"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; $env:CLAUDE_CONFIG_DIR = 'C:\\p'; claude --resume sid" {
+		t.Fatalf("PowerShell command %q", got)
+	}
+	if got := powerShellResume("C:\\x", powerShellConfig("")+"claude --resume", "sid"); got != "Set-Location -LiteralPath 'C:\\x' -ErrorAction Stop; $env:CLAUDE_CONFIG_DIR = $null; claude --resume sid" {
+		t.Fatalf("PowerShell command %q", got)
+	}
+	if got, want := ResumeCommandIn("/p\x1b", "sid", "/x", false), resumeCommand("/x", configPrefix("/p")+"claude --bg --resume", "sid"); got != want {
+		t.Fatalf("command %q, want %q", got, want)
 	}
 }
 
 // A control character dropped from a value must not leave the quoting of
 // the text before it: --\x01% prints as --%, PowerShell's stop-parsing token.
 func TestCommandsQuoteTheTextTheyPrint(t *testing.T) {
-	if got, want := ResumeCommand("s\x1bid", "--\x01%", true), resumeCommand("--%", "--resume", "sid"); got != want {
+	if got, want := ResumeCommand("s\x1bid", "--\x01%", true), resumeCommand("--%", "claude --resume", "sid"); got != want {
 		t.Fatalf("resume %q, want %q", got, want)
 	}
 	if got, want := RemoveCommand([]string{"--\x01%", "/a\nb"}), removeCommand([]string{"--%", "/a b"}); got != want {

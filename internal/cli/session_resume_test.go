@@ -55,7 +55,7 @@ func TestSessionResumeBgRefusesAJobThatWouldWakeInTheOldFolder(t *testing.T) {
 	id := h.transcript(t, "plan", from, time.Hour)
 	h.ok(t, "session", "mv", "plan", to)
 	job := claude.ShortID(id)
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, job, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, id, from))
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, job, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, id, from))
 
 	h.fails(t, "session", "resume", "--bg", "plan")
 	assertContains(t, h.err.String(), "would wake it there")
@@ -69,7 +69,7 @@ func TestSessionResumeBgNamesASessionThatHasNoJob(t *testing.T) {
 	h.ok(t, "session", "resume", "--bg", "plan")
 	assertCalls(t, h, "resume "+id+" in work prompt= name=plan")
 
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, claude.ShortID(id), "state.json"), fmt.Sprintf(`{"sessionId":%q}`, id))
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, claude.ShortID(id), "state.json"), fmt.Sprintf(`{"sessionId":%q}`, id))
 	h.agents.calls = nil
 	h.agents.resumed = nil
 	h.ok(t, "session", "resume", "--bg", "plan")

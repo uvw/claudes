@@ -49,10 +49,10 @@ func deepHarness(t *testing.T) (h *harness, deep, short string) {
 	h.transcriptAs(t, b.SessionID, "deep-b", deep, 2*time.Hour)
 	h.said(t, "zebra", deep, 48*time.Hour, typed("please feed the zebra, then water every plant in the greenhouse twice"))
 	h.sessionOf(t, "ping", deep, 7*24*time.Hour, prompt("ping"), reply)
-	h.app.Teams.Teams = filepath.Join(deep, "teams")
+	h.app.Accounts[0].Teams.Teams = filepath.Join(deep, "teams")
 	h.team(t, a, "writer")
 	old := h.now.Add(-30 * 24 * time.Hour)
-	leftover := filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa", "config.json")
+	leftover := filepath.Join(h.app.Accounts[0].Teams.Teams, "session-aaaaaaaa", "config.json")
 	writeFile(t, leftover, "{}")
 	if err := os.Chtimes(leftover, old, old); err != nil {
 		t.Fatal(err)

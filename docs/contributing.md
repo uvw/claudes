@@ -27,6 +27,7 @@
    | `.mcp.json` files                                                                                                      | `internal/mcp`         |
    | `~/.claude/plugins/installed_plugins.json`, and each plugin's `.mcp.json`, `.claude-plugin/plugin.json`, and MCP files | `internal/mcp`         |
    | `managed-mcp.json`                                                                                                     | `internal/mcp`         |
+   | cswap's `sequence.json` and the profile directories under its `sessions`, read only                                    | `internal/cswap`       |
    | `moves.json`, in claudes' state directory                                                                              | `internal/transcripts` |
    | `trashed.json`, in claudes' state directory, and the system trash                                                      | `internal/trash`       |
    | `run.lock`, in claudes' state directory                                                                                | `internal/files`       |
@@ -37,7 +38,9 @@
    | The installed agent skill                                                                                              | `internal/cli`         |
 
    Nothing in claudes writes `~/.claude.json`, the settings files, `.mcp.json`
-   files, plugin files, or `managed-mcp.json`.
+   files, plugin files, `managed-mcp.json`, or cswap's files. Each account's
+   Claude Code directory holds the same files as `~/.claude`, with the same
+   owners.
 
 4. Side effects the tests replace (the clock, sleeping, Ctrl-C, stopping a
    process, exec, and the environment) are fields on `cli.App`, and only

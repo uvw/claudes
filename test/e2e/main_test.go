@@ -210,7 +210,7 @@ func (w *world) start() {
 	}
 	w.started = true
 	data, err := json.MarshalIndent(fake.State{
-		Version: w.installed, AgentsExit: w.agentsExit, Fail: w.failures, Sessions: w.sessions,
+		Version: w.installed, AgentsExit: w.agentsExit, Fail: w.failures, Sessions: w.sessions, ConfigDir: w.claudeDir,
 	}, "", "  ")
 	if err != nil {
 		w.t.Fatal(err)

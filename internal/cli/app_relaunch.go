@@ -59,7 +59,7 @@ func (app *App) stopSession(ctx context.Context, s claude.Session) error {
 		return errors.New("claude agents gave no job id for this session")
 	}
 	started, _ := app.Started(s.PID)
-	if err := app.Agents.Stop(ctx, s.JobID); err != nil {
+	if err := app.Agents.Stop(ctx, s.ConfigDir, s.JobID); err != nil {
 		return err
 	}
 	// claude stop returns while the process still runs, and a resume before
@@ -133,16 +133,16 @@ func (app *App) lastWords(host claude.Session, verb string) {
 // resumeIndent lines up the notes claude prints under a progress line.
 const resumeIndent = "             "
 
-func (app *App) resumeSession(ctx context.Context, sessionID, cwd, prompt string) error {
-	return app.resumeAs(ctx, sessionID, cwd, prompt, claude.NewJob{})
+func (app *App) resumeSession(ctx context.Context, dir claude.ConfigDir, sessionID, cwd, prompt string) error {
+	return app.resumeAs(ctx, dir, sessionID, cwd, prompt, claude.NewJob{})
 }
 
-// resumeAs resumes a session with claude --bg --resume and waits for it to show
-// as running. For a session with no background job, job gives the new job's
-// name and options; resumeSession passes none, and Claude Code wakes a job
-// with the options it started with.
-func (app *App) resumeAs(ctx context.Context, sessionID, cwd, prompt string, job claude.NewJob) error {
-	out, err := app.Agents.Resume(ctx, sessionID, cwd, prompt, job)
+// resumeAs resumes a session with claude --bg --resume under the account dir
+// reaches, and waits for it to show as running. For a session with no
+// background job, job gives the new job's name and options; resumeSession
+// passes none, and Claude Code wakes a job with the options it started with.
+func (app *App) resumeAs(ctx context.Context, dir claude.ConfigDir, sessionID, cwd, prompt string, job claude.NewJob) error {
+	out, err := app.Agents.Resume(ctx, dir, sessionID, cwd, prompt, job)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (app *App) resumeAs(ctx context.Context, sessionID, cwd, prompt string, job
 	// claude agents lists a resumed session without a PID for about a second,
 	// and a command run in that window would take it for stopped.
 	err = app.poll(ctx, startWait, func() (bool, error) {
-		sessions, err := app.Agents.Sessions(ctx, true)
+		sessions, err := app.Agents.Sessions(ctx, dir, true)
 		if err != nil {
 			return false, err
 		}
@@ -181,7 +181,7 @@ const startWait = 15 * time.Second
 // So this waits for the process too.
 func (app *App) waitGone(ctx context.Context, s claude.Session) error {
 	err := app.poll(ctx, stopWait, func() (bool, error) {
-		sessions, err := app.Agents.Sessions(ctx, true)
+		sessions, err := app.Agents.Sessions(ctx, s.ConfigDir, true)
 		if err != nil {
 			return false, err
 		}
@@ -201,14 +201,16 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []ren
 	}
 	var missing []claude.Session
 	err := app.poll(ctx, backWait, func() (bool, error) {
-		sessions, err := app.Agents.Sessions(ctx, true)
+		sessions, err := app.listOwners(ctx, respawned...)
 		if err != nil {
 			return false, err
 		}
 		missing = slices.DeleteFunc(slices.Clone(respawned), func(s claude.Session) bool {
 			// The old process can still show for a moment after respawn
 			// returns, so only a new PID counts as back.
-			return selection.RunningIn(sessions, func(x claude.Session) bool { return x.JobID == s.JobID && x.PID != s.PID })
+			return selection.RunningIn(sessions, func(x claude.Session) bool {
+				return x.JobID == s.JobID && x.ConfigDir == s.ConfigDir && x.PID != s.PID
+			})
 		})
 		return len(missing) == 0, nil
 	})
@@ -233,7 +235,7 @@ func (app *App) checkBack(ctx context.Context, respawned []claude.Session) []ren
 // parkOne records a session in the park file before it is stopped, so a crash
 // or a failed resume leaves it for claudes resume.
 func (app *App) parkOne(s claude.Session, wasBusy bool) error {
-	e := park.FromSession(s, wasBusy, app.Now().UTC().Format(time.RFC3339))
+	e := app.parkEntry(s, wasBusy, app.Now().UTC().Format(time.RFC3339))
 	return app.Park.Update(func(entries []park.Entry) []park.Entry { return park.Merge(entries, []park.Entry{e}) })
 }
 
@@ -260,7 +262,7 @@ func (app *App) relaunch(ctx context.Context, s claude.Session, prompt string) e
 	if err := app.waitGone(ctx, s); err != nil {
 		return fmt.Errorf("stopped, but not resumed (%w). %s", err, parked)
 	}
-	if err := app.resumeSession(ctx, s.SessionID, s.Cwd, prompt); errors.Is(err, errNotYetRunning) {
+	if err := app.resumeSession(ctx, s.ConfigDir, s.SessionID, s.Cwd, prompt); errors.Is(err, errNotYetRunning) {
 		// Kept parked, so claudes resume brings it back if it never came up.
 		app.warn("claudes: %s: %v.", s.Label(), err)
 		return nil
@@ -279,7 +281,7 @@ const stopSettle = 5 * time.Second
 func (app *App) stopFailed(ctx context.Context, s claude.Session, stopErr error) error {
 	hand := context.WithoutCancel(ctx)
 	err := app.poll(hand, stopSettle, func() (bool, error) {
-		sessions, err := app.Agents.Sessions(hand, true)
+		sessions, err := app.Agents.Sessions(hand, s.ConfigDir, true)
 		if err != nil {
 			return false, err
 		}
@@ -308,7 +310,7 @@ func (app *App) current(ctx context.Context, s claude.Session) (claude.Session, 
 		}
 	}
 	for _, x := range app.lastList {
-		if x.SessionID == s.SessionID {
+		if x.SessionID == s.SessionID && x.ConfigDir == s.ConfigDir {
 			return x, x.Running(), nil
 		}
 	}

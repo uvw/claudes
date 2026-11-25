@@ -141,6 +141,7 @@ binary by its full path rather than assuming it is gone.
 | change the default ping or timeout   | `claudes config get`, then `claudes config set KEY VALUE` |
 | which MCPs does X have, what's on    | `claudes mcp ls X`, or `--in DIR`; `-o json` for scripts  |
 | what would profile P turn off        | `claudes mcp ls X --profile P`; it changes nothing        |
+| only my work account's sessions      | add `--account NAME`; see "Accounts"                      |
 
 Type command names exactly as shown. claudes passes any command it does not know
 to `claude agents`, so a typo can open the full-screen agent view.
@@ -192,6 +193,9 @@ with the same keys, always all present. A field with no value is `""`, `0`,
   one-line status. Each is `null` when unknown, as for an interactive session.
   The text table shows subagents and teammates in `AGENTS`, such as `lead+2, 3`,
   and the rest with `--wide`.
+
+With more than one account, each object also has `account`, its account's name,
+and the text table an `ACCOUNT` column.
 
 Your own session is the one whose `sessionId` equals the
 `CLAUDE_CODE_SESSION_ID` environment variable. If that variable is empty, you
@@ -255,6 +259,27 @@ On `restart`, always pass `--ping`: it prompts only the sessions that were
 mid-turn, so they carry on instead of coming back idle. On `resume`, `--ping`
 also prompts every named session that was not parked, so pass it there only when
 the session was in the middle of something.
+
+## Accounts
+
+A user may run several Claude accounts side by side, each in its own Claude Code
+directory: `~/.claude`, the profiles `cswap run` starts sessions in, and the
+directories `accounts.dirs` in `config.yaml` names. Every command that lists or
+acts on sessions covers every account, and claudes runs each `claude` call under
+the session's own account. `--account NAME` narrows a command to one: a
+`config.yaml` name, or a cswap account number, alias, or email. An email two
+cswap accounts share is an error; use the number. `claudes doctor` lists the
+accounts and where claudes found them.
+
+- A name can belong to sessions in two accounts. Act on the `id` that
+  `claudes ls -a WORD -o json` gives, and mention the account in your plan.
+- A resume command claudes prints for another account's session sets
+  `CLAUDE_CONFIG_DIR` first. Give it to the user as printed.
+- `session resume` resumes under the account claudes runs as. Pass `--account`
+  when the user wants it under another.
+- If `doctor` warns that a cswap profile claudes skips still runs sessions, tell
+  the user, and offer the `accounts.dirs` line it prints. Adding it changes
+  their `config.yaml`: ask first.
 
 ## Common requests
 

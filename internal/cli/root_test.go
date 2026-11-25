@@ -225,7 +225,7 @@ func TestVerboseFirstStillRunsClaudesCommands(t *testing.T) {
 
 func TestPassThroughThatCannotRunClaude(t *testing.T) {
 	h := newHarness(t)
-	h.app.Exec = func(string, ...string) error { return errors.New("executable file not found") }
+	h.app.Exec = func(claude.ConfigDir, string, ...string) error { return errors.New("executable file not found") }
 
 	h.fails(t, "--some-agents-flag")
 	assertContains(t, h.err.String(), "claudes: cannot run claude agents: executable file not found")

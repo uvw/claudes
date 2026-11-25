@@ -71,7 +71,7 @@ message that starts with - is refused, since claude would read it as an option.`
 				var err error
 				if s.Running() {
 					err = app.relaunch(hand, s, text)
-				} else if err = app.resumeSession(hand, s.SessionID, s.Cwd, text); errors.Is(err, errNotYetRunning) {
+				} else if err = app.resumeSession(hand, s.ConfigDir, s.SessionID, s.Cwd, text); errors.Is(err, errNotYetRunning) {
 					app.warn("claudes: %s: %v.", s.Label(), err)
 					err = nil
 				} else if err != nil {

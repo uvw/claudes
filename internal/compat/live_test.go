@@ -60,7 +60,7 @@ func TestLiveClaude(t *testing.T) {
 // job's state.json. With wantJob, a list with no background job fails.
 func checkLive(ctx context.Context, t *testing.T, client *claude.Client, store jobs.Store, wantJob bool) ([]claude.Session, []string) {
 	t.Helper()
-	sessions, err := client.Sessions(ctx, true)
+	sessions, err := client.Sessions(ctx, claude.ConfigDir{}, true)
 	if err != nil {
 		t.Fatal(err)
 	}

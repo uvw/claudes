@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/uvw/claudes/internal/render"
+	"github.com/uvw/claudes/internal/shell"
 )
 
 // agentsHeader heads the column that shows a session's agent team and the
@@ -68,7 +69,11 @@ func (app *App) printTable(w io.Writer, rows []sessionRow, wide bool) error {
 	if wide {
 		header = append(header, "SHELLS", "TOKENS", "PRS")
 	}
-	header = append(header, "AGE", "VERSION", "DIR", "NAME")
+	header = append(header, "AGE", "VERSION")
+	if app.multi() {
+		header = append(header, "ACCOUNT")
+	}
+	header = append(header, "DIR", "NAME")
 	if wide {
 		header = append(header, "DOING")
 	}
@@ -87,7 +92,11 @@ func (app *App) printTable(w io.Writer, rows []sessionRow, wide bool) error {
 		if wide {
 			cells = append(cells, render.CountCell(r.Shells), render.Tokens(r.Tokens), render.CountCell(r.PRs))
 		}
-		cells = append(cells, render.Age(app.Now(), r.Started()), ver, render.DirCell(r.Cwd), render.NameCell(r.Label()))
+		cells = append(cells, render.Age(app.Now(), r.Started()), ver)
+		if app.multi() {
+			cells = append(cells, shell.Printable(r.Account))
+		}
+		cells = append(cells, render.DirCell(r.Cwd), render.NameCell(r.Label()))
 		if wide {
 			cells = append(cells, doingCell(r))
 		}

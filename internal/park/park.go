@@ -30,6 +30,12 @@ type Entry struct {
 	Kind      string `json:"kind"`
 	WasBusy   bool   `json:"was_busy"`
 	PausedAt  string `json:"paused_at"`
+	// Account names the account the session ran under, and AccountDir is its
+	// Claude Code directory, so resume brings it back under the same one.
+	// Both are empty when claudes manages one account, and such an entry
+	// resumes under the account claudes runs as.
+	Account    string `json:"account,omitempty"`
+	AccountDir string `json:"account_dir,omitempty"`
 }
 
 // FromSession records a session about to be paused. wasBusy is whether resume

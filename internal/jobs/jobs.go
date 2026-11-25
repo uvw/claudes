@@ -36,7 +36,13 @@ func DefaultStore() (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	return Store{Dir: filepath.Join(base, "jobs"), LockAttempts: 10, LockDelay: 20 * time.Millisecond}, nil
+	return StoreIn(base), nil
+}
+
+// StoreIn is the jobs directory in the Claude Code directory home. Each
+// account keeps its own, with its own pins.
+func StoreIn(home string) Store {
+	return Store{Dir: filepath.Join(home, "jobs"), LockAttempts: 10, LockDelay: 20 * time.Millisecond}
 }
 
 func (s Store) pinsPath() string { return filepath.Join(s.Dir, "pins.json") }

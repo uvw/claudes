@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -27,10 +29,47 @@ import (
 // Config is everything config.yaml can set. A zero field means the built-in
 // default.
 type Config struct {
-	Ping   Ping   `yaml:"ping"`
-	Wait   Wait   `yaml:"wait"`
-	Output Output `yaml:"output"`
-	MCP    MCP    `yaml:"mcp"`
+	Ping     Ping     `yaml:"ping"`
+	Wait     Wait     `yaml:"wait"`
+	Output   Output   `yaml:"output"`
+	MCP      MCP      `yaml:"mcp"`
+	Accounts Accounts `yaml:"accounts"`
+}
+
+// Accounts holds the Claude Code directories claudes manages beside its own.
+type Accounts struct {
+	// Cswap is whether claudes reads cswap's profiles as accounts: on unless
+	// set to false.
+	Cswap Switch `yaml:"cswap"`
+	// Dirs maps a name to a Claude Code directory. A directory that is
+	// already an account takes the name, and any other becomes one.
+	Dirs map[string]string `yaml:"dirs"`
+}
+
+// Switch is a setting that is true or false, or not set.
+type Switch struct {
+	Set, On bool
+}
+
+// Off reports whether the setting is set to false.
+func (s Switch) Off() bool { return s.Set && !s.On }
+
+// UnmarshalYAML implements yaml.Unmarshaler. It takes true or false, quoted
+// or not, since config set writes every value as a string.
+func (s *Switch) UnmarshalYAML(n *yaml.Node) error {
+	if isNull(n) {
+		*s = Switch{}
+		return nil
+	}
+	switch strings.ToLower(n.Value) {
+	case "true":
+		*s = Switch{Set: true, On: true}
+	case "false":
+		*s = Switch{Set: true}
+	default:
+		return fmt.Errorf("line %d: %q is not true or false", n.Line, n.Value)
+	}
+	return nil
 }
 
 // Ping holds the prompt that --ping and claudes ping send.
@@ -121,6 +160,38 @@ var Keys = []Key{
 	{"output.format", "the default -o of the commands that list or report: text, json, or yaml", func(c Config) string { return c.Output.Format }, false},
 	{"output.dirs", "how text tables shorten a directory too long for its column: middle, fish, or full", func(c Config) string { return c.Output.Dirs }, false},
 	{"mcp.profiles", "MCP server profiles: each name and the servers that stay on in it", profilesValue, true},
+	{"accounts.cswap", "whether claudes reads cswap's profiles as accounts: true or false", func(c Config) string {
+		if !c.Accounts.Cswap.Set {
+			return ""
+		}
+		return strconv.FormatBool(c.Accounts.Cswap.On)
+	}, false},
+	{"accounts.dirs", "more Claude Code directories: each account's name and its directory", dirsValue, true},
+}
+
+// dirsValue is accounts.dirs as one line of JSON, or "" when none is set.
+func dirsValue(c Config) string {
+	if len(c.Accounts.Dirs) == 0 {
+		return ""
+	}
+	data, err := json.Marshal(c.Accounts.Dirs)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// AccountDirs is accounts.dirs with each directory made absolute: a leading ~
+// becomes home.
+func (c Config) AccountDirs(home string) map[string]string {
+	out := make(map[string]string, len(c.Accounts.Dirs))
+	for name, dir := range c.Accounts.Dirs {
+		if dir == "~" || strings.HasPrefix(dir, "~/") || strings.HasPrefix(dir, `~\`) {
+			dir = filepath.Join(home, dir[1:])
+		}
+		out[name] = dir
+	}
+	return out
 }
 
 // profilesValue is mcp.profiles as one line of JSON, which YAML reads too, or
@@ -201,6 +272,9 @@ func (c Config) validate() error {
 	if c.Wait.Timeout < 0 {
 		return errors.New("wait.timeout cannot be negative")
 	}
+	if err := c.Accounts.validate(); err != nil {
+		return err
+	}
 	for name, servers := range c.MCP.Profiles {
 		if !profileName.MatchString(name) {
 			return fmt.Errorf("mcp.profiles: %q is not a profile name: use letters, digits, - and _", name)
@@ -210,6 +284,26 @@ func (c Config) validate() error {
 				return fmt.Errorf("mcp.profiles.%s: %q is not a server name", name, s)
 			}
 		}
+	}
+	return nil
+}
+
+func (a Accounts) validate() error {
+	byDir := map[string]string{}
+	for _, name := range slices.Sorted(maps.Keys(a.Dirs)) {
+		dir := a.Dirs[name]
+		switch {
+		case !profileName.MatchString(name):
+			return fmt.Errorf("accounts.dirs: %q is not an account name: use letters, digits, - and _", name)
+		case strings.Trim(name, "0123456789") == "":
+			return fmt.Errorf("accounts.dirs: %q would read as a cswap account number: give it a letter", name)
+		case dir != "~" && !strings.HasPrefix(dir, "~/") && !strings.HasPrefix(dir, `~\`) && !filepath.IsAbs(dir):
+			return fmt.Errorf("accounts.dirs.%s: %q is not an absolute path", name, dir)
+		}
+		if other, ok := byDir[filepath.Clean(dir)]; ok {
+			return fmt.Errorf("accounts.dirs: %s and %s name the same directory", other, name)
+		}
+		byDir[filepath.Clean(dir)] = name
 	}
 	return nil
 }

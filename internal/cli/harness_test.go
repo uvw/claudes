@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/uvw/claudes/internal/accounts"
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
 	"github.com/uvw/claudes/internal/jobs"
@@ -62,6 +63,21 @@ type fakeAgents struct {
 	resumed map[string]claude.Session
 	// jobsDir is the jobs directory, where rm deletes a job's files.
 	jobsDir string
+	// others stand in for claude run with another account's
+	// CLAUDE_CONFIG_DIR. A call with a ConfigDir that is neither the zero
+	// value nor one of them reaches an account that knows no session.
+	others map[claude.ConfigDir]*fakeAgents
+}
+
+// in is the fake that answers a call made with dir.
+func (f *fakeAgents) in(dir claude.ConfigDir) *fakeAgents {
+	if dir.Own() {
+		return f
+	}
+	if o, ok := f.others[dir]; ok {
+		return o
+	}
+	return &fakeAgents{}
 }
 
 func (f *fakeAgents) current() []claude.Session {
@@ -91,7 +107,14 @@ func (f *fakeAgents) current() []claude.Session {
 	return out
 }
 
-func (f *fakeAgents) Sessions(_ context.Context, all bool) ([]claude.Session, error) {
+func (f *fakeAgents) Sessions(ctx context.Context, dir claude.ConfigDir, all bool) ([]claude.Session, error) {
+	if g := f.in(dir); g != f {
+		sessions, err := g.Sessions(ctx, claude.ConfigDir{}, all)
+		for i := range sessions {
+			sessions[i].ConfigDir = dir
+		}
+		return sessions, err
+	}
 	if msg, ok := f.failures["list"]; ok {
 		return nil, errors.New(msg)
 	}
@@ -185,7 +208,10 @@ func (f *fakeAgents) touch(jobID string) {
 	}
 }
 
-func (f *fakeAgents) Respawn(_ context.Context, jobID string) error {
+func (f *fakeAgents) Respawn(ctx context.Context, dir claude.ConfigDir, jobID string) error {
+	if g := f.in(dir); g != f {
+		return g.Respawn(ctx, claude.ConfigDir{}, jobID)
+	}
 	if f.beforeRespawn != nil {
 		f.beforeRespawn(f.sessionID(jobID))
 	}
@@ -201,7 +227,10 @@ func (f *fakeAgents) Respawn(_ context.Context, jobID string) error {
 	return err
 }
 
-func (f *fakeAgents) Stop(_ context.Context, jobID string) error {
+func (f *fakeAgents) Stop(ctx context.Context, dir claude.ConfigDir, jobID string) error {
+	if g := f.in(dir); g != f {
+		return g.Stop(ctx, claude.ConfigDir{}, jobID)
+	}
 	if f.beforeStop != nil {
 		f.beforeStop(f.sessionID(jobID))
 	}
@@ -215,7 +244,10 @@ func (f *fakeAgents) Stop(_ context.Context, jobID string) error {
 
 // Remove drops a finished job from the list and deletes its directory, as
 // claude rm does.
-func (f *fakeAgents) Remove(_ context.Context, jobID string) error {
+func (f *fakeAgents) Remove(ctx context.Context, dir claude.ConfigDir, jobID string) error {
+	if g := f.in(dir); g != f {
+		return g.Remove(ctx, claude.ConfigDir{}, jobID)
+	}
 	err := f.job("rm", jobID)
 	if err == nil {
 		f.finished = slices.DeleteFunc(slices.Clone(f.finished), func(s claude.Session) bool { return s.JobID == jobID })
@@ -226,7 +258,10 @@ func (f *fakeAgents) Remove(_ context.Context, jobID string) error {
 	return err
 }
 
-func (f *fakeAgents) Resume(_ context.Context, sessionID, cwd, prompt string, job claude.NewJob) (string, error) {
+func (f *fakeAgents) Resume(ctx context.Context, dir claude.ConfigDir, sessionID, cwd, prompt string, job claude.NewJob) (string, error) {
+	if g := f.in(dir); g != f {
+		return g.Resume(ctx, claude.ConfigDir{}, sessionID, cwd, prompt, job)
+	}
 	call := sessionID + " in " + filepath.Base(cwd) + " prompt=" + prompt
 	if job.Name != "" {
 		call += " name=" + job.Name
@@ -294,11 +329,13 @@ type harness struct {
 	// terminatedSince is the session start time each Terminate was given.
 	terminatedSince []time.Time
 	execs           [][]string
-	chdirs          []string
-	trashed         []string
-	sleeps          []time.Duration
-	hostPID         int
-	now             time.Time
+	// execConfigs is the ConfigDir each exec ran with.
+	execConfigs []claude.ConfigDir
+	chdirs      []string
+	trashed     []string
+	sleeps      []time.Duration
+	hostPID     int
+	now         time.Time
 	// interrupt cancels the running command's context, as a first Ctrl-C does.
 	interrupt context.CancelFunc
 	// lingers is how many more checks each PID stays alive after its stop.
@@ -322,12 +359,18 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		t.Fatal(err)
 	}
 	h := &harness{agents: &fakeAgents{snapshots: snapshots, jobsDir: filepath.Join(root, "jobs")}, out: &cutWriter{}, err: &cutWriter{}, root: root, now: start}
+	own := &account{
+		Account: accounts.Account{Name: "~/.claude", Dir: h.root, ConfigFile: filepath.Join(h.root, ".claude.json"), From: []string{accounts.FromHome}},
+		Jobs:    jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
+		MCP:     mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
+		Teams:   teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},
+	}
 	h.app = &App{
 		Agents:   h.agents,
-		Jobs:     jobs.Store{Dir: filepath.Join(h.root, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
+		Accounts: []*account{own},
+		Found:    accounts.Found{Home: h.root, Accounts: []accounts.Account{own.Account}},
 		Park:     park.File{Path: filepath.Join(h.root, "state", "parked.json")},
 		LockPath: filepath.Join(h.root, "state", "run.lock"),
-		MCP:      mcp.Store{ConfigFile: filepath.Join(h.root, ".claude.json"), Home: h.root},
 		Out:      h.out,
 		Err:      h.err,
 		In:       strings.NewReader(""),
@@ -360,8 +403,9 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 			}
 			return nil
 		},
-		Exec: func(binary string, args ...string) error {
+		Exec: func(config claude.ConfigDir, binary string, args ...string) error {
 			h.execs = append(h.execs, append([]string{binary}, args...))
+			h.execConfigs = append(h.execConfigs, config)
 			return nil
 		},
 		Interrupt: func(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -385,7 +429,6 @@ func newHarness(t *testing.T, snapshots ...[]claude.Session) *harness {
 		},
 		Trashed:     trash.Manifest{Path: filepath.Join(h.root, "state", "trashed.json")},
 		Transcripts: transcripts.Store{Dir: filepath.Join(h.root, "projects"), Home: h.root, Moves: filepath.Join(h.root, "state", "moves.json")},
-		Teams:       teams.Store{Teams: filepath.Join(h.root, "teams"), Tasks: filepath.Join(h.root, "tasks")},
 		Executable:  func() (string, error) { return filepath.Join(h.root, "bin", "claudes"), nil },
 	}
 	return h
@@ -461,7 +504,7 @@ func (h *harness) pin(t *testing.T, sessions ...claude.Session) {
 	for _, s := range sessions {
 		ids = append(ids, s.JobID)
 	}
-	if _, err := h.app.Jobs.SetPinned(ids, true); err != nil {
+	if _, err := h.app.Accounts[0].Jobs.SetPinned(ids, true); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -482,7 +525,7 @@ func assertContains(t *testing.T, text, want string) {
 
 func writeState(t *testing.T, h *harness, jobID, cliVersion string) {
 	t.Helper()
-	dir := filepath.Join(h.app.Jobs.Dir, jobID)
+	dir := filepath.Join(h.app.Accounts[0].Jobs.Dir, jobID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -529,7 +572,7 @@ func (h *harness) team(t *testing.T, s claude.Session, teammates ...string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeFile(t, filepath.Join(h.app.Teams.Teams, name, "config.json"), string(data))
+	writeFile(t, filepath.Join(h.app.Accounts[0].Teams.Teams, name, "config.json"), string(data))
 }
 
 var sgr = regexp.MustCompile("\x1b\\[[0-9;]*m")
@@ -603,7 +646,7 @@ func (h *harness) stoppedJob(t *testing.T, name string, options ...string) claud
 	s := stopped(h.bg(name, "idle"))
 	h.transcriptAs(t, s.SessionID, name, s.Cwd, time.Hour)
 	flags, _ := json.Marshal(options)
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"),
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, s.JobID, "state.json"),
 		fmt.Sprintf(`{"sessionId":%q,"cwd":%q,"respawnFlags":%s}`, s.SessionID, s.Cwd, flags))
 	h.agents.finished = append(h.agents.finished, s)
 	return s
@@ -620,4 +663,33 @@ func (h *harness) withConfig(t *testing.T, body string) string {
 	h.app.ConfigPath = path
 	h.app.Config, h.app.configErr = config.Load(path)
 	return path
+}
+
+// account adds an account named name, whose sessions a fake of its own lists,
+// reached with its directory as CLAUDE_CONFIG_DIR. A call for one of its
+// sessions made without that directory reaches the wrong fake, which knows no
+// such job.
+//
+//nolint:unparam // Named at the call, as bg is, so the test shows the name.
+func (h *harness) account(name string) (*account, *fakeAgents) {
+	dir := filepath.Join(h.root, "accounts", name)
+	if err := os.MkdirAll(filepath.Join(dir, "jobs"), 0o755); err != nil {
+		panic(err)
+	}
+	a := &account{
+		Account: accounts.Account{Name: name, Dir: dir, ConfigFile: filepath.Join(dir, ".claude.json"), ConfigDir: claude.ConfigDir{Path: dir}, From: []string{accounts.FromConfig}},
+		Jobs:    jobs.Store{Dir: filepath.Join(dir, "jobs"), LockAttempts: 3, LockDelay: time.Millisecond},
+		MCP:     mcp.Store{ConfigFile: filepath.Join(dir, ".claude.json"), Home: dir},
+		Teams:   teams.Store{Teams: filepath.Join(dir, "teams"), Tasks: filepath.Join(dir, "tasks")},
+	}
+	fake := &fakeAgents{jobsDir: a.Jobs.Dir}
+	if h.agents.others == nil {
+		h.agents.others = map[claude.ConfigDir]*fakeAgents{}
+	}
+	h.agents.others[a.ConfigDir] = fake
+	h.app.Accounts = append(h.app.Accounts, a)
+	h.app.Found.Accounts = append(h.app.Found.Accounts, a.Account)
+	h.app.Transcripts.Projects = append(h.app.Transcripts.Projects, filepath.Join(dir, "projects"))
+	h.app.Transcripts.Homes = append(h.app.Transcripts.Homes, dir)
+	return a, fake
 }

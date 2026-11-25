@@ -19,7 +19,7 @@ func TestTeamLsStripsControlCharacters(t *testing.T) {
 	lead := h.bg("lead", "busy")
 	h.agents.snapshots = [][]claude.Session{{lead}}
 	h.team(t, lead, "evil\x1b]0;pwned\x07\x1b[2J")
-	tasks := filepath.Join(h.app.Teams.Tasks, teams.Name(lead.SessionID))
+	tasks := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(lead.SessionID))
 	writeFile(t, filepath.Join(tasks, "1.json"), `{"id":"1","subject":"x","status":"in_progress","owner":"own\u001b[31mer"}`)
 
 	h.ok(t, "team", "ls")
@@ -48,7 +48,7 @@ func TestTeamLsShowsTeamsAtWork(t *testing.T) {
 	h.team(t, lead, "writer", "tester")
 	h.team(t, solo)
 	h.team(t, gone)
-	tasks := filepath.Join(h.app.Teams.Tasks, teams.Name(lead.SessionID))
+	tasks := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(lead.SessionID))
 	writeFile(t, filepath.Join(tasks, "1.json"), `{"id":"1","subject":"write","status":"completed","owner":"writer"}`)
 	writeFile(t, filepath.Join(tasks, "2.json"), `{"id":"2","subject":"test","status":"in_progress","owner":"tester"}`)
 

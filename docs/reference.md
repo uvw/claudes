@@ -72,7 +72,8 @@ columns:
 ### Fields
 
 JSON and YAML use the camelCase field names of `claude agents --json`. Every key
-is always present, and an empty list is `[]`.
+is always present, and an empty list is `[]`, except `account`, which is there
+only when claudes manages more than one [account](guide.md#accounts).
 
 #### Running sessions
 
@@ -93,6 +94,7 @@ is always present, and an empty list is `[]`.
 | `tokens`                  | Agent view's running total of the tokens it has used     |
 | `prs`                     | How many pull requests it opened                         |
 | `doing`                   | Agent view's one-line status of what it is doing         |
+| `account`                 | Its account's name, with more than one account           |
 
 `subagents`, `shells`, `tokens`, `prs`, and `doing` come from the job's
 `state.json`, and are `null` when claudes cannot tell, as for an interactive
@@ -214,15 +216,18 @@ or `--leftovers`. The `session gc` plan shows these, and the saved outputs
 | `running`         | Whether the lead runs                  |
 | `teammates`       | The members' names                     |
 | `tasks`           | The task list                          |
+| `account`         | The account that keeps the team        |
 
 Each task has `id`, `subject`, `status`, `owner`, and `blockedBy`.
 
 #### MCP servers
 
-`mcp ls` prints one object:
+`mcp ls` prints one object, or with more than one account a list of them, one
+for each account:
 
 | Field     | Meaning                                                     |
 | --------- | ----------------------------------------------------------- |
+| `account` | The account whose settings it reads                         |
 | `dir`     | The directory whose servers it lists                        |
 | `profile` | The profile `--profile` named, or empty                     |
 | `servers` | The servers: on first, then pending, then off, then by name |
@@ -245,7 +250,8 @@ Each server has:
 
 `doctor` prints a list of checks, each with `name`, `result` (`ok`, `warn`, or
 `fail`), and `detail`. `doctor env` prints its sections, `claude`, `claudes`,
-`environment`, and `files`, as keys and values.
+`environment`, and `files`, and `accounts` with more than one account, as keys
+and values.
 
 #### Reports
 
@@ -353,6 +359,10 @@ output:
 mcp:
   profiles: # each profile, and the MCP servers that stay on in it
     safe: [browser, "plugin:docs:search"]
+accounts:
+  cswap: false # leave cswap's profiles out; on by default
+  dirs: # more Claude Code directories, each an account
+    work: ~/.claude-work
 ```
 
 `claudes config get` lists every key with its value, and shows `mcp.profiles` as
@@ -361,11 +371,19 @@ file's comments, except `mcp.profiles`, which takes `claudes config edit`. A
 profile's name is letters, digits, `-`, and `_`, and each server name is a
 string; quote one that YAML would read as a number or `true`. `output.dirs`
 takes `middle`, the default, `fish`, or `full` ([Table widths](#table-widths)).
-`claudes config edit` opens the file in `$VISUAL` or `$EDITOR`, and
-`claudes config path` prints where it is. claudes refuses a file with an unknown
-key or a value it cannot use. Until it is fixed, only `config`, `doctor`,
-`init`, `completion`, `skill`, `--version`, help, and what passes through to
-`claude agents` run.
+`accounts.dirs` maps an account's name to a Claude Code directory, an absolute
+path or one under `~`, and takes `claudes config edit`. A name is letters,
+digits, `-`, and `_`, not all digits, since `--account` reads digits as a cswap
+account number. A directory that is already an account, such as a cswap profile,
+takes the name; any other becomes an account. Write it the way the tool that
+starts its sessions sets `CLAUDE_CONFIG_DIR`, since Claude Code names its
+keychain entry after that exact value. A directory that is not there is left out
+with a warning. `accounts.cswap: false` stops claudes reading cswap's profiles.
+See [Accounts](guide.md#accounts). `claudes config edit` opens the file in
+`$VISUAL` or `$EDITOR`, and `claudes config path` prints where it is. claudes
+refuses a file with an unknown key or a value it cannot use. Until it is fixed,
+only `config`, `doctor`, `init`, `completion`, `skill`, `--version`, help, and
+what passes through to `claude agents` run.
 
 ## Compatibility
 
@@ -436,13 +454,21 @@ as usual. `--version` prints the version.
   platform, Windows included. `CLAUDES_CONFIG` names another `config.yaml`, and
   must be an absolute path.
 - `CLAUDE_CONFIG_DIR` moves `~/.claude`, as it does for Claude Code, and must be
-  an absolute path. When background sessions run but its `jobs` directory is
-  missing, commands that change sessions stop rather than read pins from the
-  wrong place.
-- claudes itself writes under `~/.claude` only for these: pinning and unpinning,
-  as agent view does; `session mv`, which adds a copy, and its `--rm`, which
-  moves the original to the system trash; `session gc`, which moves past
-  sessions there; `gc --teams`, which moves leftover team and task directories
-  there; `session restore`, which moves them back; and `skill --install`.
-  Unpinning also deletes the job's `order` file, as agent view does. Everything
-  else it changes goes through the `claude` command.
+  an absolute path. When background sessions run but an account's `jobs`
+  directory is missing, commands that change sessions stop rather than read pins
+  from the wrong place.
+- With `cswap` on `PATH`, claudes reads cswap's backup directory:
+  `~/.claude-swap-backup` on macOS and Windows, and
+  `$XDG_DATA_HOME/claude-swap`, or `~/.local/share/claude-swap`, on Linux. It
+  reads `sequence.json`, for each account's number, email, and alias and the
+  account `~/.claude` is logged in as, and lists the profiles under `sessions`.
+  claudes never writes there. Each profile is an account, and claudes reads its
+  `jobs`, `teams`, `tasks`, `.claude.json`, `projects`, `file-history`, and
+  `session-env` as it does those of `~/.claude`.
+- claudes itself writes under `~/.claude`, and each other account's directory,
+  only for these: pinning and unpinning, as agent view does; `session mv`, which
+  adds a copy, and its `--rm`, which moves the original to the system trash;
+  `session gc`, which moves past sessions there; `gc --teams`, which moves
+  leftover team and task directories there; `session restore`, which moves them
+  back; and `skill --install`. Unpinning also deletes the job's `order` file, as
+  agent view does. Everything else it changes goes through the `claude` command.

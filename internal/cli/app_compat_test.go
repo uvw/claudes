@@ -44,16 +44,16 @@ func TestPinRefusesAPinsFileItDoesNotRecognize(t *testing.T) {
 	h := newHarness(t)
 	alpha := h.bg("alpha", "idle")
 	h.agents.snapshots = [][]claude.Session{{alpha}}
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, "pins.json"), `["session-7"]`)
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json"), `["session-7"]`)
 
 	h.fails(t, "pin", "alpha")
 	assertContains(t, h.err.String(), `pins.json holds "session-7", not a job id`)
-	if got := readFile(t, filepath.Join(h.app.Jobs.Dir, "pins.json")); got != `["session-7"]` {
+	if got := readFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json")); got != `["session-7"]` {
 		t.Fatalf("pins.json changed to %s", got)
 	}
 
 	h.ok(t, "pin", "--force", "alpha")
-	assertContains(t, readFile(t, filepath.Join(h.app.Jobs.Dir, "pins.json")), alpha.JobID)
+	assertContains(t, readFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json")), alpha.JobID)
 }
 
 func TestANewerClaudeCodeWarnsOnce(t *testing.T) {
@@ -107,7 +107,7 @@ func TestDoctorWarnsWhenClaudeCodeMayWritePinsWithoutTheLock(t *testing.T) {
 		{`{"tengu_hover_rest":false}`, "ok      pins lock      Claude Code takes pins.json.lock"},
 		{`{"tengu_hover_rest":true}`, "warn    pins lock      tengu_hover_rest is on"},
 	} {
-		writeFile(t, h.app.MCP.ConfigFile, `{"cachedGrowthBookFeatures":`+tc.features+`}`)
+		writeFile(t, h.app.Accounts[0].MCP.ConfigFile, `{"cachedGrowthBookFeatures":`+tc.features+`}`)
 		h.out.Reset()
 		h.run("doctor")
 		assertContains(t, h.out.String(), tc.want)
@@ -122,7 +122,7 @@ func TestDoctorFailsOnMissingCommandsAndUnknownValues(t *testing.T) {
 	h := newHarness(t)
 	h.agents.snapshots = [][]claude.Session{{h.bg("odd", "thinking")}}
 	h.agents.help = map[string]string{"agents": "Usage: claude agents\n\nOptions:\n  --all   everything\n"}
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, "pins.json"), `["x"]`)
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json"), `["x"]`)
 
 	h.fails(t, "doctor", "-o", "json")
 	var checks []check
@@ -186,7 +186,7 @@ func TestDoctorEnvPrintsVersionsFilesAndVariables(t *testing.T) {
 	h.agents.version = "2.1.330"
 
 	h.ok(t, "doctor", "env")
-	for _, want := range []string{"claudes\n", "2.1.330", "tested", path + " (none", h.app.Jobs.Dir, "CLAUDES_CONFIG          " + path, `VISUAL                  ""`} {
+	for _, want := range []string{"claudes\n", "2.1.330", "tested", path + " (none", h.app.Accounts[0].Jobs.Dir, "CLAUDES_CONFIG          " + path, `VISUAL                  ""`} {
 		assertContains(t, h.out.String(), want)
 	}
 
@@ -225,7 +225,7 @@ func TestBulkCommandsRefuseAPinsFileTheyDoNotRecognize(t *testing.T) {
 		old.StartedAt = h.now.Add(-30 * 24 * time.Hour).UnixMilli()
 		h.agents.snapshots = [][]claude.Session{{alpha}}
 		h.agents.finished = []claude.Session{old}
-		writeFile(t, filepath.Join(h.app.Jobs.Dir, "pins.json"), `["`+alpha.SessionID+`"]`)
+		writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json"), `["`+alpha.SessionID+`"]`)
 
 		h.fails(t, args...)
 		assertCalls(t, h)
@@ -236,7 +236,7 @@ func TestBulkCommandsRefuseAPinsFileTheyDoNotRecognize(t *testing.T) {
 func TestBulkCommandsRefuseAMissingJobsFolder(t *testing.T) {
 	h := newHarness(t)
 	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
-	if err := os.RemoveAll(h.app.Jobs.Dir); err != nil {
+	if err := os.RemoveAll(h.app.Accounts[0].Jobs.Dir); err != nil {
 		t.Fatal(err)
 	}
 	h.fails(t, "restart")
@@ -279,10 +279,10 @@ func TestARunningSessionWithoutAStatusIsRefused(t *testing.T) {
 
 func (h *harness) corruptPins(t *testing.T) {
 	t.Helper()
-	if err := os.MkdirAll(h.app.Jobs.Dir, 0o755); err != nil {
+	if err := os.MkdirAll(h.app.Accounts[0].Jobs.Dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(h.app.Jobs.Dir, "pins.json"), []byte("{oops"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(h.app.Accounts[0].Jobs.Dir, "pins.json"), []byte("{oops"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

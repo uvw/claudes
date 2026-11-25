@@ -6,6 +6,7 @@ package shell
 // that changes directories and quotes safely in one line.
 var (
 	resumeCommand = powerShellResume
+	configPrefix  = powerShellConfig
 	removeCommand = powerShellRemove
 	arg           = powerShellArg
 )

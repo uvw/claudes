@@ -15,10 +15,16 @@ import (
 	"github.com/uvw/claudes/internal/version"
 )
 
-// listed lists the sessions a command will act on and notes when.
+// listed lists the sessions a command will act on, in the accounts it
+// covers, and notes when.
 func (app *App) listed(ctx context.Context, all bool) ([]claude.Session, error) {
+	return app.listedIn(ctx, app.selected(), all)
+}
+
+// listedIn is listed for the sessions of accts.
+func (app *App) listedIn(ctx context.Context, accts []*account, all bool) ([]claude.Session, error) {
 	before := app.Now()
-	sessions, err := app.Agents.Sessions(ctx, all)
+	sessions, err := app.listIn(ctx, accts, all)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +49,8 @@ func (app *App) pastSessions(ctx context.Context) ([]history.Session, error) {
 	}
 	live := map[string]claude.Session{}
 	app.runningKnown = false
-	if sessions, err := app.Agents.Sessions(ctx, false); err == nil {
+	// Every account counts, since a past session can run under any of them.
+	if sessions, err := app.listIn(ctx, app.Accounts, false); err == nil {
 		app.runningKnown = true
 		for _, s := range sessions {
 			if s.Running() {
@@ -110,9 +117,9 @@ func (app *App) filterPast(list []history.Session, targets []string, in string, 
 }
 
 // gcKeep is the sessions session gc must leave alone, each with why: running,
-// listed by agent view, parked, or the session running claudes.
+// listed by agent view in any account, parked, or the session running claudes.
 func (app *App) gcKeep(ctx context.Context, list []history.Session) (map[string]string, error) {
-	listed, err := app.Agents.Sessions(ctx, true)
+	listed, err := app.listIn(ctx, app.Accounts, true)
 	if err != nil {
 		return nil, refusal(fmt.Errorf("cannot list agent view's sessions, so session gc removes nothing: %w", err))
 	}
@@ -130,12 +137,12 @@ func (app *App) gcKeep(ctx context.Context, list []history.Session) (map[string]
 // midTurn is Session.MidTurn, plus a lead whose teammates are at work: its
 // turn goes on through them, so a restart should ping it to carry on.
 func (app *App) midTurn(s claude.Session) bool {
-	return s.MidTurn() || len(app.Teams.Teammates(s.SessionID)) > 0
+	return s.MidTurn() || len(app.teammates(s.SessionID)) > 0
 }
 
 // teamNote names the teammates that would stop with s, or is "".
 func (app *App) teamNote(s claude.Session) string {
-	names := app.Teams.Teammates(s.SessionID)
+	names := app.teammates(s.SessionID)
 	if len(names) == 0 {
 		return ""
 	}
@@ -154,19 +161,22 @@ func (app *App) warnTeams(sessions []claude.Session) {
 // rows lists sessions for ls and where. installed is the installed
 // Claude Code version, or "" when unknown, which marks no session outdated.
 func (app *App) rows(ctx context.Context, all bool, installed string) ([]sessionRow, error) {
-	sessions, err := app.Agents.Sessions(ctx, all)
+	sessions, err := app.listIn(ctx, app.selected(), all)
 	if err != nil {
 		return nil, err
 	}
-	pins, err := app.Jobs.PinSet()
-	if err != nil {
-		app.warn("claudes: cannot read pins: %v", err)
+	pins := map[*account]map[string]bool{}
+	for _, acct := range app.selected() {
+		if pins[acct], err = acct.Jobs.PinSet(); err != nil {
+			app.warn("claudes: cannot read pins: %v", err)
+		}
 	}
 	rows := make([]sessionRow, 0, len(sessions))
 	for _, s := range sessions {
-		r := sessionRow{Session: s, Pinned: s.JobID != "" && pins[s.JobID], Version: app.sessionVersion(s), Teammates: app.Teams.Teammates(s.SessionID)}
+		acct := app.accountOf(s)
+		r := sessionRow{Session: s, Pinned: s.JobID != "" && pins[acct][s.JobID], Version: app.sessionVersion(s), Teammates: acct.Teams.Teammates(s.SessionID), Account: app.accountName(s)}
 		r.Outdated = installed != "" && r.Version != "" && version.Less(r.Version, installed)
-		a := app.Jobs.Live(s.JobID)
+		a := acct.Jobs.Live(s.JobID)
 		r.Subagents, r.Shells, r.Tokens, r.PRs, r.Doing = a.Subagents, a.Shells, a.Tokens, a.PRs, a.Doing
 		if !s.Running() {
 			// state.json can still list what ran when the process ended.

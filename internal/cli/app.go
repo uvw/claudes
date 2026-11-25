@@ -11,15 +11,15 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/uvw/claudes/internal/accounts"
 	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/config"
+	"github.com/uvw/claudes/internal/cswap"
 	"github.com/uvw/claudes/internal/jobs"
-	"github.com/uvw/claudes/internal/mcp"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
 	"github.com/uvw/claudes/internal/procs"
 	"github.com/uvw/claudes/internal/render"
-	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/transcripts"
 	"github.com/uvw/claudes/internal/trash"
 	"github.com/uvw/claudes/internal/upgrade"
@@ -32,8 +32,17 @@ const (
 
 // App is everything the commands touch, so tests can swap it.
 type App struct {
-	Agents    claude.Agents
-	Jobs      jobs.Store
+	Agents claude.Agents
+	// Found is the accounts claudes manages, and Accounts are the same with
+	// the stores claudes reads in each, the one claudes runs as first.
+	Found    accounts.Found
+	Accounts []*account
+	// only are the accounts --account names, or nil for all of them.
+	only        []*account
+	accountFlag string
+	// CswapList runs `cswap list --json` with the cswap at binary, for
+	// claudes doctor.
+	CswapList func(ctx context.Context, binary string) ([]byte, error)
 	Park      park.File
 	Out       io.Writer
 	Err       io.Writer
@@ -49,8 +58,10 @@ type App struct {
 	// Alive reports whether the process that started at started still runs;
 	// a PID a newer process took over does not count.
 	Alive func(pid int, started time.Time) bool
-	Exec  func(binary string, args ...string) error
-	// Transcripts is ~/.claude/projects, read by claudes session.
+	// Exec hands the terminal to binary, run with config's CLAUDE_CONFIG_DIR.
+	Exec func(config claude.ConfigDir, binary string, args ...string) error
+	// Transcripts is ~/.claude/projects, and those of the other accounts, read
+	// by claudes session.
 	Transcripts transcripts.Store
 	// Trash moves a file or directory to the system trash, and returns where
 	// it went, or "" when the system does not say.
@@ -61,11 +72,6 @@ type App struct {
 	// trashedAt is when this run first moved something to the trash, which
 	// groups what it moved in Trashed.
 	trashedAt time.Time
-	// Teams is ~/.claude/teams and ~/.claude/tasks, where agent teams live.
-	Teams teams.Store
-	// MCP is where Claude Code keeps MCP servers, which claudes mcp reads. Its
-	// ConfigFile is ~/.claude.json, whose feature flags doctor reports.
-	MCP mcp.Store
 	// Chdir changes the working directory before a handoff to claude.
 	Chdir func(dir string) error
 	// Which finds a program on PATH, as exec.LookPath does.
@@ -148,6 +154,7 @@ func newApp() *App {
 		Trash:          trash.Move,
 		Alive:          procs.Running,
 		Exec:           claude.Exec,
+		CswapList:      cswap.List,
 		Edit:           config.Edit,
 		Interrupt:      signalContext,
 		Which:          exec.LookPath,
@@ -166,17 +173,15 @@ func newApp() *App {
 	client := claude.NewClient()
 	client.Log = app.log()
 	app.Agents = client
-	var jobsErr, parkErr error
-	app.Jobs, jobsErr = jobs.DefaultStore()
+	var parkErr error
+	_, homeErr := paths.ClaudeHome()
 	app.Park, parkErr = park.DefaultFile()
-	app.setupErr = errors.Join(jobsErr, parkErr)
+	app.setupErr = errors.Join(homeErr, parkErr)
 	if parkErr == nil {
 		app.LockPath = filepath.Join(filepath.Dir(app.Park.Path), "run.lock")
 	}
-	// A missing Claude Code directory is setupErr's to report, through Jobs.
+	// A missing Claude Code directory is setupErr's to report.
 	app.Transcripts, _ = transcripts.DefaultStore()
-	app.Teams, _ = teams.DefaultStore()
-	app.MCP, _ = mcp.DefaultStore()
 	// Without a state directory, the park file's error stops every command.
 	app.Trashed, _ = trash.DefaultManifest()
 	// Without a cache directory, claudes asks claude for its version each time.
@@ -184,6 +189,7 @@ func newApp() *App {
 	if app.ConfigPath, app.configErr = config.Path(); app.configErr == nil {
 		app.Config, app.configErr = config.Load(app.ConfigPath)
 	}
+	app.findAccounts()
 	return app
 }
 

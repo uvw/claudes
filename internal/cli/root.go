@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/shell"
 	"github.com/uvw/claudes/internal/version"
@@ -45,7 +46,7 @@ func (app *App) Run(args []string) int {
 		if len(args) > 0 && args[0] == "--" {
 			args = args[1:]
 		}
-		if err := app.Exec("claude", append([]string{"agents"}, args...)...); err != nil {
+		if err := app.Exec(claude.ConfigDir{}, "claude", append([]string{"agents"}, args...)...); err != nil {
 			app.errorLine("claudes: cannot run claude agents: %v", err)
 			return 1
 		}
@@ -166,6 +167,9 @@ same as Ctrl+T in agent view.`,
 				}
 			}
 			app.log().Debug("config", "path", app.ConfigPath)
+			if err := app.chooseAccounts(cmd); err != nil {
+				return err
+			}
 			if len(args) == 0 && cmd.Annotations[listsBare] != "" {
 				return nil
 			}
@@ -175,18 +179,18 @@ same as Ctrl+T in agent view.`,
 	}
 	root.PersistentFlags().BoolP("verbose", "v", false, "log each claude call and step to stderr")
 	root.AddCommand(
-		app.lsCommand(),
-		alone(app.reports(app.pinCommand(true))),
-		alone(app.reports(app.pinCommand(false))),
-		alone(app.reports(app.restartCommand())),
-		alone(app.reports(app.pauseCommand())),
-		alone(app.reports(app.resumeCommand())),
-		alone(app.reports(app.pingCommand())),
-		alone(app.reports(app.stopCommand())),
-		app.logsCommand(),
-		app.attachCommand(),
-		app.whereCommand(),
-		alone(app.reports(app.gcCommand())),
+		app.withAccount(app.lsCommand()),
+		alone(app.reports(app.withAccount(app.pinCommand(true)))),
+		alone(app.reports(app.withAccount(app.pinCommand(false)))),
+		alone(app.reports(app.withAccount(app.restartCommand()))),
+		alone(app.reports(app.withAccount(app.pauseCommand()))),
+		alone(app.reports(app.withAccount(app.resumeCommand()))),
+		alone(app.reports(app.withAccount(app.pingCommand()))),
+		alone(app.reports(app.withAccount(app.stopCommand()))),
+		app.withAccount(app.logsCommand()),
+		app.withAccount(app.attachCommand()),
+		app.withAccount(app.whereCommand()),
+		alone(app.reports(app.withAccount(app.gcCommand()))),
 		app.skillCommand(),
 		app.configCommand(),
 		app.doctorCommand(),

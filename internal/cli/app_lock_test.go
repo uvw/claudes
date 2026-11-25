@@ -56,7 +56,7 @@ func TestTheLockIsFreeBeforeTheHostStops(t *testing.T) {
 
 type panicky struct{ *fakeAgents }
 
-func (p panicky) Respawn(context.Context, string) error { panic("boom") }
+func (p panicky) Respawn(context.Context, claude.ConfigDir, string) error { panic("boom") }
 
 func TestAPanicFreesTheRunLock(t *testing.T) {
 	h := newHarness(t)

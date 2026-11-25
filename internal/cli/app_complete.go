@@ -38,7 +38,7 @@ func (app *App) keeps(k sessionKind, s claude.Session) bool {
 		if !background {
 			return false
 		}
-		pins, err := app.Jobs.PinSet()
+		pins, err := app.accountOf(s).Jobs.PinSet()
 		return err == nil && pins[s.JobID] == (k == pinnedSession)
 	case finishedSession:
 		return selection.IsFinished(s)
@@ -67,7 +67,7 @@ func (app *App) completeSkip(k sessionKind) cobra.CompletionFunc {
 
 func (app *App) sessionCompletions(cmd *cobra.Command, k sessionKind, taken []string) []cobra.Completion {
 	all := k != runningSession
-	sessions, err := app.Agents.Sessions(cmd.Context(), all)
+	sessions, err := app.listIn(cmd.Context(), app.selected(), all)
 	if err != nil {
 		return nil
 	}
@@ -95,7 +95,7 @@ func (app *App) completeResumable(cmd *cobra.Command, args []string, _ string) (
 		}
 	}
 	forget, _ := cmd.Flags().GetBool("forget")
-	if sessions, err := app.Agents.Sessions(cmd.Context(), true); err == nil && !forget {
+	if sessions, err := app.listIn(cmd.Context(), app.selected(), true); err == nil && !forget {
 		for _, s := range sessions {
 			if s.Running() || parked[s.SessionID] || slices.Contains(args, s.Label()) {
 				continue

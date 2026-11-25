@@ -36,6 +36,15 @@ type Store struct {
 	// Home is Claude Code's directory, which holds each session's file history,
 	// or "" to leave it out.
 	Home string
+	// Projects are the projects directories of further accounts, which List
+	// and the other readers read too. A directory that is the same as one
+	// before it, such as through the link cswap makes to share history, is
+	// read once.
+	Projects []string
+	// Homes are the Claude Code directories of further accounts. A session's
+	// file history, session-env directory, and debug log count in each of
+	// them, since an account keeps its own.
+	Homes []string
 	// Moves is claudes' own record of the directories session mv copied
 	// sessions to, or "" for none. A copy's records still name the directory it
 	// came from until it is resumed, and a project directory's name cannot be
@@ -122,13 +131,18 @@ const maxFolder = 200
 // List reads every session in the store, newest activity first. A transcript
 // that cannot be read is left out.
 func (st Store) List() ([]Session, error) {
-	// Glob ignores I/O errors, so one on the directory itself is caught here.
-	if _, err := os.Stat(st.Dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, err
-	}
-	files, err := filepath.Glob(filepath.Join(st.Dir, "*", "*.jsonl"))
-	if err != nil {
-		return nil, err
+	var files []string
+	for _, dir := range st.projectDirs() {
+		// Glob ignores I/O errors, so one on the directory itself is caught
+		// here.
+		if _, err := os.Stat(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, err
+		}
+		found, err := filepath.Glob(filepath.Join(dir, "*", "*.jsonl"))
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, found...)
 	}
 	read := make([]*Session, len(files))
 	var wg sync.WaitGroup
@@ -184,6 +198,33 @@ func (st Store) List() ([]Session, error) {
 	}
 	slices.SortStableFunc(out, func(a, b Session) int { return b.LastActive.Compare(a.LastActive) })
 	return out, nil
+}
+
+// projectDirs are Dir and Projects, each real directory once.
+func (st Store) projectDirs() []string { return distinct(append([]string{st.Dir}, st.Projects...)) }
+
+// homes are Home and Homes, each real directory once.
+func (st Store) homes() []string { return distinct(append([]string{st.Home}, st.Homes...)) }
+
+// distinct drops the empty dirs and each that is the same directory as one
+// before it, following links.
+func distinct(dirs []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, d := range dirs {
+		if d == "" {
+			continue
+		}
+		key := filepath.Clean(d)
+		if real, err := filepath.EvalSymlinks(d); err == nil {
+			key = real
+		}
+		if !seen[key] {
+			seen[key] = true
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // moveKey names a copy in the moves file: its project directory and session id.
@@ -510,16 +551,16 @@ func records(data []byte, partial bool) (out []record, clean bool) {
 }
 
 // Copy copies s's transcript, and its directory of subagent transcripts and tool
-// results when there is one, into the project directory for dir. It never moves
-// or deletes: the original stays, so the session still resumes from its old
-// directory. It returns the directory it copied into. options are kept as the
-// copy's JobOptions.
+// results when there is one, into the project directory for dir, in the
+// projects directory s is in. It never moves or deletes: the original stays,
+// so the session still resumes from its old directory. It returns the
+// directory it copied into. options are kept as the copy's JobOptions.
 func (st Store) Copy(s Session, dir string, options []string) (string, error) {
 	name := Folder(dir)
 	if len(name) > maxFolder {
 		return "", fmt.Errorf("%s is too long: Claude Code shortens the names of such directories in a way claudes cannot match, so it would not find the copy", dir)
 	}
-	dest := filepath.Join(st.Dir, name)
+	dest := filepath.Join(filepath.Dir(filepath.Dir(s.Path)), name)
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return "", err
 	}
