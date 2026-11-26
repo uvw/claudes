@@ -159,6 +159,31 @@ type helper struct {
 
 // start runs a copy of the test binary under name in mode, with args. It reaps
 // the process as soon as it exits, and kills it when the test ends.
+// binDir is a temporary directory for a stand-in claude. A helper the test
+// cannot wait for, such as the stopper, may still run from it when the test
+// ends, and Windows refuses to delete a running program's file, so removal
+// retries until the helper is gone.
+func binDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "procs-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		for deadline := time.Now().Add(20 * time.Second); ; time.Sleep(100 * time.Millisecond) {
+			err := os.RemoveAll(dir)
+			if err == nil {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Errorf("cannot remove %s: %v", dir, err)
+				return
+			}
+		}
+	})
+	return dir
+}
+
 func start(t *testing.T, name, mode string, args ...string) helper {
 	t.Helper()
 	self, err := os.Executable()
@@ -168,7 +193,7 @@ func start(t *testing.T, name, mode string, args ...string) helper {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	bin := filepath.Join(t.TempDir(), name)
+	bin := filepath.Join(binDir(t), name)
 	data, err := os.ReadFile(self)
 	if err != nil {
 		t.Fatal(err)
