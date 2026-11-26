@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/uvw/claudes/compare/v0.9.0...v0.9.1) (2026-11-26)
+
+
+### Performance
+
+* **cli:** list every account at once ([#20](https://github.com/uvw/claudes/issues/20)) ([0a52ae2](https://github.com/uvw/claudes/commit/0a52ae25d542185d4486bae899912e9cc81f663e))
+
 ## [0.9.0](https://github.com/uvw/claudes/compare/v0.8.1...v0.9.0) (2026-11-26)
 
 ### Features
