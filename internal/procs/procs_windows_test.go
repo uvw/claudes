@@ -23,7 +23,7 @@ func copyAs(t *testing.T, name string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bin := filepath.Join(t.TempDir(), name+".exe")
+	bin := filepath.Join(binDir(t), name+".exe")
 	if err := os.WriteFile(bin, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
