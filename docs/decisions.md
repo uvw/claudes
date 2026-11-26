@@ -7,35 +7,36 @@ it.
 
 ## Index
 
-| No.                                                                                 | Decision                                                                   |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [3](#3-anything-else-goes-to-claude-agents)                                         | Anything else goes to `claude agents`                                      |
-| [5](#5-pins-are-agent-views-pins-and-they-protect-sessions)                         | Pins are agent view's pins, and they protect sessions                      |
-| [6](#6-safeguards-are-opt-in)                                                       | Safeguards are opt-in                                                      |
-| [7](#7-interactive-sessions-are-opt-in-in-two-modes)                                | Interactive sessions are opt-in, in two modes                              |
-| [8](#8-a-ping-is-a-stop-and-a-resume-with-a-prompt)                                 | A ping is a stop and a resume with a prompt                                |
-| [9](#9-the-session-running-claudes-goes-last)                                       | The session running claudes goes last                                      |
-| [10](#10-pause-saves-the-park-file-before-it-stops-anything)                        | Pause saves the park file before it stops anything                         |
-| [11](#11-targets-match-exactly-then-by-prefix-then-by-part-of-a-name)               | Targets match exactly, then by prefix, then by part of a name              |
-| [12](#12-a-sessions-version-comes-from-its-executable)                              | A session's version comes from its executable                              |
-| [14](#14-every-claude-call-has-a-time-limit)                                        | Every `claude` call has a time limit                                       |
-| [15](#15-stopping-an-interactive-session-kills-its-process-tree)                    | Stopping an interactive session kills its process tree                     |
-| [16](#16-resume-commands-use-the-platforms-shell)                                   | Resume commands use the platform's shell                                   |
-| [18](#18-settings-live-in-one-yaml-file-and-a-typo-stops-claudes)                   | Settings live in one YAML file, and a typo stops claudes                   |
-| [19](#19-unfamiliar-claude-code-output-stops-writes)                                | Unfamiliar Claude Code output stops writes                                 |
-| [20](#20-past-sessions-come-from-their-transcripts)                                 | Past sessions come from their transcripts                                  |
-| [22](#22-few-dependencies-and-our-own-plumbing)                                     | Few dependencies, and our own plumbing                                     |
-| [23](#23-one-claudes-changes-sessions-at-a-time-and-exit-codes-say-why-one-stopped) | One claudes changes sessions at a time, and exit codes say why one stopped |
-| [25](#25-claudes-reads-agent-teams-from-their-files-and-guards-their-leads)         | claudes reads agent teams from their files, and guards their leads         |
-| [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)          | session gc moves to the trash, and never touches a session in use          |
-| [28](#28-session-triage-sorts-and-the-agent-judges)                                 | session triage sorts, and the agent judges                                 |
-| [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                        | claudes is a tool for Claude Code, and nothing else                        |
-| [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                       | Short flags mean one thing, and safeguards stay long                       |
-| [32](#32-session-search-scans-every-transcript-with-no-index)                       | session search scans every transcript, with no index                       |
-| [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                 | Windows replaces a file with POSIX rename semantics first                  |
-| [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)           | MCP control starts read-only, and never prints a server's secrets          |
-| [35](#35-session-search-masks-secrets-in-what-it-prints)                            | session search masks secrets in what it prints                             |
-| [36](#36-claudes-records-what-it-trashes-and-restores-without-replacing)            | claudes records what it trashes, and restores without replacing            |
+| No.                                                                                  | Decision                                                                    |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| [3](#3-anything-else-goes-to-claude-agents)                                          | Anything else goes to `claude agents`                                       |
+| [5](#5-pins-are-agent-views-pins-and-they-protect-sessions)                          | Pins are agent view's pins, and they protect sessions                       |
+| [6](#6-safeguards-are-opt-in)                                                        | Safeguards are opt-in                                                       |
+| [7](#7-interactive-sessions-are-opt-in-in-two-modes)                                 | Interactive sessions are opt-in, in two modes                               |
+| [8](#8-a-ping-is-a-stop-and-a-resume-with-a-prompt)                                  | A ping is a stop and a resume with a prompt                                 |
+| [9](#9-the-session-running-claudes-goes-last)                                        | The session running claudes goes last                                       |
+| [10](#10-pause-saves-the-park-file-before-it-stops-anything)                         | Pause saves the park file before it stops anything                          |
+| [11](#11-targets-match-exactly-then-by-prefix-then-by-part-of-a-name)                | Targets match exactly, then by prefix, then by part of a name               |
+| [12](#12-a-sessions-version-comes-from-its-executable)                               | A session's version comes from its executable                               |
+| [14](#14-every-claude-call-has-a-time-limit)                                         | Every `claude` call has a time limit                                        |
+| [15](#15-stopping-an-interactive-session-kills-its-process-tree)                     | Stopping an interactive session kills its process tree                      |
+| [16](#16-resume-commands-use-the-platforms-shell)                                    | Resume commands use the platform's shell                                    |
+| [18](#18-settings-live-in-one-yaml-file-and-a-typo-stops-claudes)                    | Settings live in one YAML file, and a typo stops claudes                    |
+| [19](#19-unfamiliar-claude-code-output-stops-writes)                                 | Unfamiliar Claude Code output stops writes                                  |
+| [20](#20-past-sessions-come-from-their-transcripts)                                  | Past sessions come from their transcripts                                   |
+| [22](#22-few-dependencies-and-our-own-plumbing)                                      | Few dependencies, and our own plumbing                                      |
+| [23](#23-one-claudes-changes-sessions-at-a-time-and-exit-codes-say-why-one-stopped)  | One claudes changes sessions at a time, and exit codes say why one stopped  |
+| [25](#25-claudes-reads-agent-teams-from-their-files-and-guards-their-leads)          | claudes reads agent teams from their files, and guards their leads          |
+| [27](#27-session-gc-moves-to-the-trash-and-never-touches-a-session-in-use)           | session gc moves to the trash, and never touches a session in use           |
+| [28](#28-session-triage-sorts-and-the-agent-judges)                                  | session triage sorts, and the agent judges                                  |
+| [29](#29-claudes-is-a-tool-for-claude-code-and-nothing-else)                         | claudes is a tool for Claude Code, and nothing else                         |
+| [30](#30-short-flags-mean-one-thing-and-safeguards-stay-long)                        | Short flags mean one thing, and safeguards stay long                        |
+| [32](#32-session-search-scans-every-transcript-with-no-index)                        | session search scans every transcript, with no index                        |
+| [33](#33-windows-replaces-a-file-with-posix-rename-semantics-first)                  | Windows replaces a file with POSIX rename semantics first                   |
+| [34](#34-mcp-control-starts-read-only-and-never-prints-a-servers-secrets)            | MCP control starts read-only, and never prints a server's secrets           |
+| [35](#35-session-search-masks-secrets-in-what-it-prints)                             | session search masks secrets in what it prints                              |
+| [36](#36-claudes-records-what-it-trashes-and-restores-without-replacing)             | claudes records what it trashes, and restores without replacing             |
+| [37](#37-each-claude-code-directory-is-an-account-and-every-command-covers-them-all) | Each Claude Code directory is an account, and every command covers them all |
 
 ## 3. Anything else goes to `claude agents`
 
@@ -533,3 +534,31 @@ trashed; reading `.trashinfo` on Linux and searching the Recycle Bin's `$I`
 files on Windows, which are two more code paths; restoring what it can when a
 file is missing or a path is taken, which leaves a session half back; and a
 trash directory of claudes' own, which decision 27 turned down.
+
+## 37. Each Claude Code directory is an account, and every command covers them all
+
+claudes manages every Claude Code directory it finds as an account: its own,
+cswap's profiles when `cswap` is on `PATH`, and the directories `config.yaml`
+adds. Every command that lists or acts on sessions covers them all, and
+`--account` narrows it to one ([Accounts](guide.md#accounts)).
+
+Why: people who run several Claude accounts side by side, with cswap or by
+setting `CLAUDE_CONFIG_DIR` themselves, have background sessions in several
+directories. A claudes that reads one of them makes `restart --outdated` miss
+every other account's sessions after an update. Each account keeps its own jobs,
+pins, daemon, and login, so each `claude` call runs with the session's own
+account in `CLAUDE_CONFIG_DIR`. `~/.claude` runs with the variable unset, since
+Claude Code names its keychain entry after the variable's exact value. claudes
+reads cswap's `sequence.json` and profiles rather than running `cswap`, which
+starts Python and asks for each account's usage, an endpoint cswap rate-limits.
+Only `doctor` runs `cswap list --json`, to check what claudes read. A profile
+counts only when it names a current account and holds Claude Code's files, so a
+stale one cannot add an account that no longer logs in. `--account` resolves a
+name in cswap's order, a number, then an alias, then an email, so the same words
+work in both tools. With one account, the output does not change.
+
+Weighed: running `cswap list --json` for every command, which is slow and spends
+cswap's rate limit; a `--all-accounts` flag with one account by default, which
+would leave a bulk restart missing sessions unless the user remembered it; and
+setting `CLAUDE_CONFIG_DIR` to `~/.claude` for that account, which Claude Code
+treats as another login.

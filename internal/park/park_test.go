@@ -190,3 +190,25 @@ func TestEmptyingTheFileCannotBringTheLegacyOneBack(t *testing.T) {
 		t.Fatalf("entries %+v, err %v", entries, err)
 	}
 }
+
+func TestAnEntryKeepsItsAccountAndLeavesItOutWhenThereIsNone(t *testing.T) {
+	f := File{Path: filepath.Join(t.TempDir(), "parked.json")}
+	entries := []Entry{
+		{SessionID: "a-1", Name: "a"},
+		{SessionID: "b-1", Name: "b", Account: "work", AccountDir: "/profiles/2-you_work.example"},
+	}
+	if err := f.Save(entries); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(f.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(data), `"account`); n != 2 {
+		t.Fatalf("account keys %d, want 2, in\n%s", n, data)
+	}
+	got, err := f.Load()
+	if err != nil || !slices.Equal(got, entries) {
+		t.Fatalf("loaded %+v, err %v", got, err)
+	}
+}

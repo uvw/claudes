@@ -13,13 +13,13 @@ func TestPinAndUnpinWriteAgentViewPins(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{a, term}}
 
 	h.ok(t, "pin", "alpha")
-	pins, _ := h.app.Jobs.Pins()
+	pins, _ := h.app.Accounts[0].Jobs.Pins()
 	if !slices.Equal(pins, []string{a.JobID}) {
 		t.Fatalf("pins %v", pins)
 	}
 	h.fails(t, "pin", "terminal")
 	h.ok(t, "unpin", "alpha")
-	if pins, _ = h.app.Jobs.Pins(); len(pins) != 0 {
+	if pins, _ = h.app.Accounts[0].Jobs.Pins(); len(pins) != 0 {
 		t.Fatalf("pins after unpin %v", pins)
 	}
 }

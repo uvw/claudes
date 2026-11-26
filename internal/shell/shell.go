@@ -14,11 +14,21 @@ import (
 // for a background one. Each value is made Printable before it is quoted, so
 // the quoting fits the text that is printed.
 func ResumeCommand(sessionID, cwd string, interactive bool) string {
-	flags := "--bg --resume"
+	return resumeCommand(Printable(cwd), "claude "+resumeFlags(interactive), Printable(sessionID))
+}
+
+// ResumeCommandIn is ResumeCommand for a session of another account than the
+// shell's: the command runs claude with configDir as CLAUDE_CONFIG_DIR, or
+// with configDir "" without the variable.
+func ResumeCommandIn(configDir, sessionID, cwd string, interactive bool) string {
+	return resumeCommand(Printable(cwd), configPrefix(Printable(configDir))+"claude "+resumeFlags(interactive), Printable(sessionID))
+}
+
+func resumeFlags(interactive bool) string {
 	if interactive {
-		flags = "--resume"
+		return "--resume"
 	}
-	return resumeCommand(Printable(cwd), flags, Printable(sessionID))
+	return "--bg --resume"
 }
 
 // RemoveCommand is the command that deletes paths and everything in them,
@@ -31,17 +41,38 @@ func RemoveCommand(paths []string) string {
 	return removeCommand(printable)
 }
 
-func posixResume(cwd, flags, sessionID string) string {
-	return fmt.Sprintf("cd %s && claude %s %s", Quote(cwd), flags, Quote(sessionID))
+// posixResume runs claude, which is the program and its flags, with any
+// variables it needs before it.
+func posixResume(cwd, claude, sessionID string) string {
+	return fmt.Sprintf("cd %s && %s %s", Quote(cwd), claude, Quote(sessionID))
+}
+
+// posixConfig sets CLAUDE_CONFIG_DIR for the one command it prefixes. env -u
+// unsets it, since Claude Code takes an empty value as a directory.
+func posixConfig(dir string) string {
+	if dir == "" {
+		return "env -u CLAUDE_CONFIG_DIR "
+	}
+	return "CLAUDE_CONFIG_DIR=" + Quote(dir) + " "
 }
 
 func posixRemove(paths []string) string {
 	return "rm -r " + joinQuoted(paths, Quote, " ")
 }
 
-func powerShellResume(cwd, flags, sessionID string) string {
+func powerShellResume(cwd, claude, sessionID string) string {
 	id := powerShellArg(sessionID)
-	return fmt.Sprintf("Set-Location -LiteralPath %s -ErrorAction Stop; claude %s %s", PowerShellQuote(cwd), flags, id)
+	return fmt.Sprintf("Set-Location -LiteralPath %s -ErrorAction Stop; %s %s", PowerShellQuote(cwd), claude, id)
+}
+
+// powerShellConfig sets CLAUDE_CONFIG_DIR, or with dir "" removes it, for the
+// rest of the PowerShell session, which has no form that sets it for one
+// command.
+func powerShellConfig(dir string) string {
+	if dir == "" {
+		return "$env:CLAUDE_CONFIG_DIR = $null; "
+	}
+	return "$env:CLAUDE_CONFIG_DIR = " + PowerShellQuote(dir) + "; "
 }
 
 func powerShellRemove(paths []string) string {

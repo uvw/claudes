@@ -34,13 +34,18 @@ func (d *Disk) Add(o Disk) {
 	d.Total += o.Total
 }
 
-// FileHistory is the directory of Claude Code's backups of the files a session
-// edited, or "" when the store does not know Claude Code's directory.
-func (st Store) FileHistory(sessionID string) string {
-	if st.Home == "" || !claude.ValidSessionID(sessionID) {
-		return ""
+// FileHistory is the directories of Claude Code's backups of the files a
+// session edited, one in each Claude Code directory the store knows, or none
+// when it knows none.
+func (st Store) FileHistory(sessionID string) []string {
+	if !claude.ValidSessionID(sessionID) {
+		return nil
 	}
-	return filepath.Join(st.Home, "file-history", sessionID)
+	var out []string
+	for _, home := range st.homes() {
+		out = append(out, filepath.Join(home, "file-history", sessionID))
+	}
+	return out
 }
 
 // Usage measures the space s takes.
@@ -49,8 +54,8 @@ func (st Store) Usage(s Session) Disk {
 	for _, c := range s.Copies {
 		d.Copies += fileSize(c) + treeSize(strings.TrimSuffix(c, ".jsonl"))
 	}
-	if dir := st.FileHistory(s.SessionID); dir != "" {
-		d.FileHistory = treeSize(dir)
+	for _, dir := range st.FileHistory(s.SessionID) {
+		d.FileHistory += treeSize(dir)
 	}
 	d.Total = d.Transcript + d.Sidecar + d.Copies + d.FileHistory
 	return d
@@ -98,9 +103,13 @@ func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 		known[s.SessionID] = true
 	}
 	var out []Leftover
-	dirs, err := filepath.Glob(filepath.Join(st.Dir, "*", "*"))
-	if err != nil {
-		return nil, err
+	var dirs []string
+	for _, projects := range st.projectDirs() {
+		found, err := filepath.Glob(filepath.Join(projects, "*", "*"))
+		if err != nil {
+			return nil, err
+		}
+		dirs = append(dirs, found...)
 	}
 	for _, dir := range dirs {
 		id := filepath.Base(dir)
@@ -113,8 +122,8 @@ func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 		size, modified := treeStat(dir)
 		out = append(out, Leftover{Path: dir, SessionID: id, Kind: "sidecar", Size: size, Modified: modified})
 	}
-	if st.Home != "" {
-		entries, err := os.ReadDir(filepath.Join(st.Home, "file-history"))
+	for _, home := range st.homes() {
+		entries, err := os.ReadDir(filepath.Join(home, "file-history"))
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
@@ -122,7 +131,7 @@ func (st Store) Leftovers(list []Session) ([]Leftover, error) {
 			if !e.IsDir() || !claude.ValidSessionID(e.Name()) || known[e.Name()] {
 				continue
 			}
-			dir := st.FileHistory(e.Name())
+			dir := filepath.Join(home, "file-history", e.Name())
 			size, modified := treeStat(dir)
 			out = append(out, Leftover{Path: dir, SessionID: e.Name(), Kind: "file-history", Size: size, Modified: modified})
 		}
@@ -186,15 +195,16 @@ func CopyFiles(copyPath string) []string {
 }
 
 // SessionFiles is everything Claude Code keeps for s that exists: the
-// transcript, its sidecar directory, every older copy with its sidecar, its file
-// history, its session-env directory, and its debug log.
+// transcript, its sidecar directory, every older copy with its sidecar, and in
+// each Claude Code directory its file history, its session-env directory, and
+// its debug log.
 func (st Store) SessionFiles(s Session) []string {
 	out := Files(s)
 	for _, c := range s.Copies {
 		out = append(out, CopyFiles(c)...)
 	}
-	if st.Home != "" && claude.ValidSessionID(s.SessionID) {
-		for _, p := range append([]string{st.FileHistory(s.SessionID)}, st.sessionExtras(s.SessionID)...) {
+	if claude.ValidSessionID(s.SessionID) {
+		for _, p := range append(st.FileHistory(s.SessionID), st.sessionExtras(s.SessionID)...) {
 			if _, err := os.Lstat(p); err == nil {
 				out = append(out, p)
 			}

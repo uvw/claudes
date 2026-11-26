@@ -30,27 +30,37 @@ func (app *App) pinCommand(pin bool) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ids := make([]string, 0, len(picked))
+			// Each account keeps its own pins.json.
+			ids := map[*account][]string{}
+			var owners []*account
 			for _, s := range picked {
 				if s.JobID == "" {
 					return refusal(fmt.Errorf("%s is an interactive session: only background sessions can be pinned", s.Label()))
 				}
-				ids = append(ids, s.JobID)
+				a := app.accountOf(s)
+				if _, ok := ids[a]; !ok {
+					owners = append(owners, a)
+				}
+				ids[a] = append(ids[a], s.JobID)
 			}
-			current, err := app.Jobs.Pins()
-			if err != nil {
-				return err
+			for _, a := range owners {
+				current, err := a.Jobs.Pins()
+				if err != nil {
+					return err
+				}
+				if err := app.refuse(app.inAccount(a, "pins.json"), compat.CheckPins(current)); err != nil {
+					return err
+				}
 			}
-			if err := app.refuse("pins.json", compat.CheckPins(current)); err != nil {
-				return err
-			}
-			changed, err := app.Jobs.SetPinned(ids, pin)
-			if err != nil {
-				return err
+			changed := map[*account][]string{}
+			for _, a := range owners {
+				if changed[a], err = a.Jobs.SetPinned(ids[a], pin); err != nil {
+					return err
+				}
 			}
 			for _, s := range picked {
 				result := verb
-				if slices.Contains(changed, s.JobID) {
+				if slices.Contains(changed[app.accountOf(s)], s.JobID) {
 					app.say("%s %s (%s)", verb, s.Label(), s.JobID)
 				} else {
 					result = "already " + verb

@@ -87,10 +87,20 @@ func (st *state) handle(args []string) int {
 	return 2
 }
 
+// mine reports whether s runs under the account this call reaches.
+func (st *state) mine(s fake.Session) bool {
+	dir := s.ConfigDir
+	if dir == "" {
+		dir = st.ConfigDir
+	}
+	return dir == os.Getenv("CLAUDE_CONFIG_DIR")
+}
+
 func (st *state) list(all bool) int {
 	out := []fake.Session{}
 	for _, s := range st.Sessions {
-		if all || s.PID > 0 {
+		if st.mine(s) && (all || s.PID > 0) {
+			s.ConfigDir = ""
 			out = append(out, s)
 		}
 	}
@@ -100,7 +110,7 @@ func (st *state) list(all bool) int {
 }
 
 func (st *state) job(op, id string) int {
-	i := slices.IndexFunc(st.Sessions, func(s fake.Session) bool { return s.ID == id })
+	i := slices.IndexFunc(st.Sessions, func(s fake.Session) bool { return s.ID == id && st.mine(s) })
 	if !jobID.MatchString(id) || i < 0 {
 		fmt.Fprintf(os.Stderr, "No job matching '%s'\n", id)
 		return 1
@@ -125,7 +135,7 @@ func (st *state) job(op, id string) int {
 // resume wakes a session's job, or starts a job in this directory for a
 // session that has a transcript and no job, with the name and options given.
 func (st *state) resume(sessionID string, options []string) int {
-	i := slices.IndexFunc(st.Sessions, func(s fake.Session) bool { return s.SessionID == sessionID })
+	i := slices.IndexFunc(st.Sessions, func(s fake.Session) bool { return s.SessionID == sessionID && st.mine(s) })
 	if i < 0 {
 		found, _ := filepath.Glob(filepath.Join(os.Getenv("CLAUDE_CONFIG_DIR"), "projects", "*", sessionID+".jsonl"))
 		if len(found) == 0 {
@@ -160,7 +170,7 @@ func (st *state) newJob(sessionID string, options []string) error {
 	if err != nil {
 		return err
 	}
-	s := fake.Session{ID: sessionID[:8], SessionID: sessionID, Cwd: wd, Kind: "background"}
+	s := fake.Session{ID: sessionID[:8], SessionID: sessionID, Cwd: wd, Kind: "background", ConfigDir: home}
 	for _, o := range options {
 		if name, ok := strings.CutPrefix(o, "--name="); ok {
 			s.Name = name
@@ -191,7 +201,7 @@ func logCall(path string, args []string) {
 	wd, _ := os.Getwd()
 	_, cc := os.LookupEnv("CLAUDECODE")
 	_, jd := os.LookupEnv("CLAUDE_JOB_DIR")
-	line, _ := json.Marshal(fake.Call{Args: args, Cwd: wd, ClaudeCode: cc, ClaudeJobDir: jd})
+	line, _ := json.Marshal(fake.Call{Args: args, Cwd: wd, ClaudeCode: cc, ClaudeJobDir: jd, ConfigDir: os.Getenv("CLAUDE_CONFIG_DIR")})
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		fail(err.Error())

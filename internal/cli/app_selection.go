@@ -68,7 +68,7 @@ func (app *App) bulk(running []claude.Session, skip map[string]bool, withInterac
 			return selection.Selection{}, err
 		}
 	}
-	return selection.Bulk(running, skip, pins, withInteractive, app.Teams.Teammates), nil
+	return selection.Bulk(running, skip, pins, withInteractive, app.teammates), nil
 }
 
 // keepOutdated narrows the chosen sessions to those on an older Claude Code
@@ -79,8 +79,12 @@ func (app *App) keepOutdated(ctx context.Context, sel *selection.Selection) erro
 		return err
 	}
 	if selection.KeepOutdated(sel, installed, app.sessionVersion) {
+		dirs := make([]string, 0, len(app.selected()))
+		for _, a := range app.selected() {
+			dirs = append(dirs, a.Jobs.Dir)
+		}
 		app.warn("claudes: cannot read the Claude Code version of any session from %s. "+
-			"Claude Code may have changed its files there.", app.Jobs.Dir)
+			"Claude Code may have changed its files there.", strings.Join(dirs, ", "))
 	}
 	return nil
 }

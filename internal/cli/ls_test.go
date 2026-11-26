@@ -32,7 +32,7 @@ func writeActivity(t *testing.T, h *harness, s claude.Session, subagents, teamma
 	}
 	fan = append(fan, `{"id":"affffffffffffffff","kind":"agent","label":"finished","startedAt":1,"doneAt":2}`)
 	data := fmt.Sprintf(`{"cliVersion":"2.1.325","fan":[%s]%s}`, strings.Join(fan, ","), extra)
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), data)
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, s.JobID, "state.json"), data)
 }
 
 // column is each session's cell under header in a text table, by name.
@@ -70,7 +70,7 @@ func TestLsAgentsShowsTheTeamItLeadsAndTheSubagentsItRuns(t *testing.T) {
 	term, gone := h.tty("term", "idle"), stopped(h.bg("gone", ""))
 	h.agents.snapshots = [][]claude.Session{{quiet, sub, lead, both, term}}
 	h.agents.finished = []claude.Session{gone}
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, quiet.JobID, "state.json"), `{"inFlight":{"tasks":0}}`)
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, quiet.JobID, "state.json"), `{"inFlight":{"tasks":0}}`)
 	writeActivity(t, h, sub, 3, 1, 2, "")
 	writeActivity(t, h, lead, 0, 2, 0, "")
 	writeActivity(t, h, both, 3, 2, 0, "")

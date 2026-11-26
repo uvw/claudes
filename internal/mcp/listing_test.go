@@ -1,7 +1,9 @@
 package mcp
 
 import (
+	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -47,5 +49,16 @@ func TestCheckProfileNamesTheProfilesThereAre(t *testing.T) {
 	}
 	if err := CheckProfile(map[string]names{"b": nil, "a": nil}, "web"); err == nil || err.Error() != `no MCP profile "web". Profiles: a, b` {
 		t.Errorf("other profiles: %v", err)
+	}
+}
+
+func TestAListingNamesItsAccountOnlyWhenSet(t *testing.T) {
+	l := NewListing("/d", "", nil, map[string]names(nil))
+	data, err := json.Marshal(l)
+	if err != nil || strings.Contains(string(data), "account") {
+		t.Fatalf("json %s, err %v", data, err)
+	}
+	if s := StoreIn("/p", "/p/.claude.json"); s.Home != "/p" || s.ConfigFile != "/p/.claude.json" {
+		t.Fatalf("store %+v", s)
 	}
 }

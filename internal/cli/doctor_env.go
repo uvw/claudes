@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"text/tabwriter"
@@ -104,10 +103,18 @@ func (app *App) environment(ctx context.Context) []envSection {
 		{"config", configFile},
 		{"park file", app.Park.Path},
 		{"version cache", cache},
-		{"claude home", filepath.Dir(app.Jobs.Dir)},
-		{"jobs", app.Jobs.Dir},
+		{"claude home", app.Accounts[0].Dir},
+		{"jobs", app.Accounts[0].Jobs.Dir},
 		{"transcripts", app.Transcripts.Dir},
 	}}
+	sections := []envSection{claudes, claudeCode, files}
+	if app.multi() {
+		accts := envSection{name: "accounts"}
+		for _, a := range app.Accounts {
+			accts.pairs = append(accts.pairs, [2]string{app.accountLabel(a), a.Dir})
+		}
+		sections = append(sections, accts)
+	}
 
 	var vars []string
 	if app.Environ != nil {
@@ -128,5 +135,5 @@ func (app *App) environment(ctx context.Context) []envSection {
 		}
 		env.pairs = append(env.pairs, [2]string{name, value})
 	}
-	return []envSection{claudes, claudeCode, files, env}
+	return append(sections, env)
 }

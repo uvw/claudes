@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -42,22 +43,19 @@ func SidecarParts(s Session, withSubagents bool) []SidecarPart {
 }
 
 // sessionExtras are the files SessionFiles holds beyond what Usage measures:
-// a session's session-env directory and its debug log.
+// a session's session-env directory and its debug log, in each Claude Code
+// directory.
 func (st Store) sessionExtras(sessionID string) []string {
-	return []string{
-		filepath.Join(st.Home, "session-env", sessionID),
-		filepath.Join(st.Home, "debug", sessionID+".txt"),
+	var out []string
+	for _, home := range st.homes() {
+		out = append(out, filepath.Join(home, "session-env", sessionID), filepath.Join(home, "debug", sessionID+".txt"))
 	}
+	return out
 }
 
 // ExtraSize is the space SessionFiles takes beyond s's Usage: its session-env
-// directory and debug log.
-func (st Store) ExtraSize(s Session) int64 {
-	if st.Home == "" {
-		return 0
-	}
-	return Size(st.sessionExtras(s.SessionID))
-}
+// directories and debug logs.
+func (st Store) ExtraSize(s Session) int64 { return Size(st.sessionExtras(s.SessionID)) }
 
 // Size adds up the regular files at and under paths.
 func Size(paths []string) int64 {
@@ -66,6 +64,12 @@ func Size(paths []string) int64 {
 		n += treeSize(p)
 	}
 	return n
+}
+
+// under reports whether p is inside root, and not root itself.
+func under(root, p string) bool {
+	rel, err := filepath.Rel(root, p)
+	return err == nil && rel != "." && !strings.HasPrefix(rel, "..")
 }
 
 // Changed is when the file at path last changed, or zero when it is gone.
@@ -79,16 +83,16 @@ func Changed(path string) time.Time {
 
 // Remove removes each of paths, files of session sessionID, with remove: a move
 // to the system trash, or os.RemoveAll to delete for good. It refuses a path
-// outside Claude Code's directory, or one whose name, or whose directory's
-// name, does not carry the session id, so nothing else is ever touched. A path
-// that is already gone is skipped.
+// outside the Claude Code directories and projects directories the store
+// knows, or one whose name, or whose directory's name, does not carry the
+// session id, so nothing else is ever touched. A path that is already gone is
+// skipped.
 func (st Store) Remove(sessionID string, paths []string, remove func(string) error) error {
-	root := cmp.Or(st.Home, st.Dir)
+	roots := append(st.homes(), st.projectDirs()...)
 	for _, p := range paths {
-		rel, err := filepath.Rel(root, p)
 		owned := strings.Contains(filepath.Base(p), sessionID) || filepath.Base(filepath.Dir(p)) == sessionID
-		if err != nil || rel == "." || strings.HasPrefix(rel, "..") || !owned {
-			return fmt.Errorf("refused to remove %s, which is not a file of session %s under %s", p, sessionID, root)
+		if !owned || !slices.ContainsFunc(roots, func(root string) bool { return under(root, p) }) {
+			return fmt.Errorf("refused to remove %s, which is not a file of session %s under %s", p, sessionID, cmp.Or(st.Home, st.Dir))
 		}
 		if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
 			continue

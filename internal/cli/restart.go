@@ -78,7 +78,7 @@ func (app *App) restart(ctx context.Context, targets []string, f *lifecycleFlags
 		case app.midTurn(s) && !s.Interactive():
 			note = render.Dash(s.Activity()) + ": its turn ends, and --ping would carry it on"
 		}
-		note = render.JoinNotes(note, app.teamNote(s))
+		note = render.JoinNotes(note, app.teamNote(s), app.accountNote(s))
 		rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: render.Dash(s.Activity()), Cwd: s.Cwd, Note: note})
 	}
 	app.printPlan("Restarting", rows)
@@ -166,7 +166,7 @@ func (app *App) restartOne(ctx context.Context, s claude.Session, prompt string,
 	case s.JobID == "":
 		return restartRespawned, errors.New("claude agents gave no job id for this session")
 	default:
-		return restartRespawned, app.Agents.Respawn(ctx, s.JobID)
+		return restartRespawned, app.Agents.Respawn(ctx, s.ConfigDir, s.JobID)
 	}
 }
 
@@ -181,5 +181,5 @@ func (app *App) restartHost(ctx context.Context, host claude.Session) error {
 	app.say("")
 	app.say("Restarting this session (%s) last. Output ends here.", host.Label())
 	app.lastWords(host, "restarting")
-	return app.Agents.Respawn(ctx, host.JobID)
+	return app.Agents.Respawn(ctx, host.ConfigDir, host.JobID)
 }

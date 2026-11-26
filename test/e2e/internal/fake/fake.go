@@ -13,6 +13,10 @@ type Session struct {
 	Status    string `json:"status,omitempty"`
 	PID       int    `json:"pid"`
 	StartedAt int64  `json:"startedAt"`
+	// ConfigDir is the CLAUDE_CONFIG_DIR of the account the session runs
+	// under, or "" for State.ConfigDir. fakeclaude acts on a session only
+	// under its own, and leaves the key out of what it lists.
+	ConfigDir string `json:"configDir,omitempty"`
 }
 
 // State is what the tests set up and read back.
@@ -24,6 +28,8 @@ type State struct {
 	Fail     map[string]string `json:"fail,omitempty"`
 	NextPID  int               `json:"nextPid"`
 	Sessions []Session         `json:"sessions"`
+	// ConfigDir is the CLAUDE_CONFIG_DIR of the account claudes runs as.
+	ConfigDir string `json:"configDir"`
 }
 
 // Call is one invocation, as the tests read it from the log.
@@ -32,4 +38,6 @@ type Call struct {
 	Cwd          string   `json:"cwd"`
 	ClaudeCode   bool     `json:"claudeCode"`
 	ClaudeJobDir bool     `json:"claudeJobDir"`
+	// ConfigDir is the call's CLAUDE_CONFIG_DIR.
+	ConfigDir string `json:"configDir"`
 }

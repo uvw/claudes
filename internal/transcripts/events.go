@@ -235,15 +235,22 @@ func isTeammate(meta string) bool {
 // directory for cwd when it is there, or else wherever it lives.
 func (st Store) Find(sessionID, cwd string) (string, error) {
 	name := sessionID + ".jsonl"
+	dirs := st.projectDirs()
 	if cwd != "" {
-		p := filepath.Join(st.Dir, Folder(cwd), name)
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
+		for _, dir := range dirs {
+			p := filepath.Join(dir, Folder(cwd), name)
+			if _, err := os.Stat(p); err == nil {
+				return p, nil
+			}
 		}
 	}
-	matches, err := filepath.Glob(filepath.Join(st.Dir, "*", name))
-	if err != nil {
-		return "", err
+	var matches []string
+	for _, dir := range dirs {
+		found, err := filepath.Glob(filepath.Join(dir, "*", name))
+		if err != nil {
+			return "", err
+		}
+		matches = append(matches, found...)
 	}
 	if len(matches) == 0 {
 		return "", fmt.Errorf("no transcript for session %s under %s: %w", sessionID, st.Dir, fs.ErrNotExist)

@@ -163,7 +163,7 @@ func TestSessionRestorePutsBackWhatSessionMvRmAndGcTeamsTrashed(t *testing.T) {
 	id := h.transcript(t, "plan", from, 7*24*time.Hour)
 	original := filepath.Join(h.app.Transcripts.Dir, transcripts.Folder(from), id+".jsonl")
 	h.ok(t, "session", "mv", "--rm", "plan", h.folder("to"))
-	tasks := filepath.Join(h.app.Teams.Tasks, teams.Name(id))
+	tasks := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(id))
 	writeFile(t, filepath.Join(tasks, "1.json"), "{}")
 	h.aged(t, tasks, 30*24*time.Hour)
 	h.agents.snapshots = [][]claude.Session{{}}

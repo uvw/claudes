@@ -13,6 +13,6 @@ show its teammates and their tasks too.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(app.teamLsCommand())
+	cmd.AddCommand(app.withAccount(app.teamLsCommand()))
 	return cmd
 }

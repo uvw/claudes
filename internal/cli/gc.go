@@ -15,6 +15,7 @@ import (
 	"github.com/uvw/claudes/internal/render"
 	"github.com/uvw/claudes/internal/selection"
 	"github.com/uvw/claudes/internal/target"
+	"github.com/uvw/claudes/internal/teams"
 	"github.com/uvw/claudes/internal/trash"
 )
 
@@ -69,7 +70,8 @@ the system trash; --purge deletes them for good.`,
 			}
 			rows := make([]render.PlanRow, 0, len(picked))
 			for _, s := range picked {
-				rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: s.State, Cwd: s.Cwd, Note: "last active " + render.Ago(app.Now(), app.lastActive(s))})
+				note := render.JoinNotes("last active "+render.Ago(app.Now(), app.lastActive(s)), app.accountNote(s))
+				rows = append(rows, render.PlanRow{ID: s.ID(), Name: s.Label(), Label: s.State, Cwd: s.Cwd, Note: note})
 			}
 			app.printPlanOf("Removing", "session(s)", "STATE", rows)
 			if proceed, err := app.gate(plan, "Remove these sessions from the list?"); !proceed {
@@ -82,7 +84,7 @@ the system trash; --purge deletes them for good.`,
 					notReached(app, picked[i:])
 					break
 				}
-				if err := app.Agents.Remove(hand, s.JobID); err != nil {
+				if err := app.Agents.Remove(hand, s.ConfigDir, s.JobID); err != nil {
 					failures = append(failures, render.Failure{Label: s.Label(), Reason: err.Error(), Of: s})
 					app.progressFailed(s)
 					continue
@@ -129,10 +131,16 @@ func (app *App) oldFinished(finished []claude.Session, cutoff time.Time, withPin
 // lastActive is when a session last changed state: its state.json, or when it
 // started if that is unknown.
 func (app *App) lastActive(s claude.Session) time.Time {
-	if t := app.Jobs.LastActive(s.JobID); !t.IsZero() {
+	if t := app.accountOf(s).Jobs.LastActive(s.JobID); !t.IsZero() {
 		return t
 	}
 	return s.Started()
+}
+
+// teamLeftover is a team directory or task list, in the account that keeps it.
+type teamLeftover struct {
+	teams.Leftover
+	acct *account
 }
 
 // gcTeamsOpts are the flags of gc --teams.
@@ -173,9 +181,15 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 	for _, e := range parked {
 		keep[claude.ShortID(e.SessionID)] = true
 	}
-	folders, err := app.Teams.Leftovers(keep, app.Now().Add(-o.olderThan))
-	if err != nil {
-		return err
+	var folders []teamLeftover
+	for _, a := range app.selected() {
+		found, err := a.Teams.Leftovers(keep, app.Now().Add(-o.olderThan))
+		if err != nil {
+			return err
+		}
+		for _, l := range found {
+			folders = append(folders, teamLeftover{l, a})
+		}
 	}
 	if len(folders) == 0 {
 		app.say("No team directories or task lists to clean up.")
@@ -183,7 +197,11 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 	}
 	rows := make([]render.PlanRow, 0, len(folders))
 	for _, l := range folders {
-		rows = append(rows, render.PlanRow{ID: l.ID(), Name: l.Label(), Cwd: l.Path, Note: "last changed " + render.Ago(app.Now(), l.Modified)})
+		note := "last changed " + render.Ago(app.Now(), l.Modified)
+		if app.multi() {
+			note = render.JoinNotes(note, "account "+l.acct.Name)
+		}
+		rows = append(rows, render.PlanRow{ID: l.ID(), Name: l.Label(), Cwd: l.Path, Note: note})
 	}
 	app.printPlanOf("Removing", "team dir(s) and task list(s)", "", rows)
 	if proceed, err := app.gate(o.plan, "Remove these team dirs and task lists?"); !proceed {
@@ -200,7 +218,7 @@ func (app *App) gcTeams(ctx context.Context, o gcTeamsOpts) error {
 			break
 		}
 		rec := trash.Record{SessionID: l.ID(), Name: l.Label(), Cwd: l.Path}
-		err := app.Teams.Remove(l, app.remover(o.purge, &rec))
+		err := l.acct.Teams.Remove(l.Leftover, app.remover(o.purge, &rec))
 		app.keepTrashed("gc --teams", rec)
 		if err != nil {
 			failures = append(failures, render.Failure{Label: l.Label() + " " + l.ID(), Reason: err.Error(), Of: l})

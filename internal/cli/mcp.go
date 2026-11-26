@@ -13,6 +13,6 @@ environment, headers, or URL, which can carry tokens.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
-	cmd.AddCommand(app.mcpLsCommand(), app.mcpProfilesCommand())
+	cmd.AddCommand(app.withAccount(app.mcpLsCommand()), app.mcpProfilesCommand())
 	return cmd
 }

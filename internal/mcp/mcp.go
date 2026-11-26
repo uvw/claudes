@@ -72,7 +72,13 @@ func DefaultStore() (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	return Store{ConfigFile: file, Home: home, Managed: managedFiles()}, nil
+	return StoreIn(home, file), nil
+}
+
+// StoreIn is the Store of the Claude Code directory home, whose settings file
+// is configFile. Each account has its own.
+func StoreIn(home, configFile string) Store {
+	return Store{ConfigFile: configFile, Home: home, Managed: managedFiles()}
 }
 
 // Servers lists the servers Claude Code gives a session in dir, an absolute

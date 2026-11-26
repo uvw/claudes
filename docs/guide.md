@@ -21,6 +21,8 @@ command; `claudes COMMAND --help` describes each one's flags.
 - **Target:** how you name a session: its name, job id, session id, or short id
   (the first eight characters of the session id). See
   [Naming sessions](#naming-sessions).
+- **Account:** a Claude Code directory, such as `~/.claude` or a profile of
+  cswap's, with its own login, sessions, and pins. See [Accounts](#accounts).
 
 ## Commands
 
@@ -88,6 +90,7 @@ writing. A session with no process runs no subagents or shells, whatever its
 | `--forget`          | `resume`                                                           | Drop the named sessions from the park list                        |
 | `--older-than AGE`  | `gc`                                                               | Without targets, only sessions finished over AGE ago; 7d          |
 | `--force`           | `restart`, `pause`, `resume`, `ping`, `stop`, `gc`, `pin`, `unpin` | Act although a compatibility check failed                         |
+| `--account ACCOUNT` | every command that lists or acts on sessions                       | Only that account's sessions; see [Accounts](#accounts)           |
 | `-o`, `--output`    | the commands in [Output](reference.md#output)                      | Print `text`, `json`, or `yaml`                                   |
 | `-v`, `--verbose`   | every command                                                      | Log each `claude` call and step to stderr                         |
 
@@ -555,3 +558,72 @@ $ claudes logs -f api --tail 2
 20:41:58 claude All 214 tests pass.
 20:41:59 turn   done in 14s
 ```
+
+## Accounts
+
+claudes treats each Claude Code directory as an account. `~/.claude`, or
+`$CLAUDE_CONFIG_DIR` when it is set, is always one. People who run several
+Claude accounts side by side have more, and claudes finds them in two places:
+
+1. **cswap.** When [claude-swap](https://github.com/realiti4/claude-swap)
+   (`cswap`) is on `PATH`, `~/.claude` is an account, and so is each profile
+   `cswap run` starts sessions in, under `sessions` in cswap's backup directory.
+   A profile counts when its leading number names an account in cswap's
+   `sequence.json`, the rest of its name matches that account's email, and it
+   holds `.claude.json` or `jobs`. A profile of a removed account, or of a slot
+   cswap gave another email, is skipped. Without `cswap` on `PATH`, claudes
+   reads none of its profiles.
+2. **config.yaml.** `accounts.dirs` names directories by account. A directory
+   that is already an account takes the name, and any other becomes an account,
+   such as one another tool runs `claude` in. `accounts.cswap: false` leaves
+   cswap out. See [Configuration](reference.md#configuration).
+
+An account's name is its `config.yaml` name, else its cswap alias, else its
+cswap email. `~/.claude` takes the name of the cswap account it is logged in as,
+so it can share a name with that account's profile. An account with no such name
+goes by its directory, such as `~/.claude`.
+
+Every command that lists or acts on sessions covers every account, and
+`--account ACCOUNT` narrows it to one. Bulk commands take every account's
+sessions by default. ACCOUNT is a `config.yaml` name or, as cswap takes them, an
+account number, an alias in any case, or an email, tried in that order. An email
+two cswap accounts share is an error that asks for the number. An account that
+`~/.claude` and a profile both hold selects both directories. `config`,
+`upgrade`, and `doctor` take no `--account`.
+
+With more than one account, `ls` adds an `ACCOUNT` column, `team ls` does too,
+plans name each session's account, and `-o json` adds an `account` key. With one
+account, the output is the same as without accounts.
+
+Each account keeps its own background sessions, daemon, pins, agent teams, and
+MCP settings in its `.claude.json`, so:
+
+1. Every `claude` call for a session runs with that session's account in
+   `CLAUDE_CONFIG_DIR`, so a restart, ping, or resume stays on the session's own
+   login and daemon. `~/.claude` runs with the variable unset: Claude Code names
+   its keychain entry after the variable's exact value, so spelling out
+   `~/.claude` would read as another login.
+2. A command printed to resume a session of another account sets
+   `CLAUDE_CONFIG_DIR` first. In PowerShell it stays set in that terminal.
+3. Pins protect a session in its own account, and `pin` writes that account's
+   `pins.json`.
+4. The park file records each session's account, so `resume` brings it back
+   under the same one.
+5. `mcp ls` lists the servers of each account the command covers, one table
+   each.
+
+Past sessions belong to no single account: cswap links each profile's `projects`
+to `~/.claude/projects`, so a conversation resumes under any of them. The
+`session` commands read each distinct projects directory once, and list a
+session once. `session resume` resumes under the account claudes runs as, or the
+one `--account` names. `session gc` and `session restore` handle a session's
+`file-history` and `session-env` in every account, since each profile keeps its
+own.
+
+`claudes doctor` lists each account and where claudes found it, and checks each
+one's sessions, pins, and teams. With cswap on `PATH`, it runs
+`cswap list --json` and warns when cswap's accounts differ from what claudes
+read in `sequence.json`. It also warns when a profile claudes skips still runs
+background sessions, and says how to add it under `accounts.dirs`. Everyday
+commands read cswap's files and never run `cswap`, which starts Python and asks
+for each account's usage.

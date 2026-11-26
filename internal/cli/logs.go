@@ -47,7 +47,7 @@ transcript, with the last 10 events unless --tail says otherwise.`,
 			if out == render.YAML {
 				return fmt.Errorf("logs prints -o text or -o json")
 			}
-			sessions, err := app.Agents.Sessions(cmd.Context(), true)
+			sessions, err := app.listIn(cmd.Context(), app.selected(), true)
 			if err != nil {
 				return err
 			}

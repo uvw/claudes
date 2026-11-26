@@ -292,3 +292,17 @@ func TestIDFromDir(t *testing.T) {
 		}
 	}
 }
+
+func TestStoreInIsAnAccountsOwnJobsDirectory(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "profile")
+	s := StoreIn(home)
+	if s.Dir != filepath.Join(home, "jobs") || s.LockAttempts == 0 {
+		t.Fatalf("store %+v", s)
+	}
+	if _, err := s.SetPinned([]string{"7f8f7d77"}, true); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err := s.Pins(); err != nil || len(ids) != 1 {
+		t.Fatalf("pins %v, err %v", ids, err)
+	}
+}

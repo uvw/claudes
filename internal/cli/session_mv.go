@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/uvw/claudes/internal/claude"
 	"github.com/uvw/claudes/internal/history"
 	"github.com/uvw/claudes/internal/park"
 	"github.com/uvw/claudes/internal/paths"
@@ -114,7 +115,7 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 	app.say("copied %s (%s)\n  from %s\n  to   %s", shell.Printable(p.Label()), p.ShortID, filepath.Dir(p.Path), dest)
 	switch {
 	case job.remove:
-		if err := app.Agents.Remove(context.WithoutCancel(ctx), job.id); err != nil {
+		if err := app.Agents.Remove(context.WithoutCancel(ctx), job.config, job.id); err != nil {
 			return fmt.Errorf("copied, but cannot remove its background job: %w. Remove it with claudes gc %s, so claudes session resume --bg starts a new job in %s", err, job.id, dir)
 		}
 		app.say("removed its stopped background job %s: claudes session resume --bg %s starts a new one in %s%s",
@@ -152,6 +153,8 @@ func (app *App) moveSession(ctx context.Context, token, to string, resume, rm, p
 // movingJob is what session mv does with a session's background job.
 type movingJob struct {
 	id, dir string
+	// config is how claude reaches the job's account.
+	config claude.ConfigDir
 	// options are the job's saved options, which the move keeps for the job
 	// claude --bg --resume starts once this one is gone.
 	options []string
@@ -165,15 +168,16 @@ type movingJob struct {
 // A paused one stays, since claudes resume wakes it where it was paused.
 func (app *App) jobToMove(ctx context.Context, p history.Session, dir string) (movingJob, error) {
 	job := movingJob{options: p.JobOptions()}
-	s, found, err := app.listedJob(ctx, p.SessionID)
+	s, found, err := app.listedJob(ctx, app.Accounts, p.SessionID)
 	if err != nil || !found {
 		return job, err
 	}
-	options, ok := app.Jobs.Options(s.JobID, s.SessionID)
+	jobs := app.accountOf(s).Jobs
+	options, ok := jobs.Options(s.JobID, s.SessionID)
 	if ok {
 		job.options = options
 	}
-	job.id, job.dir = s.JobID, cmp.Or(app.Jobs.Folder(s.JobID, s.SessionID), s.Cwd)
+	job.id, job.dir, job.config = s.JobID, cmp.Or(jobs.Folder(s.JobID, s.SessionID), s.Cwd), s.ConfigDir
 	if paths.Same(job.dir, dir) {
 		return movingJob{options: job.options}, nil
 	}

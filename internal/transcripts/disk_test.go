@@ -96,10 +96,10 @@ func TestLeftoversAreSessionFoldersWithNoTranscript(t *testing.T) {
 }
 
 func TestWithoutAHomeFileHistoryIsLeftOut(t *testing.T) {
-	if dir := (Store{}).FileHistory(sid); dir != "" {
+	if dir := (Store{}).FileHistory(sid); dir != nil {
 		t.Fatalf("file history %q", dir)
 	}
-	if dir := (Store{Home: "/h"}).FileHistory("../../etc"); dir != "" {
+	if dir := (Store{Home: "/h"}).FileHistory("../../etc"); dir != nil {
 		t.Fatalf("file history for an invalid id %q", dir)
 	}
 }

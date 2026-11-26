@@ -38,7 +38,13 @@ func DefaultStore() (Store, error) {
 	if err != nil {
 		return Store{}, err
 	}
-	return Store{Teams: filepath.Join(home, "teams"), Tasks: filepath.Join(home, "tasks")}, nil
+	return StoreIn(home), nil
+}
+
+// StoreIn is the teams and tasks directories in the Claude Code directory
+// home. Each account keeps its own.
+func StoreIn(home string) Store {
+	return Store{Teams: filepath.Join(home, "teams"), Tasks: filepath.Join(home, "tasks")}
 }
 
 // Team is one team, as its config describes it.

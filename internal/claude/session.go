@@ -32,6 +32,9 @@ type Session struct {
 	PID       int    `json:"pid"`
 	// StartedAt is in milliseconds since the Unix epoch.
 	StartedAt int64 `json:"startedAt"`
+	// ConfigDir is how claude reaches the account claudes listed the session
+	// under, which every call for it passes on.
+	ConfigDir ConfigDir `json:"-"`
 }
 
 // Started is when the session started, or the zero time when unknown.
@@ -112,9 +115,10 @@ func (s Session) Aliases() []string {
 	return NonEmpty(s.Name, s.JobID, s.SessionID, s.ShortID())
 }
 
-// ManualCommand is the shell command that brings the session back by hand.
+// ManualCommand is the shell command that brings the session back by hand,
+// under its own account.
 func (s Session) ManualCommand() string {
-	return shell.ResumeCommand(s.SessionID, s.Cwd, s.Interactive())
+	return s.ConfigDir.ResumeCommand(s.SessionID, s.Cwd, s.Interactive())
 }
 
 var sessionID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)

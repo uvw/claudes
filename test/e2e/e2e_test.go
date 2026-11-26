@@ -737,3 +737,35 @@ func TestTeamLsAndGCTeams(t *testing.T) {
 		t.Fatalf("gc --teams touched the running lead's team:\n%s", r.stdout)
 	}
 }
+
+// A session of another account is reached only with that account's
+// CLAUDE_CONFIG_DIR, and the one claudes runs as with its own.
+func TestEachCallRunsWithTheSessionsAccount(t *testing.T) {
+	w := newWorld(t)
+	work := filepath.Join(w.root, "work-claude")
+	if err := os.MkdirAll(filepath.Join(work, "jobs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	w.writeFile(filepath.Join(w.configHome(), "claudes", "config.yaml"), "accounts:\n  dirs:\n    work: '"+work+"'\n")
+	alpha := w.bg("alpha", "idle")
+	beta := w.bg("beta", "busy")
+	w.sessions[1].ConfigDir = work
+
+	r := w.ok("ls")
+	assertContains(t, r.stdout, "ACCOUNT")
+	w.resetCalls()
+	w.ok("restart", "--ping")
+
+	got := w.actions()
+	assertArgs(t, got, []string{"respawn", alpha.ID}, []string{"stop", beta.ID}, []string{"--bg", "--resume", beta.SessionID, restartPing})
+	for i, want := range []string{w.claudeDir, work, work} {
+		if got[i].ConfigDir != want {
+			t.Errorf("%q ran with CLAUDE_CONFIG_DIR=%q, want %q", got[i].Args, got[i].ConfigDir, want)
+		}
+	}
+	for _, c := range w.calls() {
+		if c.Args[0] == "agents" && c.ConfigDir != w.claudeDir && c.ConfigDir != work {
+			t.Errorf("listed with CLAUDE_CONFIG_DIR=%q", c.ConfigDir)
+		}
+	}
+}

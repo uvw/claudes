@@ -17,19 +17,22 @@ import (
 	"github.com/uvw/claudes/internal/paths"
 )
 
-// Agents is what claudes needs from the claude command line.
+// Agents is what claudes needs from the claude command line. Each call for a
+// session takes that session's ConfigDir, so it reaches the session's own
+// account and daemon.
 type Agents interface {
-	// Sessions lists sessions; all adds finished background sessions.
-	Sessions(ctx context.Context, all bool) ([]Session, error)
-	Respawn(ctx context.Context, jobID string) error
-	Stop(ctx context.Context, jobID string) error
-	Remove(ctx context.Context, jobID string) error
+	// Sessions lists the sessions of the account dir reaches, each with its
+	// ConfigDir set to dir; all adds finished background sessions.
+	Sessions(ctx context.Context, dir ConfigDir, all bool) ([]Session, error)
+	Respawn(ctx context.Context, dir ConfigDir, jobID string) error
+	Stop(ctx context.Context, dir ConfigDir, jobID string) error
+	Remove(ctx context.Context, dir ConfigDir, jobID string) error
 	// Resume continues a session in the background from its directory, with an
 	// optional prompt, and returns what the command printed. job is for a
 	// session with no background job yet, and empty otherwise: an existing job
 	// wakes with its own saved options, and any option passed then starts a
 	// copy.
-	Resume(ctx context.Context, sessionID, cwd, prompt string, job NewJob) (string, error)
+	Resume(ctx context.Context, dir ConfigDir, sessionID, cwd, prompt string, job NewJob) (string, error)
 	// Version is the installed Claude Code version, such as "2.1.325".
 	Version(ctx context.Context) (string, error)
 	// Help is the output of `claude --help`, or of `claude COMMAND --help`.
@@ -51,7 +54,9 @@ type NewJob struct {
 
 // Runner runs the claude binary and captures its output.
 type Runner interface {
-	Run(ctx context.Context, dir string, args ...string) (stdout, stderr string, err error)
+	// Run runs the binary in the directory cwd, with config's
+	// CLAUDE_CONFIG_DIR.
+	Run(ctx context.Context, cwd string, config ConfigDir, args ...string) (stdout, stderr string, err error)
 	// Check refuses arguments that would not reach the binary intact.
 	Check(args ...string) error
 }
@@ -75,7 +80,7 @@ func (r execRunner) Check(args ...string) error {
 }
 
 // Run implements Runner.
-func (r execRunner) Run(ctx context.Context, dir string, args ...string) (string, string, error) {
+func (r execRunner) Run(ctx context.Context, cwd string, config ConfigDir, args ...string) (string, string, error) {
 	path, err := exec.LookPath(r.Binary)
 	if err != nil {
 		return "", "", err
@@ -84,8 +89,8 @@ func (r execRunner) Run(ctx context.Context, dir string, args ...string) (string
 		return "", "", err
 	}
 	cmd := exec.CommandContext(ctx, path, args...)
-	cmd.Dir = dir
-	cmd.Env = childEnv()
+	cmd.Dir = cwd
+	cmd.Env = childEnv(config)
 	cmd.WaitDelay = r.WaitDelay
 	isolate(cmd)
 	var stdout, stderr bytes.Buffer
@@ -119,8 +124,10 @@ var sessionVars = []string{
 }
 
 // childEnv is the environment claude runs with: claudes' own, without the
-// session variables, plus platformEnv.
-func childEnv() []string { return append(withoutSessionVars(os.Environ()), platformEnv...) }
+// session variables, with config's CLAUDE_CONFIG_DIR, plus platformEnv.
+func childEnv(config ConfigDir) []string {
+	return append(config.apply(withoutSessionVars(os.Environ())), platformEnv...)
+}
 
 func withoutSessionVars(env []string) []string {
 	out := make([]string, 0, len(env))
@@ -153,16 +160,16 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) run(ctx context.Context, timeout time.Duration, label, dir string, args ...string) (string, string, error) {
+func (c *Client) run(ctx context.Context, timeout time.Duration, label, cwd string, config ConfigDir, args ...string) (string, string, error) {
 	if timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 	start := time.Now()
-	stdout, stderr, err := c.Runner.Run(ctx, dir, args...)
+	stdout, stderr, err := c.Runner.Run(ctx, cwd, config, args...)
 	if c.Log != nil {
-		c.Log.Debug("claude", "args", strings.Join(args, " "), "dir", dir,
+		c.Log.Debug("claude", "args", strings.Join(args, " "), "dir", cwd, "config", config.String(),
 			"took", time.Since(start).Round(time.Millisecond), "err", err)
 	}
 	if err == nil {
@@ -189,16 +196,20 @@ func (c *Client) run(ctx context.Context, timeout time.Duration, label, dir stri
 }
 
 // Sessions implements Agents.
-func (c *Client) Sessions(ctx context.Context, all bool) ([]Session, error) {
+func (c *Client) Sessions(ctx context.Context, dir ConfigDir, all bool) ([]Session, error) {
 	args := []string{"agents", "--json"}
 	if all {
 		args = append(args, "--all")
 	}
-	out, _, err := c.run(ctx, c.ListTimeout, "claude agents --json", "", args...)
+	out, _, err := c.run(ctx, c.ListTimeout, "claude agents --json", "", dir, args...)
 	if err != nil {
 		return nil, err
 	}
-	return parseSessions([]byte(out))
+	sessions, err := parseSessions([]byte(out))
+	for i := range sessions {
+		sessions[i].ConfigDir = dir
+	}
+	return sessions, err
 }
 
 // parseSessions decodes the output of `claude agents --json`. An entry with no
@@ -213,20 +224,20 @@ func parseSessions(data []byte) ([]Session, error) {
 }
 
 // Respawn implements Agents.
-func (c *Client) Respawn(ctx context.Context, jobID string) error {
-	_, _, err := c.run(ctx, c.ActionTimeout, "claude respawn "+jobID, "", "respawn", jobID)
+func (c *Client) Respawn(ctx context.Context, dir ConfigDir, jobID string) error {
+	_, _, err := c.run(ctx, c.ActionTimeout, "claude respawn "+jobID, "", dir, "respawn", jobID)
 	return err
 }
 
 // Stop implements Agents.
-func (c *Client) Stop(ctx context.Context, jobID string) error {
-	_, _, err := c.run(ctx, c.ActionTimeout, "claude stop "+jobID, "", "stop", jobID)
+func (c *Client) Stop(ctx context.Context, dir ConfigDir, jobID string) error {
+	_, _, err := c.run(ctx, c.ActionTimeout, "claude stop "+jobID, "", dir, "stop", jobID)
 	return err
 }
 
 // Remove implements Agents.
-func (c *Client) Remove(ctx context.Context, jobID string) error {
-	_, _, err := c.run(ctx, c.ListTimeout, "claude rm "+jobID, "", "rm", jobID)
+func (c *Client) Remove(ctx context.Context, dir ConfigDir, jobID string) error {
+	_, _, err := c.run(ctx, c.ListTimeout, "claude rm "+jobID, "", dir, "rm", jobID)
 	return err
 }
 
@@ -251,7 +262,7 @@ func CheckOption(prompt string) error {
 var copyNotice = regexp.MustCompile(`(?i)\ba copy\b`)
 
 // Resume implements Agents.
-func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt string, job NewJob) (string, error) {
+func (c *Client) Resume(ctx context.Context, dir ConfigDir, sessionID, cwd, prompt string, job NewJob) (string, error) {
 	// Run checks the arguments against the binary as well.
 	if err := CheckOption(prompt); err != nil {
 		return "", err
@@ -275,7 +286,7 @@ func (c *Client) Resume(ctx context.Context, sessionID, cwd, prompt string, job 
 		args = append(args, prompt)
 	}
 	label := "claude --bg --resume " + ShortID(sessionID)
-	stdout, stderr, err := c.run(ctx, c.ActionTimeout, label, cwd, args...)
+	stdout, stderr, err := c.run(ctx, c.ActionTimeout, label, cwd, dir, args...)
 	if err != nil {
 		return "", err
 	}
@@ -308,13 +319,13 @@ func (c *Client) Help(ctx context.Context, command string) (string, error) {
 	if command != "" {
 		args = []string{command, "--help"}
 	}
-	out, _, err := c.run(ctx, c.ListTimeout, "claude "+strings.Join(args, " "), "", args...)
+	out, _, err := c.run(ctx, c.ListTimeout, "claude "+strings.Join(args, " "), "", ConfigDir{}, args...)
 	return out, err
 }
 
 // Version implements Agents.
 func (c *Client) Version(ctx context.Context) (string, error) {
-	out, _, err := c.run(ctx, c.ListTimeout, "claude --version", "", "--version")
+	out, _, err := c.run(ctx, c.ListTimeout, "claude --version", "", ConfigDir{}, "--version")
 	if err != nil {
 		return "", err
 	}

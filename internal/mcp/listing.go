@@ -9,7 +9,10 @@ import (
 
 // Listing is what claudes mcp ls prints with -o json or yaml.
 type Listing struct {
-	Dir string `json:"dir"`
+	// Account names the account whose settings the listing reads, when
+	// claudes manages more than one.
+	Account string `json:"account,omitempty"`
+	Dir     string `json:"dir"`
 	// Profile is --profile, or "".
 	Profile string `json:"profile"`
 	Servers []Row  `json:"servers"`

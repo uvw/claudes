@@ -163,7 +163,7 @@ func TestSessionMvRemovesAStoppedJobAndResumeBgStartsOneWithItsOptions(t *testin
 	assertCalls(t, h, "rm "+s.JobID)
 	assertContains(t, h.out.String(), "removed its stopped background job "+s.JobID)
 	assertContains(t, h.out.String(), "with --permission-mode plan --model m")
-	if _, err := os.Stat(filepath.Join(h.app.Jobs.Dir, s.JobID)); !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(h.app.Accounts[0].Jobs.Dir, s.JobID)); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("the job is still there: %v", err)
 	}
 
@@ -227,10 +227,10 @@ func TestSessionMvLeavesAJobThatIsNotStoppedOrIsPaused(t *testing.T) {
 			}
 		}},
 		{"unreadable", "claudes cannot read the options", func(h *harness, s *claude.Session) {
-			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), "{")
+			writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, s.JobID, "state.json"), "{")
 		}},
 		{"no respawnFlags", "claudes cannot read the options", func(h *harness, s *claude.Session) {
-			writeFile(t, filepath.Join(h.app.Jobs.Dir, s.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, s.SessionID, s.Cwd))
+			writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, s.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"cwd":%q}`, s.SessionID, s.Cwd))
 		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestSessionMvOfARunningBackgroundSessionRemovesNothing(t *testing.T) {
 	h := newHarness(t)
 	live := h.bg("live", "idle")
 	h.transcriptAs(t, live.SessionID, "live", live.Cwd, time.Minute)
-	writeFile(t, filepath.Join(h.app.Jobs.Dir, live.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"respawnFlags":["--model","m"]}`, live.SessionID))
+	writeFile(t, filepath.Join(h.app.Accounts[0].Jobs.Dir, live.JobID, "state.json"), fmt.Sprintf(`{"sessionId":%q,"respawnFlags":["--model","m"]}`, live.SessionID))
 	h.agents.snapshots = [][]claude.Session{{live}}
 
 	h.fails(t, "session", "mv", "live", h.folder("to"))

@@ -25,7 +25,7 @@ func TestGCTeamsKeepsAParkedSessionsTaskList(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	p := filepath.Join(h.app.Teams.Tasks, teams.Name(paused.SessionID), "1.json")
+	p := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(paused.SessionID), "1.json")
 	writeFile(t, p, `{"id":"1","subject":"half done","status":"in_progress"}`)
 	old := time.Now().Add(-30 * 24 * time.Hour)
 	if err := os.Chtimes(p, old, old); err != nil {
@@ -50,8 +50,8 @@ func TestGCTeamsKeepsAStoppedPinnedSessionsTeam(t *testing.T) {
 	old := h.now.Add(-30 * 24 * time.Hour)
 	var paths []string
 	for _, s := range []claude.Session{listed, unlisted} {
-		paths = append(paths, filepath.Join(h.app.Teams.Teams, teams.Name(s.SessionID), "config.json"),
-			filepath.Join(h.app.Teams.Tasks, teams.Name(s.SessionID), "1.json"))
+		paths = append(paths, filepath.Join(h.app.Accounts[0].Teams.Teams, teams.Name(s.SessionID), "config.json"),
+			filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(s.SessionID), "1.json"))
 	}
 	for _, p := range paths {
 		writeFile(t, p, "{}")
@@ -108,7 +108,7 @@ func TestGCConfirmAsksFirst(t *testing.T) {
 	old.StartedAt = h.now.Add(-10 * 24 * time.Hour).UnixMilli()
 	h.agents.snapshots = [][]claude.Session{{}}
 	h.agents.finished = []claude.Session{old}
-	p := filepath.Join(h.app.Teams.Tasks, teams.Name(old.SessionID), "1.json")
+	p := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(old.SessionID), "1.json")
 	writeFile(t, p, "{}")
 	h.aged(t, filepath.Dir(p), 30*24*time.Hour)
 
@@ -133,7 +133,7 @@ func TestGCTeamsTrashesUnlessPurged(t *testing.T) {
 	h := newHarness(t)
 	h.agents.snapshots = [][]claude.Session{{}}
 	tasks := func(name string) string {
-		p := filepath.Join(h.app.Teams.Tasks, teams.Name(sessionID(name)), "1.json")
+		p := filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(sessionID(name)), "1.json")
 		writeFile(t, p, "{}")
 		h.aged(t, filepath.Dir(p), 30*24*time.Hour)
 		return filepath.Dir(p)
@@ -205,9 +205,9 @@ func TestGCTeamsRemovesOnlyOldFoldersOfSessionsThatAreGone(t *testing.T) {
 	h.agents.snapshots = [][]claude.Session{{live}}
 	old := h.now.Add(-30 * 24 * time.Hour)
 	for _, p := range []string{
-		filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa", "config.json"),
-		filepath.Join(h.app.Teams.Tasks, "session-aaaaaaaa", "1.json"),
-		filepath.Join(h.app.Teams.Tasks, teams.Name(live.SessionID), "1.json"),
+		filepath.Join(h.app.Accounts[0].Teams.Teams, "session-aaaaaaaa", "config.json"),
+		filepath.Join(h.app.Accounts[0].Teams.Tasks, "session-aaaaaaaa", "1.json"),
+		filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(live.SessionID), "1.json"),
 	} {
 		writeFile(t, p, "{}")
 		if err := os.Chtimes(p, old, old); err != nil {
@@ -217,17 +217,17 @@ func TestGCTeamsRemovesOnlyOldFoldersOfSessionsThatAreGone(t *testing.T) {
 
 	h.ok(t, "gc", "--teams", "--dry-run")
 	assertContains(t, h.out.String(), "Removing 2 team dir(s) and task list(s)")
-	if _, err := os.Stat(filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa")); err != nil {
+	if _, err := os.Stat(filepath.Join(h.app.Accounts[0].Teams.Teams, "session-aaaaaaaa")); err != nil {
 		t.Fatalf("a dry run removed a directory: %v", err)
 	}
 
 	h.ok(t, "gc", "--teams")
-	for _, gone := range []string{filepath.Join(h.app.Teams.Teams, "session-aaaaaaaa"), filepath.Join(h.app.Teams.Tasks, "session-aaaaaaaa")} {
+	for _, gone := range []string{filepath.Join(h.app.Accounts[0].Teams.Teams, "session-aaaaaaaa"), filepath.Join(h.app.Accounts[0].Teams.Tasks, "session-aaaaaaaa")} {
 		if _, err := os.Stat(gone); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("%s is still there: %v", gone, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(h.app.Teams.Tasks, teams.Name(live.SessionID))); err != nil {
+	if _, err := os.Stat(filepath.Join(h.app.Accounts[0].Teams.Tasks, teams.Name(live.SessionID))); err != nil {
 		t.Fatalf("a running session's task list went: %v", err)
 	}
 	h.fails(t, "gc", "--teams", "live")

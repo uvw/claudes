@@ -29,6 +29,9 @@ type sessionRow struct {
 	Tokens    *int64  `json:"tokens"`
 	PRs       *int    `json:"prs"`
 	Doing     *string `json:"doing"`
+	// Account names the session's account when claudes manages more than
+	// one, and is left out otherwise.
+	Account string `json:"account,omitempty"`
 }
 
 // sortRows orders rows pinned first, then busy, then newest.

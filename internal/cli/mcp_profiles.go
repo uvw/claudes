@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,11 @@ plugin's. Change the profiles with claudes config edit.`,
 			if err != nil {
 				return err
 			}
-			list := mcp.Profiles(app.Config.MCP.Profiles, app.MCP.Known(dir))
+			known := map[string]bool{}
+			for _, a := range app.Accounts {
+				maps.Copy(known, a.MCP.Known(dir))
+			}
+			list := mcp.Profiles(app.Config.MCP.Profiles, known)
 			for _, p := range list {
 				for _, s := range p.Unknown {
 					app.warn("claudes: profile %s names %q, which matches no MCP server claudes can find", p.Name, shell.Printable(s))

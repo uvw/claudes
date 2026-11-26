@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "activeAccountNumber": 1,
+  "accounts": [
+    {
+      "number": 1,
+      "email": "you@example.com",
+      "organizationName": "",
+      "organizationUuid": "",
+      "isOrganization": false,
+      "active": true,
+      "usageStatus": "ok",
+      "usage": {
+        "fiveHour": { "pct": 12.0, "resetsAt": "2026-11-20T14:00:00Z" },
+        "sevenDay": { "pct": 40.0, "resetsAt": "2026-11-24T09:00:00Z" }
+      },
+      "alias": "Personal"
+    },
+    {
+      "number": 2,
+      "email": "you@work.example",
+      "organizationName": "Example Co",
+      "organizationUuid": "c3a9e1f2-6d4b-4a87-b2c0-9f1e7d5a3b26",
+      "isOrganization": true,
+      "active": false,
+      "usageStatus": "unavailable",
+      "usage": null,
+      "usageError": "http-429"
+    },
+    {
+      "number": 3,
+      "email": "you@work.example",
+      "organizationName": "Other Co",
+      "organizationUuid": "e8f2b4c6-1a3d-4e59-8c7b-2d0f6a9e1c35",
+      "isOrganization": true,
+      "active": false,
+      "usageStatus": "ok",
+      "usage": null,
+      "alias": "side"
+    }
+  ]
+}

@@ -41,7 +41,11 @@ runs, which claudes gc --teams removes.`,
 				return nil
 			}
 			c := app.colors
-			table := [][]string{{"ID", "TEAMMATES", "TASKS", "DIR", "LEAD"}}
+			header := []string{"ID", "TEAMMATES", "TASKS", "DIR", "LEAD"}
+			if app.multi() {
+				header = []string{"ID", "TEAMMATES", "TASKS", "ACCOUNT", "DIR", "LEAD"}
+			}
+			table := [][]string{header}
 			for _, r := range rows {
 				mates := "-"
 				if len(r.Teammates) > 0 {
@@ -51,7 +55,11 @@ runs, which claudes gc --teams removes.`,
 				if !r.Running {
 					lead = c.Faint(lead + " (not running)")
 				}
-				table = append(table, []string{r.LeadID, mates, teams.TaskSummary(r.Tasks), render.DirCell(r.Cwd), lead})
+				row := []string{r.LeadID, mates, teams.TaskSummary(r.Tasks)}
+				if app.multi() {
+					row = append(row, shell.Printable(r.Account))
+				}
+				table = append(table, append(row, render.DirCell(r.Cwd), lead))
 			}
 			return app.writeTable(app.Out, table, tableFit{})
 		},
@@ -61,31 +69,37 @@ runs, which claudes gc --teams removes.`,
 	return cmd
 }
 
-// teamRows reads every team and joins it with its lead from claude agents.
+// teamRows reads every team of each account the command covers, and joins it
+// with its lead from that account's claude agents.
 func (app *App) teamRows(ctx context.Context, all bool) ([]teams.Row, error) {
-	list, err := app.Teams.List()
-	if err != nil {
-		return nil, err
-	}
-	sessions, err := app.Agents.Sessions(ctx, true)
-	if err != nil {
-		return nil, err
-	}
-	byID := map[string]claude.Session{}
-	for _, s := range sessions {
-		byID[s.SessionID] = s
-	}
 	rows := []teams.Row{}
-	for _, t := range list {
-		s, known := byID[t.LeadSessionID]
-		r := teams.RowOf(t, s, known)
-		if !all && (!r.Running || len(r.Teammates) == 0) {
-			continue
-		}
-		if r.Tasks, err = app.Teams.TaskList(t.Name); err != nil {
+	for _, a := range app.selected() {
+		list, err := a.Teams.List()
+		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, r)
+		sessions, err := app.listIn(ctx, []*account{a}, true)
+		if err != nil {
+			return nil, err
+		}
+		byID := map[string]claude.Session{}
+		for _, s := range sessions {
+			byID[s.SessionID] = s
+		}
+		for _, t := range list {
+			s, known := byID[t.LeadSessionID]
+			r := teams.RowOf(t, s, known)
+			if !all && (!r.Running || len(r.Teammates) == 0) {
+				continue
+			}
+			if r.Tasks, err = a.Teams.TaskList(t.Name); err != nil {
+				return nil, err
+			}
+			if app.multi() {
+				r.Account = a.Name
+			}
+			rows = append(rows, r)
+		}
 	}
 	return rows, nil
 }

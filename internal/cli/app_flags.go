@@ -84,6 +84,17 @@ func (f *planFlags) add(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&f.confirm, "confirm", "c", false, "ask y/N before changing anything")
 }
 
+// withAccount adds --account to cmd and the commands under it, which narrows
+// them to the sessions of one account.
+func (app *App) withAccount(cmd *cobra.Command) *cobra.Command {
+	cmd.PersistentFlags().StringVar(&app.accountFlag, "account", "",
+		"only this account: a name from config.yaml, or a cswap account number, alias, or email")
+	cmd.RegisterFlagCompletionFunc("account", func(*cobra.Command, []string, string) ([]cobra.Completion, cobra.ShellCompDirective) {
+		return app.Found.Names(), cobra.ShellCompDirectiveNoFileComp
+	})
+	return cmd
+}
+
 // forceUsage is --force's help on the commands that act on sessions.
 const forceUsage = "go ahead even when Claude Code's output looks unfamiliar (see claudes doctor)"
 

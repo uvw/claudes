@@ -1,8 +1,10 @@
 package teams
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/uvw/claudes/internal/claude"
@@ -40,5 +42,20 @@ func TestLeftoverSaysWhatItIs(t *testing.T) {
 	tasks := Leftover{Path: filepath.Join(st.Tasks, "session-62d022d3"), Name: "session-62d022d3"}
 	if team.ID() != "62d022d3" || team.Label() != "team" || tasks.Label() != "task list" || team.Dir() != team.Path {
 		t.Errorf("team %s %s, tasks %s", team.ID(), team.Label(), tasks.Label())
+	}
+}
+
+func TestARowNamesItsAccountOnlyWhenSet(t *testing.T) {
+	r := RowOf(Team{Name: "t", LeadSessionID: "s"}, claude.Session{}, false)
+	data, err := json.Marshal(r)
+	if err != nil || strings.Contains(string(data), "account") {
+		t.Fatalf("json %s, err %v", data, err)
+	}
+	r.Account = "work"
+	if data, _ = json.Marshal(r); !strings.Contains(string(data), `"account":"work"`) {
+		t.Fatalf("json %s", data)
+	}
+	if s := StoreIn("/p"); s.Teams != filepath.Join("/p", "teams") || s.Tasks != filepath.Join("/p", "tasks") {
+		t.Fatalf("store %+v", s)
 	}
 }

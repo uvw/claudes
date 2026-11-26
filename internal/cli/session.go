@@ -16,5 +16,5 @@ restore, which puts back what they moved to the trash.`,
 	}
 	cmd.AddCommand(app.sessionLsCommand(), app.sessionDuCommand(), app.sessionSearchCommand(), app.sessionShowCommand(), app.sessionTriageCommand(), app.sessionWhereCommand(),
 		alone(app.sessionResumeCommand()), alone(app.sessionMvCommand()), alone(app.reports(app.sessionGcCommand())), alone(app.sessionRestoreCommand()))
-	return cmd
+	return app.withAccount(cmd)
 }

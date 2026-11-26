@@ -25,7 +25,7 @@ func TestAReusedPIDDoesNotBlockThePing(t *testing.T) {
 
 type slowStart struct{ *fakeAgents }
 
-func (s slowStart) Resume(_ context.Context, sessionID, _, _ string, _ claude.NewJob) (string, error) {
+func (s slowStart) Resume(_ context.Context, _ claude.ConfigDir, sessionID, _, _ string, _ claude.NewJob) (string, error) {
 	return "", s.do("resume", sessionID)
 }
 
