@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 
 	"github.com/spf13/cobra"
 
@@ -131,17 +132,26 @@ func (app *App) resumeAccount() *account { return app.selected()[0] }
 
 // listIn lists the sessions of each of accts; all adds finished background
 // sessions. With several accounts, an error names the account.
+//
+// The accounts are listed at once: each claude agents call spends most of its
+// 300 ms or so starting claude, so one after another the waits add up.
 func (app *App) listIn(ctx context.Context, accts []*account, all bool) ([]claude.Session, error) {
+	lists := make([][]claude.Session, len(accts))
+	errs := make([]error, len(accts))
+	var wg sync.WaitGroup
+	for i, a := range accts {
+		wg.Go(func() { lists[i], errs[i] = app.Agents.Sessions(ctx, a.ConfigDir, all) })
+	}
+	wg.Wait()
 	var out []claude.Session
-	for _, a := range accts {
-		sessions, err := app.Agents.Sessions(ctx, a.ConfigDir, all)
-		if err != nil {
+	for i, a := range accts {
+		if err := errs[i]; err != nil {
 			if app.multi() {
 				return nil, fmt.Errorf("account %s: %w", a.Name, err)
 			}
 			return nil, err
 		}
-		out = append(out, sessions...)
+		out = append(out, lists[i]...)
 	}
 	return out, nil
 }
