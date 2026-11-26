@@ -53,6 +53,8 @@ type fakeAgents struct {
 	beforeStop func(sessionID string)
 	// beforeRespawn runs before every respawn.
 	beforeRespawn func(sessionID string)
+	// beforeList runs before every listing.
+	beforeList func()
 	// lagStop leaves a stopped session running until the next snapshot, as
 	// when `claude stop` returns before the job is down.
 	lagStop bool
@@ -114,6 +116,9 @@ func (f *fakeAgents) Sessions(ctx context.Context, dir claude.ConfigDir, all boo
 			sessions[i].ConfigDir = dir
 		}
 		return sessions, err
+	}
+	if f.beforeList != nil {
+		f.beforeList()
 	}
 	if msg, ok := f.failures["list"]; ok {
 		return nil, errors.New(msg)

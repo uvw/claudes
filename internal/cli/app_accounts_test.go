@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -243,6 +244,33 @@ func TestAnInteractiveSessionOfAnotherAccountPrintsItsAccountsCommand(t *testing
 		t.Fatalf("terminated %v since %v", h.terminated, h.terminatedSince)
 	}
 	assertContains(t, h.out.String(), shell.ResumeCommandIn(acct.Dir, gamma.SessionID, gamma.Cwd, true))
+}
+
+func TestAccountsAreListedAtOnce(t *testing.T) {
+	h := newHarness(t)
+	_, work := h.account("work")
+	h.agents.snapshots = [][]claude.Session{{h.bg("alpha", "idle")}}
+	work.snapshots = [][]claude.Session{{h.bg("beta", "idle")}}
+	// Each listing waits until the other has started, which only happens
+	// when both run at once.
+	var started sync.WaitGroup
+	started.Add(2)
+	meet := func() {
+		started.Done()
+		done := make(chan struct{})
+		go func() { started.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Error("the accounts were listed one after another")
+		}
+	}
+	h.agents.beforeList, work.beforeList = meet, meet
+
+	h.ok(t, "ls")
+
+	assertContains(t, h.out.String(), "alpha")
+	assertContains(t, h.out.String(), "beta")
 }
 
 func TestTheHostGoesLastAcrossAccounts(t *testing.T) {
