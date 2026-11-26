@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/uvw/claudes/compare/v0.8.1...v0.9.0) (2026-11-26)
+
+### Features
+
+- manage sessions across several claude accounts, including cswap profiles
+  ([#17](https://github.com/uvw/claudes/issues/17))
+  ([9dd3dfa](https://github.com/uvw/claudes/commit/9dd3dfa998624c4a954fe24d0b170c8e6ef4a612))
+
 ## [0.8.1](https://github.com/uvw/claudes/compare/v0.8.0...v0.8.1) (2026-11-23)
 
 ### Bug fixes
